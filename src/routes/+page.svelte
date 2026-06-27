@@ -1,18 +1,56 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import ConversationBubble from '$lib/components/conversation/ConversationBubble.svelte';
   import ConversationLog from '$lib/components/conversation/ConversationLog.svelte';
+  import SearchResults from '$lib/components/search/SearchResults.svelte';
   import InitialSearchForm from '$lib/components/search/InitialSearchForm.svelte';
+  import {
+    emptyInitialSearchResults,
+    findInitialSearchResults,
+    type InitialSearchResults
+  } from '$lib/data/initialSearchFixtures';
+
+  type SearchUiState = 'WELCOME' | 'SEARCHING' | 'SEARCH_RESULTS';
+
+  const searchDelayMs = 450;
 
   let searchSequence = 0;
   let submittedSearch = $state<{ id: number; query: string } | null>(null);
+  let searchState = $state<SearchUiState>('WELCOME');
+  let searchResults = $state<InitialSearchResults>(emptyInitialSearchResults);
+  let searchDelayId: number | undefined;
 
   function handleSearch(query: string) {
     searchSequence += 1;
-    submittedSearch = {
+    const nextSearch = {
       id: searchSequence,
       query
     };
+
+    if (searchDelayId) {
+      window.clearTimeout(searchDelayId);
+    }
+
+    submittedSearch = nextSearch;
+    searchState = 'SEARCHING';
+    searchResults = emptyInitialSearchResults;
+
+    searchDelayId = window.setTimeout(() => {
+      if (submittedSearch?.id !== nextSearch.id) {
+        return;
+      }
+
+      searchResults = findInitialSearchResults(query);
+      searchState = 'SEARCH_RESULTS';
+      searchDelayId = undefined;
+    }, searchDelayMs);
   }
+
+  onDestroy(() => {
+    if (searchDelayId) {
+      window.clearTimeout(searchDelayId);
+    }
+  });
 </script>
 
 <svelte:head>
@@ -59,9 +97,18 @@
             <p class="mt-1 break-words">{submittedSearch.query}</p>
           </ConversationBubble>
 
-          <ConversationBubble tone="status">
-            <p>Termo recebido nesta página. Nenhum dado oficial foi consultado.</p>
-          </ConversationBubble>
+          {#if searchState === 'SEARCHING'}
+            <ConversationBubble tone="status">
+              <p class="font-semibold" role="status">Verificando correspondências nesta página.</p>
+              <p class="mt-2 text-sm leading-6 text-ink-muted">
+                Nenhum dado oficial foi consultado.
+              </p>
+            </ConversationBubble>
+          {:else if searchState === 'SEARCH_RESULTS'}
+            <ConversationBubble tone="status">
+              <SearchResults query={submittedSearch.query} results={searchResults} />
+            </ConversationBubble>
+          {/if}
         {/key}
       {/if}
     </ConversationLog>
