@@ -7,4 +7,6 @@
 
 <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
 
-{@render children()}
+<div class="min-h-dvh bg-surface font-sans text-ink antialiased">
+  {@render children()}
+</div>

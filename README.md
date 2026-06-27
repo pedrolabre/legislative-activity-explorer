@@ -49,14 +49,14 @@ Escolhi SvelteKit porque queria sair da zona de conforto do React e explorar uma
 
 ## Estrutura atual
 
-O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura inicial segue a organização padrão do SvelteKit, e deve evoluir conforme os fluxos de consulta forem implementados.
+O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação.
 
-* `src/routes/`: Onde ficarão as telas e o fluxo do app.
-* `src/lib/types/`: Interfaces TypeScript unificadas para os dados da Câmara e do Senado.
-* `src/lib/utils/`: Funções de requisição HTTP e normalizadores de dados.
-* `src/lib/components/`: Componentes da UI (como balões do chat e cartões de exibição).
-
-À medida que os módulos forem implementados, esta seção será atualizada com mais detalhes.
+* `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
+* `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
+* `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
+* `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
+* `src/routes/+page.svelte`: Tela inicial pública e factual do produto.
+* `static/robots.txt`: Configuração inicial de indexação.
 
 ---
 
