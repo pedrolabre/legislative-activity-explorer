@@ -34,7 +34,7 @@ const parliamentarianFixtures: InitialSearchParliamentarianResult[] = [
     office: 'Deputada federal',
     party: 'Partido A',
     state: 'MG',
-    status: 'Registro de exemplo',
+    status: 'Em exercício',
     searchTerms: ['ana', 'ana costa', 'camara', 'educacao', 'minas gerais']
   },
   {
@@ -44,7 +44,7 @@ const parliamentarianFixtures: InitialSearchParliamentarianResult[] = [
     office: 'Senador',
     party: 'Partido B',
     state: 'RS',
-    status: 'Registro de exemplo',
+    status: 'Em exercício',
     searchTerms: ['bruno', 'bruno ribeiro', 'rio grande do sul', 'saude', 'senado']
   }
 ];

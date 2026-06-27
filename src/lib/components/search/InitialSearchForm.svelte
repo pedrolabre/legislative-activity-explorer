@@ -1,8 +1,27 @@
 <script lang="ts">
-  let { onSearch }: { onSearch: (query: string) => void } = $props();
+  let {
+    onSearch,
+    resetToken = 0
+  }: { onSearch: (query: string) => void; resetToken?: number } = $props();
 
   let query = $state('');
   let errorMessage = $state('');
+  let lastResetToken = $state<number | null>(null);
+
+  $effect(() => {
+    if (lastResetToken === null) {
+      lastResetToken = resetToken;
+      return;
+    }
+
+    if (resetToken === lastResetToken) {
+      return;
+    }
+
+    query = '';
+    errorMessage = '';
+    lastResetToken = resetToken;
+  });
 
   function handleSubmit(event: SubmitEvent) {
     event.preventDefault();

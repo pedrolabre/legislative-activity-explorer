@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import ConversationBubble from '$lib/components/conversation/ConversationBubble.svelte';
   import ConversationLog from '$lib/components/conversation/ConversationLog.svelte';
+  import ParliamentarianDetail from '$lib/components/parliamentarians/ParliamentarianDetail.svelte';
   import SearchResults from '$lib/components/search/SearchResults.svelte';
   import InitialSearchForm from '$lib/components/search/InitialSearchForm.svelte';
   import {
@@ -9,8 +10,12 @@
     findInitialSearchResults,
     type InitialSearchResults
   } from '$lib/data/initialSearchFixtures';
+  import {
+    getParliamentarianDetailById,
+    type ParliamentarianDetail as ParliamentarianDetailData
+  } from '$lib/data/parliamentarianDetailFixtures';
 
-  type SearchUiState = 'WELCOME' | 'SEARCHING' | 'SEARCH_RESULTS';
+  type SearchUiState = 'WELCOME' | 'SEARCHING' | 'SEARCH_RESULTS' | 'PARLIAMENTARIAN_DETAIL';
 
   const searchDelayMs = 450;
 
@@ -18,6 +23,8 @@
   let submittedSearch = $state<{ id: number; query: string } | null>(null);
   let searchState = $state<SearchUiState>('WELCOME');
   let searchResults = $state<InitialSearchResults>(emptyInitialSearchResults);
+  let selectedParliamentarian = $state<ParliamentarianDetailData | null>(null);
+  let searchFormResetToken = $state(0);
   let searchDelayId: number | undefined;
 
   function handleSearch(query: string) {
@@ -34,6 +41,7 @@
     submittedSearch = nextSearch;
     searchState = 'SEARCHING';
     searchResults = emptyInitialSearchResults;
+    selectedParliamentarian = null;
 
     searchDelayId = window.setTimeout(() => {
       if (submittedSearch?.id !== nextSearch.id) {
@@ -42,8 +50,45 @@
 
       searchResults = findInitialSearchResults(query);
       searchState = 'SEARCH_RESULTS';
+      selectedParliamentarian = null;
       searchDelayId = undefined;
     }, searchDelayMs);
+  }
+
+  function handleSelectParliamentarian(id: string) {
+    const parliamentarian = getParliamentarianDetailById(id);
+
+    if (!parliamentarian) {
+      return;
+    }
+
+    selectedParliamentarian = parliamentarian;
+    searchState = 'PARLIAMENTARIAN_DETAIL';
+  }
+
+  function handleBackToResults() {
+    selectedParliamentarian = null;
+
+    if (!submittedSearch) {
+      searchState = 'WELCOME';
+      return;
+    }
+
+    searchState = 'SEARCH_RESULTS';
+  }
+
+  function handleStartOver() {
+    if (searchDelayId) {
+      window.clearTimeout(searchDelayId);
+      searchDelayId = undefined;
+    }
+
+    searchSequence += 1;
+    submittedSearch = null;
+    searchState = 'WELCOME';
+    searchResults = emptyInitialSearchResults;
+    selectedParliamentarian = null;
+    searchFormResetToken += 1;
   }
 
   onDestroy(() => {
@@ -81,7 +126,7 @@
       </div>
 
       <div class="mt-10">
-        <InitialSearchForm onSearch={handleSearch} />
+        <InitialSearchForm onSearch={handleSearch} resetToken={searchFormResetToken} />
       </div>
     </div>
 
@@ -106,7 +151,26 @@
             </ConversationBubble>
           {:else if searchState === 'SEARCH_RESULTS'}
             <ConversationBubble tone="status">
-              <SearchResults query={submittedSearch.query} results={searchResults} />
+              <SearchResults
+                query={submittedSearch.query}
+                results={searchResults}
+                onSelectParliamentarian={handleSelectParliamentarian}
+              />
+            </ConversationBubble>
+          {:else if searchState === 'PARLIAMENTARIAN_DETAIL' && selectedParliamentarian}
+            <ConversationBubble tone="user">
+              <p class="text-xs font-bold uppercase tracking-normal opacity-80">
+                Parlamentar selecionado
+              </p>
+              <p class="mt-1 break-words">{selectedParliamentarian.name}</p>
+            </ConversationBubble>
+
+            <ConversationBubble tone="status">
+              <ParliamentarianDetail
+                parliamentarian={selectedParliamentarian}
+                onBackToResults={handleBackToResults}
+                onStartOver={handleStartOver}
+              />
             </ConversationBubble>
           {/if}
         {/key}

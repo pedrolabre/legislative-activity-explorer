@@ -2,7 +2,15 @@
   import SearchResultCard from '$lib/components/search/SearchResultCard.svelte';
   import type { InitialSearchResults } from '$lib/data/initialSearchFixtures';
 
-  let { query, results }: { query: string; results: InitialSearchResults } = $props();
+  let {
+    query,
+    results,
+    onSelectParliamentarian
+  }: {
+    query: string;
+    results: InitialSearchResults;
+    onSelectParliamentarian?: (id: string) => void;
+  } = $props();
 
   let totalResults = $derived(results.parliamentarians.length + results.proposals.length);
   let resultCountLabel = $derived(
@@ -47,7 +55,7 @@
         <ul class="mt-3 grid gap-3">
           {#each results.parliamentarians as result (result.id)}
             <li>
-              <SearchResultCard {result} />
+              <SearchResultCard {result} {onSelectParliamentarian} />
             </li>
           {/each}
         </ul>
