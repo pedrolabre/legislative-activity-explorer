@@ -1,10 +1,27 @@
+<script lang="ts">
+  import ConversationBubble from '$lib/components/conversation/ConversationBubble.svelte';
+  import ConversationLog from '$lib/components/conversation/ConversationLog.svelte';
+  import InitialSearchForm from '$lib/components/search/InitialSearchForm.svelte';
+
+  let searchSequence = 0;
+  let submittedSearch = $state<{ id: number; query: string } | null>(null);
+
+  function handleSearch(query: string) {
+    searchSequence += 1;
+    submittedSearch = {
+      id: searchSequence,
+      query
+    };
+  }
+</script>
+
 <svelte:head>
   <title>O que o parlamentar fez</title>
 </svelte:head>
 
 <main id="conteudo" class="min-h-dvh px-page py-section">
   <section
-    class="mx-auto flex min-h-[calc(100dvh-6rem)] w-full max-w-shell flex-col justify-center border-t-4 border-civic pt-10"
+    class="mx-auto grid min-h-[calc(100dvh-6rem)] w-full max-w-shell content-center gap-10 border-t-4 border-civic pt-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(22rem,1.1fr)] lg:items-center"
     aria-labelledby="home-title"
   >
     <div class="max-w-readable">
@@ -24,6 +41,29 @@
           clareza, neutralidade e privacidade.
         </p>
       </div>
+
+      <div class="mt-10">
+        <InitialSearchForm onSearch={handleSearch} />
+      </div>
     </div>
+
+    <ConversationLog title="Conversa de consulta">
+      <ConversationBubble>
+        <p>Informe um parlamentar ou uma proposição para iniciar a consulta.</p>
+      </ConversationBubble>
+
+      {#if submittedSearch}
+        {#key submittedSearch.id}
+          <ConversationBubble tone="user">
+            <p class="text-xs font-bold uppercase tracking-normal opacity-80">Termo informado</p>
+            <p class="mt-1 break-words">{submittedSearch.query}</p>
+          </ConversationBubble>
+
+          <ConversationBubble tone="status">
+            <p>Termo recebido nesta página. Nenhum dado oficial foi consultado.</p>
+          </ConversationBubble>
+        {/key}
+      {/if}
+    </ConversationLog>
   </section>
 </main>
