@@ -73,6 +73,12 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/data/parliamentarianDetailFixtures.test.ts`: Testes unitários do detalhe local de parlamentar.
 * `src/lib/data/parliamentarianVoteFixtures.ts`: Dados de exemplo controlados para votações associadas e detalhe de votação.
 * `src/lib/data/parliamentarianVoteFixtures.test.ts`: Testes unitários da lista e do detalhe local de votações.
+* `src/lib/domain/index.ts`: Exportações centralizadas dos contratos de domínio e tipos auxiliares.
+* `src/lib/domain/legislativeSource.ts`: Constantes e união de fontes legislativas normalizadas.
+* `src/lib/domain/references.ts`: Constantes e união de tipos de referência externa.
+* `src/lib/domain/types.ts`: Contratos centrais para parlamentares, proposições, votações, votos individuais e referências externas.
+* `src/lib/domain/uiState.ts`: Constantes e união dos estados previstos da interface conversacional.
+* `src/lib/domain/votes.ts`: Constantes, união de posições de voto e contagens agregadas.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
 * `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional, busca inicial local e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES` e `ABOUT`.

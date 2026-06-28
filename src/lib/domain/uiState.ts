@@ -1,0 +1,14 @@
+export const UI_STATES = [
+  'WELCOME',
+  'SEARCHING',
+  'SEARCH_RESULTS',
+  'PARLIAMENTARIAN_DETAIL',
+  'PARLIAMENTARIAN_BILLS',
+  'PARLIAMENTARIAN_VOTES',
+  'BILL_DETAIL',
+  'BILL_VOTES',
+  'ABOUT',
+  'ERROR'
+] as const;
+
+export type UIState = (typeof UI_STATES)[number];
