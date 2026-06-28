@@ -79,9 +79,11 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/domain/types.ts`: Contratos centrais para parlamentares, proposições, votações, votos individuais e referências externas.
 * `src/lib/domain/uiState.ts`: Constantes e união dos estados previstos da interface conversacional.
 * `src/lib/domain/votes.ts`: Constantes, união de posições de voto e contagens agregadas.
+* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional.
+* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
-* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional, busca inicial local e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES` e `ABOUT`.
+* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial local e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
 * `static/parliamentarians/ana-costa.svg`: Imagem local neutra usada no perfil com foto disponível.
 * `static/robots.txt`: Configuração inicial de indexação.
 

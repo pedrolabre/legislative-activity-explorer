@@ -10,11 +10,7 @@
   import InitialSearchForm from '$lib/components/search/InitialSearchForm.svelte';
   import BillVotes from '$lib/components/votes/BillVotes.svelte';
   import ParliamentarianVotes from '$lib/components/votes/ParliamentarianVotes.svelte';
-  import {
-    emptyInitialSearchResults,
-    findInitialSearchResults,
-    type InitialSearchResults
-  } from '$lib/data/initialSearchFixtures';
+  import type { InitialSearchResults } from '$lib/data/initialSearchFixtures';
   import {
     getParliamentarianDetailById,
     type ParliamentarianDetail as ParliamentarianDetailData
@@ -29,209 +25,203 @@
     getVotesByParliamentarianId,
     type ParliamentarianVote
   } from '$lib/data/parliamentarianVoteFixtures';
+  import type { LegislativeProposal, Parliamentarian } from '$lib/domain';
+  import {
+    chatStore,
+    executeSearch,
+    goBack,
+    initialChatContext,
+    navigateTo,
+    openParliamentarianBills,
+    openParliamentarianVotes,
+    reset,
+    selectParliamentarianById,
+    selectProposalById,
+    selectVoteById,
+    type ChatContext
+  } from '$lib/state/chatStore';
 
-  type SearchUiState =
-    | 'WELCOME'
-    | 'SEARCHING'
-    | 'SEARCH_RESULTS'
-    | 'PARLIAMENTARIAN_DETAIL'
-    | 'PARLIAMENTARIAN_BILLS'
-    | 'PARLIAMENTARIAN_VOTES'
-    | 'BILL_DETAIL'
-    | 'BILL_VOTES'
-    | 'ABOUT';
+  const unavailableSearchFieldLabel = 'Não disponível';
 
-  const searchDelayMs = 450;
-
-  let searchSequence = 0;
-  let submittedSearch = $state<{ id: number; query: string } | null>(null);
-  let searchState = $state<SearchUiState>('WELCOME');
-  let previousSearchState = $state<SearchUiState>('WELCOME');
-  let searchResults = $state<InitialSearchResults>(emptyInitialSearchResults);
-  let selectedParliamentarian = $state<ParliamentarianDetailData | null>(null);
-  let selectedBill = $state<ParliamentarianBill | null>(null);
-  let selectedVote = $state<ParliamentarianVote | null>(null);
+  let chatContext = $state<ChatContext>(initialChatContext);
+  let searchRenderKey = $state(0);
   let searchFormResetToken = $state(0);
-  let searchDelayId: number | undefined;
-  let selectedParliamentarianBills = $derived(
+  const unsubscribeChatStore = chatStore.subscribe((context) => {
+    chatContext = context;
+  });
+
+  function getChamberLabel(source: Parliamentarian['source'] | LegislativeProposal['source']) {
+    return source === 'senado' ? 'Senado Federal' : 'Câmara dos Deputados';
+  }
+
+  function toSearchParliamentarianResult(parliamentarian: Parliamentarian) {
+    return {
+      kind: 'parliamentarian' as const,
+      id: parliamentarian.id,
+      name: parliamentarian.name,
+      office: parliamentarian.office,
+      party: parliamentarian.party ?? unavailableSearchFieldLabel,
+      state: parliamentarian.state ?? unavailableSearchFieldLabel,
+      status: parliamentarian.status ?? unavailableSearchFieldLabel,
+      searchTerms: []
+    };
+  }
+
+  function toSearchProposalResult(proposal: LegislativeProposal) {
+    return {
+      kind: 'proposal' as const,
+      id: proposal.id,
+      title: proposal.title,
+      chamber: getChamberLabel(proposal.source),
+      subject: proposal.subject ?? unavailableSearchFieldLabel,
+      status: proposal.status ?? unavailableSearchFieldLabel,
+      searchTerms: []
+    };
+  }
+
+  let submittedSearch = $derived(
+    chatContext.lastQuery ? { id: searchRenderKey, query: chatContext.lastQuery } : null
+  );
+  let searchState = $derived(chatContext.currentState);
+  let searchResults: InitialSearchResults = $derived({
+    parliamentarians: chatContext.parliamentariansFound.map(toSearchParliamentarianResult),
+    proposals: chatContext.proposalsFound.map(toSearchProposalResult)
+  });
+  let selectedParliamentarian: ParliamentarianDetailData | null = $derived(
+    chatContext.selectedParliamentarian
+      ? (getParliamentarianDetailById(chatContext.selectedParliamentarian.id) ?? null)
+      : null
+  );
+  let selectedBill: ParliamentarianBill | null = $derived(
+    chatContext.selectedProposal ? (getBillById(chatContext.selectedProposal.id) ?? null) : null
+  );
+  let selectedVote: ParliamentarianVote | null = $derived(
+    chatContext.selectedVote ? (getVoteById(chatContext.selectedVote.id) ?? null) : null
+  );
+  let selectedParliamentarianBills: ParliamentarianBill[] = $derived(
     selectedParliamentarian ? getBillsByParliamentarianId(selectedParliamentarian.id) : []
   );
-  let selectedParliamentarianVotes = $derived(
+  let selectedParliamentarianVotes: ParliamentarianVote[] = $derived(
     selectedParliamentarian ? getVotesByParliamentarianId(selectedParliamentarian.id) : []
   );
 
   function handleSearch(query: string) {
-    searchSequence += 1;
-    const nextSearch = {
-      id: searchSequence,
-      query
-    };
-
-    if (searchDelayId) {
-      window.clearTimeout(searchDelayId);
-    }
-
-    submittedSearch = nextSearch;
-    searchState = 'SEARCHING';
-    searchResults = emptyInitialSearchResults;
-    selectedParliamentarian = null;
-    selectedBill = null;
-    selectedVote = null;
-
-    searchDelayId = window.setTimeout(() => {
-      if (submittedSearch?.id !== nextSearch.id) {
-        return;
-      }
-
-      searchResults = findInitialSearchResults(query);
-      if (searchState === 'ABOUT') {
-        previousSearchState = 'SEARCH_RESULTS';
-      } else {
-        searchState = 'SEARCH_RESULTS';
-      }
-      selectedParliamentarian = null;
-      selectedBill = null;
-      selectedVote = null;
-      searchDelayId = undefined;
-    }, searchDelayMs);
+    searchRenderKey += 1;
+    void executeSearch(query);
   }
 
   function handleSelectParliamentarian(id: string) {
-    const parliamentarian = getParliamentarianDetailById(id);
-
-    if (!parliamentarian) {
-      return;
-    }
-
-    selectedParliamentarian = parliamentarian;
-    selectedBill = null;
-    selectedVote = null;
-    searchState = 'PARLIAMENTARIAN_DETAIL';
+    selectParliamentarianById(id);
   }
 
   function handleOpenParliamentarianBills() {
-    if (!selectedParliamentarian) {
-      return;
-    }
-
-    selectedBill = null;
-    selectedVote = null;
-    searchState = 'PARLIAMENTARIAN_BILLS';
+    openParliamentarianBills();
   }
 
   function handleOpenParliamentarianVotes() {
-    if (!selectedParliamentarian) {
-      return;
-    }
-
-    selectedBill = null;
-    selectedVote = null;
-    searchState = 'PARLIAMENTARIAN_VOTES';
+    openParliamentarianVotes();
   }
 
   function handleSelectBill(id: string) {
-    const bill = getBillById(id);
-
-    if (!bill || bill.parliamentarianId !== selectedParliamentarian?.id) {
-      return;
-    }
-
-    selectedBill = bill;
-    selectedVote = null;
-    searchState = 'BILL_DETAIL';
+    selectProposalById(id);
   }
 
   function handleSelectVote(id: string) {
-    const vote = getVoteById(id);
-
-    if (!vote || vote.parliamentarianId !== selectedParliamentarian?.id) {
-      return;
-    }
-
-    selectedBill = null;
-    selectedVote = vote;
-    searchState = 'BILL_VOTES';
+    selectVoteById(id);
   }
 
   function handleOpenAbout() {
-    if (searchState !== 'ABOUT') {
-      previousSearchState = searchState;
-    }
-
-    searchState = 'ABOUT';
+    navigateTo('ABOUT');
   }
 
   function handleBackFromAbout() {
-    searchState = previousSearchState === 'ABOUT' ? 'WELCOME' : previousSearchState;
+    goBack();
   }
 
   function handleBackToParliamentarian() {
     if (!selectedParliamentarian) {
-      searchState = submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME';
+      navigateTo(submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME', {
+        updates: {
+          selectedProposal: null,
+          selectedVote: null
+        },
+        recordHistory: false
+      });
       return;
     }
 
-    selectedBill = null;
-    selectedVote = null;
-    searchState = 'PARLIAMENTARIAN_DETAIL';
+    navigateTo('PARLIAMENTARIAN_DETAIL', {
+      updates: {
+        selectedProposal: null,
+        selectedVote: null
+      },
+      recordHistory: false
+    });
   }
 
   function handleBackToBills() {
     if (!selectedParliamentarian) {
-      searchState = submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME';
+      navigateTo(submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME', {
+        updates: {
+          selectedProposal: null,
+          selectedVote: null
+        },
+        recordHistory: false
+      });
       return;
     }
 
-    selectedBill = null;
-    selectedVote = null;
-    searchState = 'PARLIAMENTARIAN_BILLS';
+    navigateTo('PARLIAMENTARIAN_BILLS', {
+      updates: {
+        selectedProposal: null,
+        selectedVote: null
+      },
+      recordHistory: false
+    });
   }
 
   function handleBackToVotes() {
     if (!selectedParliamentarian) {
-      searchState = submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME';
+      navigateTo(submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME', {
+        updates: {
+          selectedProposal: null,
+          selectedVote: null
+        },
+        recordHistory: false
+      });
       return;
     }
 
-    selectedBill = null;
-    selectedVote = null;
-    searchState = 'PARLIAMENTARIAN_VOTES';
+    navigateTo('PARLIAMENTARIAN_VOTES', {
+      updates: {
+        selectedProposal: null,
+        selectedVote: null
+      },
+      recordHistory: false
+    });
   }
 
   function handleBackToResults() {
-    selectedParliamentarian = null;
-    selectedBill = null;
-    selectedVote = null;
-
-    if (!submittedSearch) {
-      searchState = 'WELCOME';
-      return;
-    }
-
-    searchState = 'SEARCH_RESULTS';
+    navigateTo(submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME', {
+      updates: {
+        selectedParliamentarian: null,
+        selectedProposal: null,
+        selectedVote: null,
+        voteHistory: []
+      },
+      recordHistory: false
+    });
   }
 
   function handleStartOver() {
-    if (searchDelayId) {
-      window.clearTimeout(searchDelayId);
-      searchDelayId = undefined;
-    }
-
-    searchSequence += 1;
-    submittedSearch = null;
-    searchState = 'WELCOME';
-    previousSearchState = 'WELCOME';
-    searchResults = emptyInitialSearchResults;
-    selectedParliamentarian = null;
-    selectedBill = null;
-    selectedVote = null;
+    reset();
+    searchRenderKey += 1;
     searchFormResetToken += 1;
   }
 
   onDestroy(() => {
-    if (searchDelayId) {
-      window.clearTimeout(searchDelayId);
-    }
+    unsubscribeChatStore();
+    reset();
   });
 </script>
 
@@ -312,6 +302,20 @@
                 results={searchResults}
                 onSelectParliamentarian={handleSelectParliamentarian}
               />
+            </ConversationBubble>
+          {:else if searchState === 'ERROR'}
+            <ConversationBubble tone="status">
+              <p class="font-semibold" role="status">A busca não foi concluída.</p>
+              <p class="mt-2 text-sm leading-6 text-ink-muted">
+                {chatContext.errorMessage}
+              </p>
+              <button
+                type="button"
+                class="mt-4 min-h-12 rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
+                onclick={handleStartOver}
+              >
+                Nova consulta
+              </button>
             </ConversationBubble>
           {:else if searchState === 'PARLIAMENTARIAN_DETAIL' && selectedParliamentarian}
             <ConversationBubble tone="user">
