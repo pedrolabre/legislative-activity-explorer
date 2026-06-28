@@ -7,9 +7,11 @@ import {
   initialChatContext,
   navigateTo,
   openParliamentarianBills,
+  openParliamentarianVotes,
   reset,
   selectParliamentarianById,
-  selectProposalById
+  selectProposalById,
+  selectVoteById
 } from './chatStore';
 
 describe('chatStore actions', () => {
@@ -72,7 +74,7 @@ describe('chatStore actions', () => {
   it('records a neutral recoverable error when search execution fails', async () => {
     await executeSearch('ana', {
       delayMs: 0,
-      findResults: () => {
+      search: () => {
         throw new Error('controlled failure');
       }
     });
@@ -94,7 +96,29 @@ describe('chatStore actions', () => {
 
     expect(context.currentState).toBe('BILL_DETAIL');
     expect(context.selectedParliamentarian?.name).toBe('Ana Costa');
+    expect(context.parliamentarianProposals.map((proposal) => proposal.title)).toEqual([
+      'PL 220/2025',
+      'PL 1234/2024'
+    ]);
     expect(context.selectedProposal?.title).toBe('PL 1234/2024');
     expect(context.selectedVote).toBeNull();
+  });
+
+  it('opens associated votes and selects a vote through guided actions', async () => {
+    await executeSearch('ana', { delayMs: 0 });
+
+    expect(selectParliamentarianById('parliamentarian-ana-costa')).toBe(true);
+    expect(openParliamentarianVotes()).toBe(true);
+    expect(selectVoteById('vote-pl-1234-2024-texto-base')).toBe(true);
+
+    const context = get(chatStore);
+
+    expect(context.currentState).toBe('BILL_VOTES');
+    expect(context.voteHistory.map((vote) => vote.proposalId)).toEqual([
+      'PL 1234/2024',
+      'PL 220/2025'
+    ]);
+    expect(context.selectedVote?.proposalId).toBe('PL 1234/2024');
+    expect(context.selectedProposal).toBeNull();
   });
 });

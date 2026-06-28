@@ -49,7 +49,7 @@ Escolhi SvelteKit porque queria sair da zona de conforto do React e explorar uma
 
 ## Estrutura atual
 
-O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações, detalhe de votação e área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade.
+O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações, detalhe de votação, services internos mockados e área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade.
 
 * `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
 * `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
@@ -79,6 +79,15 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/domain/types.ts`: Contratos centrais para parlamentares, proposições, votações, votos individuais e referências externas.
 * `src/lib/domain/uiState.ts`: Constantes e união dos estados previstos da interface conversacional.
 * `src/lib/domain/votes.ts`: Constantes, união de posições de voto e contagens agregadas.
+* `src/lib/services/fixtureAdapters.ts`: Adaptadores internos que convertem fixtures controladas para contratos de domínio.
+* `src/lib/services/parliamentarianService.ts`: Service interno para detalhe de parlamentar baseado nas fixtures existentes.
+* `src/lib/services/parliamentarianService.test.ts`: Testes unitários do service interno de parlamentar.
+* `src/lib/services/proposalService.ts`: Service interno para proposições associadas e detalhe de proposição baseado nas fixtures existentes.
+* `src/lib/services/proposalService.test.ts`: Testes unitários do service interno de proposições.
+* `src/lib/services/searchService.ts`: Service interno de busca inicial baseado nas fixtures existentes e retornando contratos de domínio.
+* `src/lib/services/searchService.test.ts`: Testes unitários do service interno de busca inicial.
+* `src/lib/services/voteService.ts`: Service interno para votações associadas e detalhe de votação baseado nas fixtures existentes.
+* `src/lib/services/voteService.test.ts`: Testes unitários do service interno de votações.
 * `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional.
 * `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.

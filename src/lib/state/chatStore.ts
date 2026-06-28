@@ -1,33 +1,19 @@
 import { get, writable } from 'svelte/store';
+import type { LegislativeProposal, Parliamentarian, RollCallVote, UIState } from '$lib/domain';
+import { getParliamentarianById } from '$lib/services/parliamentarianService';
 import {
-  emptyInitialSearchResults,
-  findInitialSearchResults,
-  type InitialSearchParliamentarianResult,
-  type InitialSearchProposalResult,
-  type InitialSearchResults
-} from '$lib/data/initialSearchFixtures';
+  getProposalByIdForParliamentarian,
+  getProposalsByParliamentarianId
+} from '$lib/services/proposalService';
 import {
-  getParliamentarianDetailById,
-  type ParliamentarianDetail as ParliamentarianDetailFixture
-} from '$lib/data/parliamentarianDetailFixtures';
+  emptySearchResults,
+  searchInitialRecords,
+  type SearchResults
+} from '$lib/services/searchService';
 import {
-  getBillById,
-  type BillSource,
-  type ParliamentarianBill
-} from '$lib/data/parliamentarianBillFixtures';
-import {
-  getVoteById,
-  type ParliamentarianVote,
-  type VotePosition as FixtureVotePosition
-} from '$lib/data/parliamentarianVoteFixtures';
-import type {
-  LegislativeProposal,
-  LegislativeSource,
-  Parliamentarian,
-  RollCallVote,
-  UIState,
-  VotePosition
-} from '$lib/domain';
+  getVoteByIdForParliamentarian,
+  getVotesByParliamentarianId
+} from '$lib/services/voteService';
 
 export interface ChatContext {
   currentState: UIState;
@@ -36,6 +22,7 @@ export interface ChatContext {
   parliamentariansFound: Parliamentarian[];
   proposalsFound: LegislativeProposal[];
   selectedParliamentarian: Parliamentarian | null;
+  parliamentarianProposals: LegislativeProposal[];
   selectedProposal: LegislativeProposal | null;
   selectedVote: RollCallVote | null;
   voteHistory: RollCallVote[];
@@ -51,7 +38,7 @@ export interface NavigateToOptions {
 
 export interface ExecuteSearchOptions {
   delayMs?: number;
-  findResults?: (query: string) => InitialSearchResults;
+  search?: (query: string) => SearchResults;
 }
 
 const defaultSearchDelayMs = 450;
@@ -73,6 +60,7 @@ function createInitialChatContext(): ChatContext {
     parliamentariansFound: [],
     proposalsFound: [],
     selectedParliamentarian: null,
+    parliamentarianProposals: [],
     selectedProposal: null,
     selectedVote: null,
     voteHistory: [],
@@ -97,171 +85,14 @@ function cancelPendingSearch() {
   pendingSearch = null;
 }
 
-function inferLegislativeSource(value: string): LegislativeSource {
-  const normalized = value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('pt-BR');
-
-  return normalized.includes('senado') || normalized.includes('senador') ? 'senado' : 'camara';
-}
-
-function parseProposalTitle(title: string) {
-  const match = title.match(/^([A-Z]+)\s+(\d+)\/(\d{4})$/);
-
-  if (!match) {
-    return {
-      type: title,
-      number: undefined,
-      year: undefined
-    };
-  }
-
-  return {
-    type: match[1],
-    number: match[2],
-    year: Number(match[3])
-  };
-}
-
-function normalizeVotePosition(vote: FixtureVotePosition): VotePosition {
-  const normalized = vote
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleUpperCase('pt-BR');
-
-  if (normalized === 'NAO') {
-    return 'NAO';
-  }
-
-  if (normalized === 'ABSTENCAO') {
-    return 'ABSTENCAO';
-  }
-
-  if (normalized === 'AUSENTE') {
-    return 'AUSENTE';
-  }
-
-  return 'SIM';
-}
-
-function mapSearchParliamentarian(result: InitialSearchParliamentarianResult): Parliamentarian {
-  return {
-    id: result.id,
-    source: inferLegislativeSource(result.office),
-    sourceId: result.id,
-    name: result.name,
-    office: result.office,
-    party: result.party,
-    state: result.state,
-    status: result.status
-  };
-}
-
-function mapSearchProposal(result: InitialSearchProposalResult): LegislativeProposal {
-  const parsedTitle = parseProposalTitle(result.title);
-
-  return {
-    id: result.id,
-    source: inferLegislativeSource(result.chamber),
-    sourceId: result.id,
-    title: result.title,
-    type: parsedTitle.type,
-    number: parsedTitle.number,
-    year: parsedTitle.year,
-    subject: result.subject,
-    status: result.status,
-    references: []
-  };
-}
-
-function mapParliamentarianDetail(parliamentarian: ParliamentarianDetailFixture): Parliamentarian {
-  return {
-    id: parliamentarian.id,
-    source: inferLegislativeSource(parliamentarian.chamber),
-    sourceId: parliamentarian.id,
-    name: parliamentarian.name,
-    fullName: parliamentarian.fullName,
-    office: parliamentarian.office,
-    party: parliamentarian.party,
-    state: parliamentarian.state,
-    status: parliamentarian.status,
-    term: parliamentarian.term,
-    photoUrl: parliamentarian.photoUrl,
-    email: parliamentarian.email
-  };
-}
-
-function mapBillSource(source: BillSource) {
-  return {
-    id: source.id,
-    type: source.type === 'official' ? 'official' : 'technical',
-    title: source.title,
-    publisher: source.publisher,
-    url: source.url
-  } satisfies LegislativeProposal['references'][number];
-}
-
-function mapBillToProposal(bill: ParliamentarianBill): LegislativeProposal {
-  const parsedTitle = parseProposalTitle(bill.identification);
-  const references = bill.sources.map(mapBillSource);
-
-  return {
-    id: bill.id,
-    source: inferLegislativeSource(bill.chamber),
-    sourceId: bill.id,
-    title: bill.identification,
-    type: parsedTitle.type,
-    number: parsedTitle.number,
-    year: parsedTitle.year,
-    subject: bill.subject,
-    status: bill.status,
-    relationship: bill.relationship,
-    presentedAt: bill.presentedAt,
-    officialSummary: bill.officialSummary,
-    simplifiedSummary: bill.factualSummary,
-    officialUrl: references.find((reference) => reference.type === 'official')?.url,
-    references
-  };
-}
-
-function mapVoteToRollCallVote(vote: ParliamentarianVote): RollCallVote {
-  return {
-    id: vote.id,
-    source: inferLegislativeSource(vote.chamber),
-    sourceId: vote.id,
-    proposalId: vote.billIdentification,
-    votedAt: vote.votedAt,
-    description: vote.description,
-    result: vote.officialResult,
-    counts: vote.counts
-      ? {
-          yes: vote.counts.yes,
-          no: vote.counts.no,
-          abstention: vote.counts.abstention,
-          absent: vote.counts.absent
-        }
-      : undefined,
-    individualVotes: vote.individualVotes.map((individualVote) => ({
-      parliamentarianName: individualVote.parliamentarianName,
-      party: individualVote.party,
-      state: individualVote.state,
-      vote: normalizeVotePosition(individualVote.vote)
-    }))
-  };
-}
-
-function applySearchResults(
-  context: ChatContext,
-  query: string,
-  results: InitialSearchResults
-): ChatContext {
+function applySearchResults(context: ChatContext, query: string, results: SearchResults): ChatContext {
   const nextContext = {
     ...context,
     lastQuery: query,
-    parliamentariansFound: results.parliamentarians.map(mapSearchParliamentarian),
-    proposalsFound: results.proposals.map(mapSearchProposal),
+    parliamentariansFound: results.parliamentarians,
+    proposalsFound: results.proposals,
     selectedParliamentarian: null,
+    parliamentarianProposals: [],
     selectedProposal: null,
     selectedVote: null,
     voteHistory: [],
@@ -336,7 +167,7 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
 
   cancelPendingSearch();
   const currentSearchId = ++searchSequence;
-  const findResults = options.findResults ?? findInitialSearchResults;
+  const search = options.search ?? searchInitialRecords;
   const delayMs = options.delayMs ?? defaultSearchDelayMs;
 
   chatStore.update((context) => ({
@@ -344,9 +175,10 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
     currentState: 'SEARCHING',
     historyStack: [],
     lastQuery: normalizedQuery,
-    parliamentariansFound: emptyInitialSearchResults.parliamentarians.map(mapSearchParliamentarian),
-    proposalsFound: emptyInitialSearchResults.proposals.map(mapSearchProposal),
+    parliamentariansFound: emptySearchResults.parliamentarians,
+    proposalsFound: emptySearchResults.proposals,
     selectedParliamentarian: null,
+    parliamentarianProposals: [],
     selectedProposal: null,
     selectedVote: null,
     voteHistory: [],
@@ -361,7 +193,7 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
       }
 
       try {
-        const results = findResults(normalizedQuery);
+        const results = search(normalizedQuery);
         chatStore.update((context) => applySearchResults(context, normalizedQuery, results));
       } catch {
         chatStore.update((context) => ({
@@ -391,7 +223,7 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
 }
 
 export function selectParliamentarianById(id: string) {
-  const parliamentarian = getParliamentarianDetailById(id);
+  const parliamentarian = getParliamentarianById(id);
 
   if (!parliamentarian) {
     return false;
@@ -399,7 +231,8 @@ export function selectParliamentarianById(id: string) {
 
   navigateTo('PARLIAMENTARIAN_DETAIL', {
     updates: {
-      selectedParliamentarian: mapParliamentarianDetail(parliamentarian),
+      selectedParliamentarian: parliamentarian,
+      parliamentarianProposals: [],
       selectedProposal: null,
       selectedVote: null,
       voteHistory: []
@@ -418,6 +251,7 @@ export function openParliamentarianBills() {
 
   navigateTo('PARLIAMENTARIAN_BILLS', {
     updates: {
+      parliamentarianProposals: getProposalsByParliamentarianId(context.selectedParliamentarian.id),
       selectedProposal: null,
       selectedVote: null
     }
@@ -435,6 +269,7 @@ export function openParliamentarianVotes() {
 
   navigateTo('PARLIAMENTARIAN_VOTES', {
     updates: {
+      voteHistory: getVotesByParliamentarianId(context.selectedParliamentarian.id),
       selectedProposal: null,
       selectedVote: null
     }
@@ -445,15 +280,21 @@ export function openParliamentarianVotes() {
 
 export function selectProposalById(id: string) {
   const context = get(chatStore);
-  const bill = getBillById(id);
+  const selectedParliamentarianId = context.selectedParliamentarian?.id;
 
-  if (!bill || bill.parliamentarianId !== context.selectedParliamentarian?.id) {
+  if (!selectedParliamentarianId) {
+    return false;
+  }
+
+  const proposal = getProposalByIdForParliamentarian(id, selectedParliamentarianId);
+
+  if (!proposal) {
     return false;
   }
 
   navigateTo('BILL_DETAIL', {
     updates: {
-      selectedProposal: mapBillToProposal(bill),
+      selectedProposal: proposal,
       selectedVote: null
     }
   });
@@ -463,16 +304,22 @@ export function selectProposalById(id: string) {
 
 export function selectVoteById(id: string) {
   const context = get(chatStore);
-  const vote = getVoteById(id);
+  const selectedParliamentarianId = context.selectedParliamentarian?.id;
 
-  if (!vote || vote.parliamentarianId !== context.selectedParliamentarian?.id) {
+  if (!selectedParliamentarianId) {
+    return false;
+  }
+
+  const vote = getVoteByIdForParliamentarian(id, selectedParliamentarianId);
+
+  if (!vote) {
     return false;
   }
 
   navigateTo('BILL_VOTES', {
     updates: {
       selectedProposal: null,
-      selectedVote: mapVoteToRollCallVote(vote)
+      selectedVote: vote
     }
   });
 
