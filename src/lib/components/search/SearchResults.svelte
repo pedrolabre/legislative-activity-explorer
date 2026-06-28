@@ -22,14 +22,14 @@
   <div>
     <p class="text-sm font-bold leading-6 text-ink">Resultado da busca</p>
     {#if totalResults > 0}
-      <p class="mt-1 text-sm leading-6 text-ink-muted">
+      <p class="mt-1 break-words text-sm leading-6 text-ink-muted">
         {resultCountLabel} para <span class="font-medium text-ink">{query}</span>.
       </p>
       <p class="mt-2 text-sm leading-6 text-ink-muted">
         Dados de exemplo nesta página, sem consulta a bases oficiais.
       </p>
     {:else}
-      <p class="mt-1 text-sm leading-6 text-ink-muted">
+      <p class="mt-1 break-words text-sm leading-6 text-ink-muted">
         Nenhum registro encontrado para <span class="font-medium text-ink">{query}</span>.
       </p>
     {/if}

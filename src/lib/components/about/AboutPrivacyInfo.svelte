@@ -35,8 +35,8 @@
       políticos, candidaturas, mandatos ou frentes políticas.
     </p>
     <p class="mt-3 text-sm leading-6 text-ink-muted">
-      A interface não apresenta recomendação de voto, ranking, score, comparação qualitativa ou
-      julgamento político sobre parlamentares, partidos, proposições ou votações.
+      A interface apresenta registros legislativos sem orientar escolhas de voto, classificar
+      parlamentares ou atribuir julgamento político a partidos, proposições ou votações.
     </p>
   </section>
 

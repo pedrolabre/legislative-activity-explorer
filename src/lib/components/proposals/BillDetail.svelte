@@ -108,7 +108,7 @@
                 {source.label}
               </p>
               <a
-                class="mt-2 inline-block text-sm font-bold leading-6 text-accent underline-offset-4 hover:underline"
+                class="mt-2 inline-block break-words text-sm font-bold leading-6 text-accent underline-offset-4 hover:underline"
                 href={source.url}
                 target="_blank"
                 rel="noreferrer"

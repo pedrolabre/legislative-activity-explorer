@@ -19,7 +19,7 @@
 </script>
 
 <div
-  class={`max-w-[min(100%,38rem)] rounded-ui px-4 py-3 text-sm leading-6 shadow-sm sm:px-5 sm:py-4 sm:text-base ${getToneClass(tone)}`}
+  class={`max-w-[min(100%,38rem)] break-words rounded-ui px-4 py-3 text-sm leading-6 shadow-sm sm:px-5 sm:py-4 sm:text-base ${getToneClass(tone)}`}
 >
   {@render children()}
 </div>

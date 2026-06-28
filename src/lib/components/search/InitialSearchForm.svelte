@@ -72,7 +72,7 @@
       onkeydown={handleSearchKeydown}
       aria-describedby={errorMessage ? 'initial-search-help initial-search-error' : 'initial-search-help'}
       aria-invalid={errorMessage ? 'true' : undefined}
-      class="min-h-12 min-w-0 flex-1 rounded-ui border border-border bg-surface-raised px-4 py-3 text-base text-ink shadow-sm outline-none transition focus:border-focus"
+      class="min-h-12 min-w-0 flex-1 rounded-ui border border-border bg-surface-raised px-4 py-3 text-base text-ink shadow-sm transition focus:border-focus"
     />
     <button
       type="submit"

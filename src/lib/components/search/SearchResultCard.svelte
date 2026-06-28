@@ -26,7 +26,7 @@
   <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">{resultLabel}</p>
 
   {#if result.kind === 'parliamentarian'}
-    <h4 class="mt-2 text-base font-semibold leading-6 text-ink">{result.name}</h4>
+    <h4 class="mt-2 break-words text-base font-semibold leading-6 text-ink">{result.name}</h4>
     <dl class="mt-4 grid gap-3 text-sm leading-6 text-ink-muted sm:grid-cols-2">
       <div>
         <dt class="font-bold text-ink">Cargo</dt>
@@ -56,7 +56,7 @@
       </button>
     {/if}
   {:else}
-    <h4 class="mt-2 text-base font-semibold leading-6 text-ink">{result.title}</h4>
+    <h4 class="mt-2 break-words text-base font-semibold leading-6 text-ink">{result.title}</h4>
     <dl class="mt-4 grid gap-3 text-sm leading-6 text-ink-muted sm:grid-cols-2">
       <div>
         <dt class="font-bold text-ink">Casa</dt>
