@@ -7,6 +7,8 @@
   import ParliamentarianBills from '$lib/components/proposals/ParliamentarianBills.svelte';
   import SearchResults from '$lib/components/search/SearchResults.svelte';
   import InitialSearchForm from '$lib/components/search/InitialSearchForm.svelte';
+  import BillVotes from '$lib/components/votes/BillVotes.svelte';
+  import ParliamentarianVotes from '$lib/components/votes/ParliamentarianVotes.svelte';
   import {
     emptyInitialSearchResults,
     findInitialSearchResults,
@@ -21,6 +23,11 @@
     getBillsByParliamentarianId,
     type ParliamentarianBill
   } from '$lib/data/parliamentarianBillFixtures';
+  import {
+    getVoteById,
+    getVotesByParliamentarianId,
+    type ParliamentarianVote
+  } from '$lib/data/parliamentarianVoteFixtures';
 
   type SearchUiState =
     | 'WELCOME'
@@ -28,7 +35,9 @@
     | 'SEARCH_RESULTS'
     | 'PARLIAMENTARIAN_DETAIL'
     | 'PARLIAMENTARIAN_BILLS'
-    | 'BILL_DETAIL';
+    | 'PARLIAMENTARIAN_VOTES'
+    | 'BILL_DETAIL'
+    | 'BILL_VOTES';
 
   const searchDelayMs = 450;
 
@@ -38,10 +47,14 @@
   let searchResults = $state<InitialSearchResults>(emptyInitialSearchResults);
   let selectedParliamentarian = $state<ParliamentarianDetailData | null>(null);
   let selectedBill = $state<ParliamentarianBill | null>(null);
+  let selectedVote = $state<ParliamentarianVote | null>(null);
   let searchFormResetToken = $state(0);
   let searchDelayId: number | undefined;
   let selectedParliamentarianBills = $derived(
     selectedParliamentarian ? getBillsByParliamentarianId(selectedParliamentarian.id) : []
+  );
+  let selectedParliamentarianVotes = $derived(
+    selectedParliamentarian ? getVotesByParliamentarianId(selectedParliamentarian.id) : []
   );
 
   function handleSearch(query: string) {
@@ -60,6 +73,7 @@
     searchResults = emptyInitialSearchResults;
     selectedParliamentarian = null;
     selectedBill = null;
+    selectedVote = null;
 
     searchDelayId = window.setTimeout(() => {
       if (submittedSearch?.id !== nextSearch.id) {
@@ -70,6 +84,7 @@
       searchState = 'SEARCH_RESULTS';
       selectedParliamentarian = null;
       selectedBill = null;
+      selectedVote = null;
       searchDelayId = undefined;
     }, searchDelayMs);
   }
@@ -83,6 +98,7 @@
 
     selectedParliamentarian = parliamentarian;
     selectedBill = null;
+    selectedVote = null;
     searchState = 'PARLIAMENTARIAN_DETAIL';
   }
 
@@ -92,7 +108,18 @@
     }
 
     selectedBill = null;
+    selectedVote = null;
     searchState = 'PARLIAMENTARIAN_BILLS';
+  }
+
+  function handleOpenParliamentarianVotes() {
+    if (!selectedParliamentarian) {
+      return;
+    }
+
+    selectedBill = null;
+    selectedVote = null;
+    searchState = 'PARLIAMENTARIAN_VOTES';
   }
 
   function handleSelectBill(id: string) {
@@ -103,7 +130,20 @@
     }
 
     selectedBill = bill;
+    selectedVote = null;
     searchState = 'BILL_DETAIL';
+  }
+
+  function handleSelectVote(id: string) {
+    const vote = getVoteById(id);
+
+    if (!vote || vote.parliamentarianId !== selectedParliamentarian?.id) {
+      return;
+    }
+
+    selectedBill = null;
+    selectedVote = vote;
+    searchState = 'BILL_VOTES';
   }
 
   function handleBackToParliamentarian() {
@@ -113,6 +153,7 @@
     }
 
     selectedBill = null;
+    selectedVote = null;
     searchState = 'PARLIAMENTARIAN_DETAIL';
   }
 
@@ -123,12 +164,25 @@
     }
 
     selectedBill = null;
+    selectedVote = null;
     searchState = 'PARLIAMENTARIAN_BILLS';
+  }
+
+  function handleBackToVotes() {
+    if (!selectedParliamentarian) {
+      searchState = submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME';
+      return;
+    }
+
+    selectedBill = null;
+    selectedVote = null;
+    searchState = 'PARLIAMENTARIAN_VOTES';
   }
 
   function handleBackToResults() {
     selectedParliamentarian = null;
     selectedBill = null;
+    selectedVote = null;
 
     if (!submittedSearch) {
       searchState = 'WELCOME';
@@ -150,6 +204,7 @@
     searchResults = emptyInitialSearchResults;
     selectedParliamentarian = null;
     selectedBill = null;
+    selectedVote = null;
     searchFormResetToken += 1;
   }
 
@@ -231,6 +286,7 @@
               <ParliamentarianDetail
                 parliamentarian={selectedParliamentarian}
                 onOpenBills={handleOpenParliamentarianBills}
+                onOpenVotes={handleOpenParliamentarianVotes}
                 onBackToResults={handleBackToResults}
                 onStartOver={handleStartOver}
               />
@@ -252,6 +308,23 @@
                 onStartOver={handleStartOver}
               />
             </ConversationBubble>
+          {:else if searchState === 'PARLIAMENTARIAN_VOTES' && selectedParliamentarian}
+            <ConversationBubble tone="user">
+              <p class="text-xs font-bold uppercase tracking-normal opacity-80">
+                Consulta selecionada
+              </p>
+              <p class="mt-1 break-words">Votações de {selectedParliamentarian.name}</p>
+            </ConversationBubble>
+
+            <ConversationBubble tone="status">
+              <ParliamentarianVotes
+                parliamentarianName={selectedParliamentarian.name}
+                votes={selectedParliamentarianVotes}
+                onSelectVote={handleSelectVote}
+                onBackToParliamentarian={handleBackToParliamentarian}
+                onStartOver={handleStartOver}
+              />
+            </ConversationBubble>
           {:else if searchState === 'BILL_DETAIL' && selectedParliamentarian && selectedBill}
             <ConversationBubble tone="user">
               <p class="text-xs font-bold uppercase tracking-normal opacity-80">
@@ -265,6 +338,23 @@
                 bill={selectedBill}
                 parliamentarianName={selectedParliamentarian.name}
                 onBackToBills={handleBackToBills}
+                onBackToParliamentarian={handleBackToParliamentarian}
+                onStartOver={handleStartOver}
+              />
+            </ConversationBubble>
+          {:else if searchState === 'BILL_VOTES' && selectedParliamentarian && selectedVote}
+            <ConversationBubble tone="user">
+              <p class="text-xs font-bold uppercase tracking-normal opacity-80">
+                Votação selecionada
+              </p>
+              <p class="mt-1 break-words">{selectedVote.billIdentification}</p>
+            </ConversationBubble>
+
+            <ConversationBubble tone="status">
+              <BillVotes
+                vote={selectedVote}
+                parliamentarianName={selectedParliamentarian.name}
+                onBackToVotes={handleBackToVotes}
                 onBackToParliamentarian={handleBackToParliamentarian}
                 onStartOver={handleStartOver}
               />

@@ -4,11 +4,13 @@
   let {
     parliamentarian,
     onOpenBills,
+    onOpenVotes,
     onBackToResults,
     onStartOver
   }: {
     parliamentarian: ParliamentarianDetail;
     onOpenBills: () => void;
+    onOpenVotes: () => void;
     onBackToResults: () => void;
     onStartOver: () => void;
   } = $props();
@@ -126,14 +128,13 @@
       <div>
         <button
           type="button"
-          disabled
-          aria-describedby="votes-unavailable"
-          class="min-h-12 w-full rounded-ui border border-border bg-surface-muted px-4 py-3 text-sm font-bold text-ink-muted disabled:cursor-not-allowed"
+          class="min-h-12 w-full rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
+          onclick={onOpenVotes}
         >
           Votações
         </button>
-        <p id="votes-unavailable" class="mt-2 text-sm leading-6 text-ink-muted">
-          Dados não disponíveis nesta visualização.
+        <p class="mt-2 text-sm leading-6 text-ink-muted">
+          Abrir histórico associado ao parlamentar.
         </p>
       </div>
     </div>
