@@ -49,10 +49,11 @@ Escolhi SvelteKit porque queria sair da zona de conforto do React e explorar uma
 
 ## Estrutura atual
 
-O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações e detalhe de votação com dados de exemplo controlados.
+O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações, detalhe de votação e área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade.
 
 * `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
 * `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
+* `src/lib/components/about/AboutPrivacyInfo.svelte`: Área informativa pública sobre finalidade do projeto, neutralidade institucional, privacidade, acessibilidade e consulta a fontes oficiais.
 * `src/lib/components/conversation/ConversationBubble.svelte`: Balão visual para mensagens da experiência conversacional.
 * `src/lib/components/conversation/ConversationLog.svelte`: Container conversacional com semântica de log e atualização acessível.
 * `src/lib/components/parliamentarians/ParliamentarianDetail.svelte`: Perfil factual de parlamentar com foto quando disponível, alternativa acessível sem foto e controles para abrir proposições e votações associadas.
@@ -74,7 +75,7 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/data/parliamentarianVoteFixtures.test.ts`: Testes unitários da lista e do detalhe local de votações.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
-* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional, busca inicial local e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL` e `BILL_VOTES`.
+* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional, busca inicial local e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES` e `ABOUT`.
 * `static/parliamentarians/ana-costa.svg`: Imagem local neutra usada no perfil com foto disponível.
 * `static/robots.txt`: Configuração inicial de indexação.
 

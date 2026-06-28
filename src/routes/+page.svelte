@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import AboutPrivacyInfo from '$lib/components/about/AboutPrivacyInfo.svelte';
   import ConversationBubble from '$lib/components/conversation/ConversationBubble.svelte';
   import ConversationLog from '$lib/components/conversation/ConversationLog.svelte';
   import ParliamentarianDetail from '$lib/components/parliamentarians/ParliamentarianDetail.svelte';
@@ -37,13 +38,15 @@
     | 'PARLIAMENTARIAN_BILLS'
     | 'PARLIAMENTARIAN_VOTES'
     | 'BILL_DETAIL'
-    | 'BILL_VOTES';
+    | 'BILL_VOTES'
+    | 'ABOUT';
 
   const searchDelayMs = 450;
 
   let searchSequence = 0;
   let submittedSearch = $state<{ id: number; query: string } | null>(null);
   let searchState = $state<SearchUiState>('WELCOME');
+  let previousSearchState = $state<SearchUiState>('WELCOME');
   let searchResults = $state<InitialSearchResults>(emptyInitialSearchResults);
   let selectedParliamentarian = $state<ParliamentarianDetailData | null>(null);
   let selectedBill = $state<ParliamentarianBill | null>(null);
@@ -81,7 +84,11 @@
       }
 
       searchResults = findInitialSearchResults(query);
-      searchState = 'SEARCH_RESULTS';
+      if (searchState === 'ABOUT') {
+        previousSearchState = 'SEARCH_RESULTS';
+      } else {
+        searchState = 'SEARCH_RESULTS';
+      }
       selectedParliamentarian = null;
       selectedBill = null;
       selectedVote = null;
@@ -146,6 +153,18 @@
     searchState = 'BILL_VOTES';
   }
 
+  function handleOpenAbout() {
+    if (searchState !== 'ABOUT') {
+      previousSearchState = searchState;
+    }
+
+    searchState = 'ABOUT';
+  }
+
+  function handleBackFromAbout() {
+    searchState = previousSearchState === 'ABOUT' ? 'WELCOME' : previousSearchState;
+  }
+
   function handleBackToParliamentarian() {
     if (!selectedParliamentarian) {
       searchState = submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME';
@@ -201,6 +220,7 @@
     searchSequence += 1;
     submittedSearch = null;
     searchState = 'WELCOME';
+    previousSearchState = 'WELCOME';
     searchResults = emptyInitialSearchResults;
     selectedParliamentarian = null;
     selectedBill = null;
@@ -245,6 +265,16 @@
       <div class="mt-10">
         <InitialSearchForm onSearch={handleSearch} resetToken={searchFormResetToken} />
       </div>
+
+      <div class="mt-4">
+        <button
+          type="button"
+          class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+          onclick={handleOpenAbout}
+        >
+          Sobre e privacidade
+        </button>
+      </div>
     </div>
 
     <ConversationLog title="Conversa de consulta">
@@ -252,7 +282,16 @@
         <p>Informe um parlamentar ou uma proposição para iniciar a consulta.</p>
       </ConversationBubble>
 
-      {#if submittedSearch}
+      {#if searchState === 'ABOUT'}
+        <ConversationBubble tone="user">
+          <p class="text-xs font-bold uppercase tracking-normal opacity-80">Área informativa</p>
+          <p class="mt-1">Sobre e privacidade</p>
+        </ConversationBubble>
+
+        <ConversationBubble tone="status">
+          <AboutPrivacyInfo onBack={handleBackFromAbout} onStartOver={handleStartOver} />
+        </ConversationBubble>
+      {:else if submittedSearch}
         {#key submittedSearch.id}
           <ConversationBubble tone="user">
             <p class="text-xs font-bold uppercase tracking-normal opacity-80">Termo informado</p>
