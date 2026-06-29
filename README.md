@@ -77,6 +77,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/data/parliamentarianDetailFixtures.test.ts`: Testes unitários do detalhe local de parlamentar.
 * `src/lib/data/parliamentarianVoteFixtures.ts`: Dados de exemplo controlados para votações associadas e detalhe de votação.
 * `src/lib/data/parliamentarianVoteFixtures.test.ts`: Testes unitários da lista e do detalhe local de votações.
+* `src/lib/data/referenceCatalog.ts`: Catalogo versionado e revisavel de referencias externas para proposicoes legislativas controladas.
+* `src/lib/data/referenceCatalog.test.ts`: Testes unitarios do catalogo de referencias, cobrindo contrato, tipos, ids, URLs externas e datas de revisao.
 * `src/lib/domain/index.ts`: Exportações centralizadas dos contratos de domínio e tipos auxiliares.
 * `src/lib/domain/legislativeSource.ts`: Constantes e união de fontes legislativas normalizadas.
 * `src/lib/domain/references.ts`: Constantes e união de tipos de referência externa.
