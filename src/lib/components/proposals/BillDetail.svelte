@@ -1,5 +1,24 @@
 <script lang="ts">
-  import type { ParliamentarianBill } from '$lib/data/parliamentarianBillFixtures';
+  interface ParliamentarianBillView {
+    id: string;
+    parliamentarianId: string;
+    identification: string;
+    chamber: string;
+    subject: string;
+    status: string;
+    relationship: string;
+    presentedAt?: string;
+    officialSummary: string;
+    factualSummary?: string;
+    sources: {
+      id: string;
+      type: 'official' | 'institutional';
+      label: string;
+      title: string;
+      publisher: string;
+      url: string;
+    }[];
+  }
 
   let {
     bill,
@@ -8,7 +27,7 @@
     onBackToParliamentarian,
     onStartOver
   }: {
-    bill: ParliamentarianBill;
+    bill: ParliamentarianBillView;
     parliamentarianName: string;
     onBackToBills: () => void;
     onBackToParliamentarian: () => void;

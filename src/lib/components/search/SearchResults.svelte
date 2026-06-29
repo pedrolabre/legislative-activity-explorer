@@ -1,6 +1,25 @@
 <script lang="ts">
   import SearchResultCard from '$lib/components/search/SearchResultCard.svelte';
-  import type { InitialSearchResults } from '$lib/data/initialSearchFixtures';
+
+  interface SearchResultsView {
+    parliamentarians: {
+      kind: 'parliamentarian';
+      id: string;
+      name: string;
+      office: string;
+      party: string;
+      state: string;
+      status: string;
+    }[];
+    proposals: {
+      kind: 'proposal';
+      id: string;
+      title: string;
+      chamber: string;
+      subject: string;
+      status: string;
+    }[];
+  }
 
   let {
     query,
@@ -8,7 +27,7 @@
     onSelectParliamentarian
   }: {
     query: string;
-    results: InitialSearchResults;
+    results: SearchResultsView;
     onSelectParliamentarian?: (id: string) => void;
   } = $props();
 

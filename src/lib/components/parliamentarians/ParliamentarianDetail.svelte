@@ -1,5 +1,17 @@
 <script lang="ts">
-  import type { ParliamentarianDetail } from '$lib/data/parliamentarianDetailFixtures';
+  interface ParliamentarianDetailView {
+    id: string;
+    name: string;
+    fullName?: string;
+    office: string;
+    chamber: string;
+    party: string;
+    state: string;
+    status: string;
+    term?: string;
+    email?: string;
+    photoUrl?: string;
+  }
 
   let {
     parliamentarian,
@@ -8,7 +20,7 @@
     onBackToResults,
     onStartOver
   }: {
-    parliamentarian: ParliamentarianDetail;
+    parliamentarian: ParliamentarianDetailView;
     onOpenBills: () => void;
     onOpenVotes: () => void;
     onBackToResults: () => void;

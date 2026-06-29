@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { VotePosition } from '$lib/data/parliamentarianVoteFixtures';
+  type VotePosition = 'SIM' | 'NÃO' | 'ABSTENÇÃO' | 'AUSENTE';
 
   let { vote }: { vote: VotePosition } = $props();
 

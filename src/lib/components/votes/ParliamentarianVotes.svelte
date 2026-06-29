@@ -1,6 +1,30 @@
 <script lang="ts">
   import VoteBadge from '$lib/components/votes/VoteBadge.svelte';
-  import type { ParliamentarianVote } from '$lib/data/parliamentarianVoteFixtures';
+
+  type DisplayVotePosition = 'SIM' | 'NÃO' | 'ABSTENÇÃO' | 'AUSENTE';
+
+  interface ParliamentarianVoteView {
+    id: string;
+    parliamentarianId: string;
+    billIdentification: string;
+    chamber: string;
+    description: string;
+    parliamentarianVote: DisplayVotePosition;
+    votedAt?: string;
+    officialResult?: string;
+    counts?: {
+      yes: number;
+      no: number;
+      abstention: number;
+      absent: number;
+    };
+    individualVotes: {
+      parliamentarianName: string;
+      party: string;
+      state: string;
+      vote: DisplayVotePosition;
+    }[];
+  }
 
   let {
     parliamentarianName,
@@ -10,7 +34,7 @@
     onStartOver
   }: {
     parliamentarianName: string;
-    votes: ParliamentarianVote[];
+    votes: ParliamentarianVoteView[];
     onSelectVote: (id: string) => void;
     onBackToParliamentarian: () => void;
     onStartOver: () => void;

@@ -1,10 +1,22 @@
 <script lang="ts">
-  import type {
-    InitialSearchParliamentarianResult,
-    InitialSearchProposalResult
-  } from '$lib/data/initialSearchFixtures';
-
-  type SearchResult = InitialSearchParliamentarianResult | InitialSearchProposalResult;
+  type SearchResult =
+    | {
+        kind: 'parliamentarian';
+        id: string;
+        name: string;
+        office: string;
+        party: string;
+        state: string;
+        status: string;
+      }
+    | {
+        kind: 'proposal';
+        id: string;
+        title: string;
+        chamber: string;
+        subject: string;
+        status: string;
+      };
 
   let {
     result,
