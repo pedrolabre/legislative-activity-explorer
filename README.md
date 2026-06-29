@@ -94,12 +94,14 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/proposalService.test.ts`: Testes unitários do service interno de proposições.
 * `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis por fonte.
 * `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, falha parcial, ordenação neutra, deduplicação objetiva e sem rede real.
+* `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com estados recuperáveis de indisponibilidade ou falha parcial.
+* `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, dados parciais, indisponibilidade do Senado para matérias associadas e sem rede real.
 * `src/lib/services/searchService.ts`: Service interno de busca inicial baseado nas fixtures existentes e retornando contratos de domínio.
 * `src/lib/services/searchService.test.ts`: Testes unitários do service interno de busca inicial.
 * `src/lib/services/voteService.ts`: Service interno para votações associadas e detalhe de votação baseado nas fixtures existentes.
 * `src/lib/services/voteService.test.ts`: Testes unitários do service interno de votações.
-* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional.
-* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional.
+* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com seleção gradual de detalhes oficiais quando o resultado em memória vem de fonte oficial.
+* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo fixtures e detalhes oficiais controlados sem rede real.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
 * `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial local e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.

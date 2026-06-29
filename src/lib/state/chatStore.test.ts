@@ -107,9 +107,9 @@ describe('chatStore actions', () => {
 
   it('resets search results and selections to a new initial context', async () => {
     await executeSearch('ana', { delayMs: 0 });
-    selectParliamentarianById('parliamentarian-ana-costa');
-    openParliamentarianBills();
-    selectProposalById('bill-pl-1234-2024');
+    await selectParliamentarianById('parliamentarian-ana-costa');
+    await openParliamentarianBills();
+    await selectProposalById('bill-pl-1234-2024');
 
     reset();
 
@@ -140,7 +140,7 @@ describe('chatStore actions', () => {
   it('selects a parliamentarian and a proposal through guided actions', async () => {
     await executeSearch('ana', { delayMs: 0 });
 
-    expect(selectParliamentarianById('parliamentarian-ana-costa')).toBe(true);
+    await expect(selectParliamentarianById('parliamentarian-ana-costa')).resolves.toBe(true);
 
     const parliamentarianContext = get(chatStore);
 
@@ -154,7 +154,7 @@ describe('chatStore actions', () => {
     expect(parliamentarianContext.selectedVote).toBeNull();
     expect(parliamentarianContext.voteHistory).toEqual([]);
 
-    expect(openParliamentarianBills()).toBe(true);
+    await expect(openParliamentarianBills()).resolves.toBe(true);
 
     const billsContext = get(chatStore);
 
@@ -166,7 +166,7 @@ describe('chatStore actions', () => {
     expect(billsContext.selectedProposal).toBeNull();
     expect(billsContext.selectedVote).toBeNull();
 
-    expect(selectProposalById('bill-pl-1234-2024')).toBe(true);
+    await expect(selectProposalById('bill-pl-1234-2024')).resolves.toBe(true);
 
     const proposalContext = get(chatStore);
 
@@ -179,9 +179,9 @@ describe('chatStore actions', () => {
   it('returns through the deterministic history stack', async () => {
     await executeSearch('ana', { delayMs: 0 });
 
-    selectParliamentarianById('parliamentarian-ana-costa');
-    openParliamentarianBills();
-    selectProposalById('bill-pl-1234-2024');
+    await selectParliamentarianById('parliamentarian-ana-costa');
+    await openParliamentarianBills();
+    await selectProposalById('bill-pl-1234-2024');
 
     expect(get(chatStore).historyStack).toEqual([
       'SEARCH_RESULTS',
@@ -211,10 +211,202 @@ describe('chatStore actions', () => {
     });
   });
 
+  it('selects an official parliamentarian result and loads controlled official detail', async () => {
+    await executeSearch('ana', {
+      delayMs: 0,
+      search: async () => ({
+        parliamentarians: [
+          {
+            id: 'camara-10',
+            source: 'camara',
+            sourceId: '10',
+            name: 'Ana Costa',
+            office: 'Deputado federal',
+            party: 'ABC'
+          }
+        ],
+        proposals: []
+      })
+    });
+
+    await expect(
+      selectParliamentarianById('camara-10', {
+        getOfficialParliamentarianDetail: async (parliamentarian) => ({
+          status: 'fulfilled',
+          data: {
+            ...parliamentarian,
+            fullName: 'Ana Costa Pereira',
+            state: 'MG',
+            email: 'dep.ana@camara.leg.br'
+          },
+          errors: []
+        })
+      })
+    ).resolves.toBe(true);
+
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_DETAIL',
+      selectedParliamentarian: {
+        id: 'camara-10',
+        fullName: 'Ana Costa Pereira',
+        state: 'MG',
+        email: 'dep.ana@camara.leg.br'
+      },
+      parliamentarianProposals: [],
+      errorMessage: ''
+    });
+  });
+
+  it('keeps an official search result as partial detail when official detail is unavailable', async () => {
+    await executeSearch('ana', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'senado-20',
+            source: 'senado',
+            sourceId: '20',
+            name: 'Maria Souza',
+            office: 'Senador'
+          }
+        ],
+        proposals: []
+      })
+    });
+
+    await expect(
+      selectParliamentarianById('senado-20', {
+        getOfficialParliamentarianDetail: async () => ({
+          status: 'failed',
+          data: null,
+          errors: [
+            {
+              source: 'senado',
+              entity: 'parliamentarian',
+              kind: 'client',
+              message: 'Falha controlada.'
+            }
+          ]
+        })
+      })
+    ).resolves.toBe(true);
+
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_DETAIL',
+      selectedParliamentarian: {
+        id: 'senado-20',
+        name: 'Maria Souza'
+      },
+      errorMessage: 'Nao foi possivel carregar dados oficiais de parlamentar nesta consulta.'
+    });
+  });
+
+  it('opens controlled official proposals and loads official proposal detail', async () => {
+    await executeSearch('ana', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'camara-10',
+            source: 'camara',
+            sourceId: '10',
+            name: 'Ana Costa',
+            office: 'Deputado federal'
+          }
+        ],
+        proposals: []
+      })
+    });
+    await selectParliamentarianById('camara-10', {
+      getOfficialParliamentarianDetail: async (parliamentarian) => ({
+        status: 'fulfilled',
+        data: parliamentarian,
+        errors: []
+      })
+    });
+
+    await expect(
+      openParliamentarianBills({
+        getOfficialProposalsByParliamentarian: async () => ({
+          status: 'fulfilled',
+          data: [
+            {
+              id: 'camara-proposicao-100',
+              source: 'camara',
+              sourceId: '100',
+              title: 'PL 2/2024',
+              type: 'PL',
+              number: '2',
+              year: 2024,
+              relationship: 'Autoria',
+              references: []
+            }
+          ],
+          errors: []
+        })
+      })
+    ).resolves.toBe(true);
+
+    await expect(
+      selectProposalById('camara-proposicao-100', {
+        getOfficialProposalDetail: async (proposal) => ({
+          status: 'fulfilled',
+          data: {
+            ...proposal,
+            officialSummary: 'Detalhe oficial controlado.'
+          },
+          errors: []
+        })
+      })
+    ).resolves.toBe(true);
+
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_DETAIL',
+      selectedProposal: {
+        id: 'camara-proposicao-100',
+        relationship: 'Autoria',
+        officialSummary: 'Detalhe oficial controlado.'
+      },
+      errorMessage: ''
+    });
+  });
+
+  it('represents official votes as unavailable without loading fixture votes', async () => {
+    await executeSearch('ana', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'camara-10',
+            source: 'camara',
+            sourceId: '10',
+            name: 'Ana Costa',
+            office: 'Deputado federal'
+          }
+        ],
+        proposals: []
+      })
+    });
+    await selectParliamentarianById('camara-10', {
+      getOfficialParliamentarianDetail: async (parliamentarian) => ({
+        status: 'fulfilled',
+        data: parliamentarian,
+        errors: []
+      })
+    });
+
+    expect(openParliamentarianVotes()).toBe(true);
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_VOTES',
+      voteHistory: [],
+      errorMessage: 'Votacoes oficiais nao estao disponiveis neste bloco.'
+    });
+  });
+
   it('opens associated votes and selects a vote through guided actions', async () => {
     await executeSearch('ana', { delayMs: 0 });
 
-    expect(selectParliamentarianById('parliamentarian-ana-costa')).toBe(true);
+    await expect(selectParliamentarianById('parliamentarian-ana-costa')).resolves.toBe(true);
     expect(openParliamentarianVotes()).toBe(true);
 
     const votesContext = get(chatStore);

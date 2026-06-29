@@ -1,0 +1,230 @@
+import {
+  CamaraApiClient,
+  CamaraApiClientError,
+  type CamaraProposicaoPayload
+} from '$lib/api/camaraClient';
+import { SenadoApiClient, SenadoApiClientError } from '$lib/api/senadoClient';
+import type { LegislativeProposal, LegislativeSource, Parliamentarian } from '$lib/domain';
+import {
+  CamaraMapperError,
+  mapCamaraDeputadoToParliamentarian,
+  mapCamaraProposicaoToLegislativeProposal
+} from '$lib/mappers/camaraMapper';
+import {
+  mapSenadoMateriaToLegislativeProposal,
+  mapSenadoSenadorToParliamentarian,
+  SenadoMapperError
+} from '$lib/mappers/senadoMapper';
+
+export type OfficialDetailEntity = 'parliamentarian' | 'parliamentarian-proposals' | 'proposal';
+export type OfficialDetailStatus = 'fulfilled' | 'partial' | 'unavailable' | 'failed';
+export type OfficialDetailErrorKind = 'client' | 'mapper' | 'unsupported-source' | 'unknown';
+
+export interface OfficialDetailRecoverableError {
+  source: LegislativeSource;
+  entity: OfficialDetailEntity;
+  kind: OfficialDetailErrorKind;
+  message: string;
+}
+
+export interface OfficialDetailResult<T> {
+  status: OfficialDetailStatus;
+  data: T | null;
+  errors: OfficialDetailRecoverableError[];
+}
+
+export interface OfficialDetailListResult<T> {
+  status: OfficialDetailStatus;
+  data: T[];
+  errors: OfficialDetailRecoverableError[];
+}
+
+export type OfficialCamaraDetailClient = Pick<
+  CamaraApiClient,
+  'getDeputadoById' | 'getProposicoesByDeputadoAutor' | 'getProposicaoById'
+>;
+
+export type OfficialSenadoDetailClient = Pick<SenadoApiClient, 'getSenadorById' | 'getMateriaById'>;
+
+export interface OfficialDetailServiceOptions {
+  camaraClient?: OfficialCamaraDetailClient;
+  senadoClient?: OfficialSenadoDetailClient;
+}
+
+function getErrorKind(error: unknown): OfficialDetailErrorKind {
+  if (error instanceof CamaraApiClientError || error instanceof SenadoApiClientError) {
+    return 'client';
+  }
+
+  if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
+    return 'mapper';
+  }
+
+  return 'unknown';
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Falha inesperada ao processar detalhe oficial.';
+}
+
+function toRecoverableError(
+  source: LegislativeSource,
+  entity: OfficialDetailEntity,
+  error: unknown
+): OfficialDetailRecoverableError {
+  return {
+    source,
+    entity,
+    kind: getErrorKind(error),
+    message: getErrorMessage(error)
+  };
+}
+
+function toUnavailableError(
+  source: LegislativeSource,
+  entity: OfficialDetailEntity,
+  message: string
+): OfficialDetailRecoverableError {
+  return {
+    source,
+    entity,
+    kind: 'unsupported-source',
+    message
+  };
+}
+
+function getListStatus<T>(
+  items: T[],
+  errors: OfficialDetailRecoverableError[]
+): OfficialDetailStatus {
+  if (errors.length === 0) {
+    return 'fulfilled';
+  }
+
+  return items.length > 0 ? 'partial' : 'failed';
+}
+
+function mapCamaraAuthorProposals(payloads: CamaraProposicaoPayload[]) {
+  const proposals: LegislativeProposal[] = [];
+  const errors: OfficialDetailRecoverableError[] = [];
+
+  for (const payload of payloads) {
+    try {
+      const proposal = mapCamaraProposicaoToLegislativeProposal(payload);
+
+      proposals.push({
+        ...proposal,
+        relationship: proposal.relationship ?? 'Autoria'
+      });
+    } catch (error) {
+      errors.push(toRecoverableError('camara', 'parliamentarian-proposals', error));
+    }
+  }
+
+  return {
+    proposals,
+    errors
+  };
+}
+
+export async function getOfficialParliamentarianDetail(
+  parliamentarian: Parliamentarian,
+  options: OfficialDetailServiceOptions = {}
+): Promise<OfficialDetailResult<Parliamentarian>> {
+  const { source, sourceId } = parliamentarian;
+
+  try {
+    const data =
+      source === 'camara'
+        ? mapCamaraDeputadoToParliamentarian(
+            await (options.camaraClient ?? new CamaraApiClient()).getDeputadoById(sourceId)
+          )
+        : mapSenadoSenadorToParliamentarian(
+            await (options.senadoClient ?? new SenadoApiClient()).getSenadorById(sourceId)
+          );
+
+    return {
+      status: 'fulfilled',
+      data,
+      errors: []
+    };
+  } catch (error) {
+    return {
+      status: 'failed',
+      data: null,
+      errors: [toRecoverableError(source, 'parliamentarian', error)]
+    };
+  }
+}
+
+export async function getOfficialProposalsByParliamentarian(
+  parliamentarian: Parliamentarian,
+  options: OfficialDetailServiceOptions = {}
+): Promise<OfficialDetailListResult<LegislativeProposal>> {
+  if (parliamentarian.source === 'senado') {
+    return {
+      status: 'unavailable',
+      data: [],
+      errors: [
+        toUnavailableError(
+          'senado',
+          'parliamentarian-proposals',
+          'Materias associadas a senador nao estao disponiveis neste bloco.'
+        )
+      ]
+    };
+  }
+
+  try {
+    const payloads = await (
+      options.camaraClient ?? new CamaraApiClient()
+    ).getProposicoesByDeputadoAutor(parliamentarian.sourceId);
+    const { proposals, errors } = mapCamaraAuthorProposals(payloads);
+
+    return {
+      status: getListStatus(proposals, errors),
+      data: proposals,
+      errors
+    };
+  } catch (error) {
+    return {
+      status: 'failed',
+      data: [],
+      errors: [toRecoverableError('camara', 'parliamentarian-proposals', error)]
+    };
+  }
+}
+
+export async function getOfficialProposalDetail(
+  proposal: LegislativeProposal,
+  options: OfficialDetailServiceOptions = {}
+): Promise<OfficialDetailResult<LegislativeProposal>> {
+  const { source, sourceId } = proposal;
+
+  try {
+    const data =
+      source === 'camara'
+        ? mapCamaraProposicaoToLegislativeProposal(
+            await (options.camaraClient ?? new CamaraApiClient()).getProposicaoById(sourceId)
+          )
+        : mapSenadoMateriaToLegislativeProposal(
+            await (options.senadoClient ?? new SenadoApiClient()).getMateriaById(sourceId)
+          );
+
+    return {
+      status: 'fulfilled',
+      data,
+      errors: []
+    };
+  } catch (error) {
+    return {
+      status: 'failed',
+      data: null,
+      errors: [toRecoverableError(source, 'proposal', error)]
+    };
+  }
+}

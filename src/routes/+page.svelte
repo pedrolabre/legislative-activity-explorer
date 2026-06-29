@@ -310,11 +310,11 @@
   }
 
   function handleSelectParliamentarian(id: string) {
-    selectParliamentarianById(id);
+    void selectParliamentarianById(id);
   }
 
   function handleOpenParliamentarianBills() {
-    openParliamentarianBills();
+    void openParliamentarianBills();
   }
 
   function handleOpenParliamentarianVotes() {
@@ -322,7 +322,7 @@
   }
 
   function handleSelectBill(id: string) {
-    selectProposalById(id);
+    void selectProposalById(id);
   }
 
   function handleSelectVote(id: string) {

@@ -1,5 +1,12 @@
 import { get, writable } from 'svelte/store';
 import type { LegislativeProposal, Parliamentarian, RollCallVote, UIState } from '$lib/domain';
+import {
+  getOfficialParliamentarianDetail as loadOfficialParliamentarianDetail,
+  getOfficialProposalDetail as loadOfficialProposalDetail,
+  getOfficialProposalsByParliamentarian as loadOfficialProposalsByParliamentarian,
+  type OfficialDetailListResult,
+  type OfficialDetailResult
+} from '$lib/services/officialDetailService';
 import { getParliamentarianById } from '$lib/services/parliamentarianService';
 import {
   getProposalByIdForParliamentarian,
@@ -38,7 +45,31 @@ export interface NavigateToOptions {
 
 export interface ExecuteSearchOptions {
   delayMs?: number;
-  search?: (query: string) => SearchResults;
+  search?: (query: string) => SearchResults | Promise<SearchResults>;
+}
+
+export interface SelectParliamentarianByIdOptions {
+  getFixtureParliamentarianById?: (id: string) => Parliamentarian | null;
+  getOfficialParliamentarianDetail?: (
+    parliamentarian: Parliamentarian
+  ) => Promise<OfficialDetailResult<Parliamentarian>>;
+}
+
+export interface OpenParliamentarianBillsOptions {
+  getFixtureProposalsByParliamentarianId?: (parliamentarianId: string) => LegislativeProposal[];
+  getOfficialProposalsByParliamentarian?: (
+    parliamentarian: Parliamentarian
+  ) => Promise<OfficialDetailListResult<LegislativeProposal>>;
+}
+
+export interface SelectProposalByIdOptions {
+  getFixtureProposalByIdForParliamentarian?: (
+    id: string,
+    parliamentarianId: string
+  ) => LegislativeProposal | null;
+  getOfficialProposalDetail?: (
+    proposal: LegislativeProposal
+  ) => Promise<OfficialDetailResult<LegislativeProposal>>;
 }
 
 const defaultSearchDelayMs = 450;
@@ -118,6 +149,47 @@ function applySearchResults(context: ChatContext, query: string, results: Search
   };
 }
 
+function isOfficialParliamentarian(parliamentarian: Parliamentarian) {
+  return parliamentarian.id === `${parliamentarian.source}-${parliamentarian.sourceId}`;
+}
+
+function isOfficialProposal(proposal: LegislativeProposal) {
+  if (proposal.source === 'camara') {
+    return proposal.id === `camara-proposicao-${proposal.sourceId}`;
+  }
+
+  return proposal.id === `senado-materia-${proposal.sourceId}`;
+}
+
+function findParliamentarianInContext(context: ChatContext, id: string) {
+  return (
+    context.parliamentariansFound.find((parliamentarian) => parliamentarian.id === id) ?? null
+  );
+}
+
+function findProposalInContext(context: ChatContext, id: string) {
+  return context.parliamentarianProposals.find((proposal) => proposal.id === id) ?? null;
+}
+
+function getOfficialDetailNotice(
+  status: OfficialDetailResult<unknown>['status'] | OfficialDetailListResult<unknown>['status'],
+  label: string
+) {
+  if (status === 'fulfilled') {
+    return '';
+  }
+
+  if (status === 'partial') {
+    return `Parte dos dados oficiais de ${label} nao pode ser processada.`;
+  }
+
+  if (status === 'unavailable') {
+    return `Dados oficiais de ${label} nao estao disponiveis nesta consulta.`;
+  }
+
+  return `Nao foi possivel carregar dados oficiais de ${label} nesta consulta.`;
+}
+
 export function navigateTo(nextState: UIState, options: NavigateToOptions = {}) {
   const { updates = {}, recordHistory = true } = options;
 
@@ -187,27 +259,39 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
 
   await new Promise<void>((resolve) => {
     const completeSearch = () => {
-      if (currentSearchId !== searchSequence) {
-        resolve();
-        return;
-      }
-
-      try {
-        const results = search(normalizedQuery);
-        chatStore.update((context) => applySearchResults(context, normalizedQuery, results));
-      } catch {
-        chatStore.update((context) => ({
-          ...context,
-          currentState: 'ERROR',
-          errorMessage: genericSearchErrorMessage
-        }));
-      } finally {
-        if (pendingSearch?.resolve === resolve) {
-          pendingSearch = null;
+      void (async () => {
+        if (currentSearchId !== searchSequence) {
+          resolve();
+          return;
         }
 
-        resolve();
-      }
+        try {
+          const results = await search(normalizedQuery);
+
+          if (currentSearchId !== searchSequence) {
+            resolve();
+            return;
+          }
+
+          chatStore.update((context) => applySearchResults(context, normalizedQuery, results));
+        } catch {
+          if (currentSearchId !== searchSequence) {
+            return;
+          }
+
+          chatStore.update((context) => ({
+            ...context,
+            currentState: 'ERROR',
+            errorMessage: genericSearchErrorMessage
+          }));
+        } finally {
+          if (pendingSearch?.resolve === resolve) {
+            pendingSearch = null;
+          }
+
+          resolve();
+        }
+      })();
     };
 
     if (delayMs <= 0) {
@@ -222,11 +306,32 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
   });
 }
 
-export function selectParliamentarianById(id: string) {
-  const parliamentarian = getParliamentarianById(id);
+export async function selectParliamentarianById(
+  id: string,
+  options: SelectParliamentarianByIdOptions = {}
+) {
+  const context = get(chatStore);
+  const fixtureLoader = options.getFixtureParliamentarianById ?? getParliamentarianById;
+  const contextParliamentarian = findParliamentarianInContext(context, id);
+  const fixtureParliamentarian = fixtureLoader(id);
+  const baseParliamentarian =
+    contextParliamentarian && isOfficialParliamentarian(contextParliamentarian)
+      ? contextParliamentarian
+      : fixtureParliamentarian ?? contextParliamentarian;
 
-  if (!parliamentarian) {
+  if (!baseParliamentarian) {
     return false;
+  }
+
+  let parliamentarian = baseParliamentarian;
+  let errorMessage = '';
+
+  if (isOfficialParliamentarian(baseParliamentarian)) {
+    const officialResult = await (options.getOfficialParliamentarianDetail ??
+      loadOfficialParliamentarianDetail)(baseParliamentarian);
+
+    parliamentarian = officialResult.data ?? baseParliamentarian;
+    errorMessage = getOfficialDetailNotice(officialResult.status, 'parlamentar');
   }
 
   navigateTo('PARLIAMENTARIAN_DETAIL', {
@@ -235,25 +340,43 @@ export function selectParliamentarianById(id: string) {
       parliamentarianProposals: [],
       selectedProposal: null,
       selectedVote: null,
-      voteHistory: []
+      voteHistory: [],
+      errorMessage
     }
   });
 
   return true;
 }
 
-export function openParliamentarianBills() {
+export async function openParliamentarianBills(options: OpenParliamentarianBillsOptions = {}) {
   const context = get(chatStore);
 
   if (!context.selectedParliamentarian) {
     return false;
   }
 
+  let parliamentarianProposals: LegislativeProposal[];
+  let errorMessage = '';
+
+  if (isOfficialParliamentarian(context.selectedParliamentarian)) {
+    const officialResult = await (options.getOfficialProposalsByParliamentarian ??
+      loadOfficialProposalsByParliamentarian)(context.selectedParliamentarian);
+
+    parliamentarianProposals = officialResult.data;
+    errorMessage = getOfficialDetailNotice(officialResult.status, 'proposicoes associadas');
+  } else {
+    const fixtureLoader =
+      options.getFixtureProposalsByParliamentarianId ?? getProposalsByParliamentarianId;
+
+    parliamentarianProposals = fixtureLoader(context.selectedParliamentarian.id);
+  }
+
   navigateTo('PARLIAMENTARIAN_BILLS', {
     updates: {
-      parliamentarianProposals: getProposalsByParliamentarianId(context.selectedParliamentarian.id),
+      parliamentarianProposals,
       selectedProposal: null,
-      selectedVote: null
+      selectedVote: null,
+      errorMessage
     }
   });
 
@@ -267,18 +390,25 @@ export function openParliamentarianVotes() {
     return false;
   }
 
+  const isOfficialSelection = isOfficialParliamentarian(context.selectedParliamentarian);
+
   navigateTo('PARLIAMENTARIAN_VOTES', {
     updates: {
-      voteHistory: getVotesByParliamentarianId(context.selectedParliamentarian.id),
+      voteHistory: isOfficialSelection
+        ? []
+        : getVotesByParliamentarianId(context.selectedParliamentarian.id),
       selectedProposal: null,
-      selectedVote: null
+      selectedVote: null,
+      errorMessage: isOfficialSelection
+        ? 'Votacoes oficiais nao estao disponiveis neste bloco.'
+        : ''
     }
   });
 
   return true;
 }
 
-export function selectProposalById(id: string) {
+export async function selectProposalById(id: string, options: SelectProposalByIdOptions = {}) {
   const context = get(chatStore);
   const selectedParliamentarianId = context.selectedParliamentarian?.id;
 
@@ -286,16 +416,41 @@ export function selectProposalById(id: string) {
     return false;
   }
 
-  const proposal = getProposalByIdForParliamentarian(id, selectedParliamentarianId);
+  const fixtureLoader =
+    options.getFixtureProposalByIdForParliamentarian ?? getProposalByIdForParliamentarian;
+  const contextProposal = findProposalInContext(context, id);
+  const fixtureProposal = fixtureLoader(id, selectedParliamentarianId);
+  const baseProposal =
+    contextProposal && isOfficialProposal(contextProposal)
+      ? contextProposal
+      : fixtureProposal ?? contextProposal;
 
-  if (!proposal) {
+  if (!baseProposal) {
     return false;
+  }
+
+  let proposal = baseProposal;
+  let errorMessage = '';
+
+  if (isOfficialProposal(baseProposal)) {
+    const officialResult = await (options.getOfficialProposalDetail ?? loadOfficialProposalDetail)(
+      baseProposal
+    );
+
+    proposal = officialResult.data
+      ? {
+          ...officialResult.data,
+          relationship: baseProposal.relationship ?? officialResult.data.relationship
+        }
+      : baseProposal;
+    errorMessage = getOfficialDetailNotice(officialResult.status, 'proposicao');
   }
 
   navigateTo('BILL_DETAIL', {
     updates: {
       selectedProposal: proposal,
-      selectedVote: null
+      selectedVote: null,
+      errorMessage
     }
   });
 
