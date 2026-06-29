@@ -85,11 +85,12 @@
     factualSummary?: string;
     sources: {
       id: string;
-      type: 'official' | 'institutional';
+      type: 'official' | 'press' | 'technical';
       label: string;
       title: string;
       publisher: string;
       url: string;
+      checkedAt?: string;
     }[];
   }
 
@@ -179,7 +180,7 @@
       return 'Cobertura de imprensa';
     }
 
-    return 'Referência institucional';
+    return 'Referência técnica';
   }
 
   function toParliamentarianBillView(
@@ -199,11 +200,12 @@
       factualSummary: proposal.simplifiedSummary,
       sources: proposal.references.map((reference) => ({
         id: reference.id,
-        type: reference.type === 'official' ? 'official' : 'institutional',
+        type: reference.type,
         label: getReferenceLabel(reference),
         title: reference.title,
         publisher: reference.publisher,
-        url: reference.url
+        url: reference.url,
+        checkedAt: reference.checkedAt
       }))
     };
   }

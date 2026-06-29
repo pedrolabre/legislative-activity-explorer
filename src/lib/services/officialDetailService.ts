@@ -15,6 +15,7 @@ import {
   mapSenadoSenadorToParliamentarian,
   SenadoMapperError
 } from '$lib/mappers/senadoMapper';
+import { attachEditorialReferencesToProposal } from './referenceService';
 
 export type OfficialDetailEntity = 'parliamentarian' | 'parliamentarian-proposals' | 'proposal';
 export type OfficialDetailStatus = 'fulfilled' | 'partial' | 'unavailable' | 'failed';
@@ -166,10 +167,12 @@ function mapCamaraAuthorProposals(payloads: CamaraProposicaoPayload[]) {
     try {
       const proposal = mapCamaraProposicaoToLegislativeProposal(payload);
 
-      proposals.push({
-        ...proposal,
-        relationship: proposal.relationship ?? 'Autoria'
-      });
+      proposals.push(
+        attachEditorialReferencesToProposal({
+          ...proposal,
+          relationship: proposal.relationship ?? 'Autoria'
+        })
+      );
     } catch (error) {
       errors.push(toRecoverableError('camara', 'parliamentarian-proposals', error));
     }
@@ -267,7 +270,7 @@ export async function getOfficialProposalDetail(
 
     return {
       status: 'fulfilled',
-      data,
+      data: attachEditorialReferencesToProposal(data, proposal.id),
       errors: []
     };
   } catch (error) {

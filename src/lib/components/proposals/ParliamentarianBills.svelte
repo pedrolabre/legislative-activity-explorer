@@ -12,11 +12,12 @@
     factualSummary?: string;
     sources: {
       id: string;
-      type: 'official' | 'institutional';
+      type: 'official' | 'press' | 'technical';
       label: string;
       title: string;
       publisher: string;
       url: string;
+      checkedAt?: string;
     }[];
   }
 

@@ -61,7 +61,7 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/components/conversation/ConversationBubble.svelte`: Balão visual para mensagens da experiência conversacional.
 * `src/lib/components/conversation/ConversationLog.svelte`: Container conversacional com semântica de log e atualização acessível.
 * `src/lib/components/parliamentarians/ParliamentarianDetail.svelte`: Perfil factual de parlamentar com foto quando disponível, alternativa acessível sem foto e controles para abrir proposições e votações associadas.
-* `src/lib/components/proposals/BillDetail.svelte`: Detalhe factual de proposição com dados gerais, ementa oficial, resumo factual quando disponível e fontes cadastradas.
+* `src/lib/components/proposals/BillDetail.svelte`: Detalhe factual de proposição com dados gerais, ementa oficial, resumo factual quando disponível, fontes e referências revisadas.
 * `src/lib/components/proposals/ParliamentarianBills.svelte`: Lista factual de proposições associadas a parlamentar, com dados parciais tratados de forma neutra.
 * `src/lib/components/search/InitialSearchForm.svelte`: Formulário inicial de busca com label, envio por `Enter` e validação local.
 * `src/lib/components/search/SearchResultCard.svelte`: Card factual para item de resultado de parlamentar ou proposição, com abertura de perfil para parlamentares.
@@ -92,12 +92,14 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/fixtureAdapters.ts`: Adaptadores internos que convertem fixtures controladas para contratos de domínio.
 * `src/lib/services/parliamentarianService.ts`: Service interno para detalhe de parlamentar baseado nas fixtures existentes.
 * `src/lib/services/parliamentarianService.test.ts`: Testes unitários do service interno de parlamentar.
-* `src/lib/services/proposalService.ts`: Service interno para proposições associadas e detalhe de proposição baseado nas fixtures existentes.
-* `src/lib/services/proposalService.test.ts`: Testes unitários do service interno de proposições.
+* `src/lib/services/proposalService.ts`: Service interno para proposições associadas e detalhe de proposição baseado nas fixtures existentes, com combinação de referências editoriais revisadas.
+* `src/lib/services/proposalService.test.ts`: Testes unitários do service interno de proposições e das referências associadas.
 * `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeouts e dados parciais por fonte.
 * `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha parcial, ordenação neutra, deduplicação objetiva e sem rede real.
 * `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com estados recuperáveis de indisponibilidade, timeout ou falha parcial.
 * `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, indisponibilidade do Senado para matérias associadas e sem rede real.
+* `src/lib/services/referenceService.ts`: Service interno para combinar referências existentes da proposição com o catálogo revisado e identificar cobertura editorial incompleta.
+* `src/lib/services/referenceService.test.ts`: Testes unitários da combinação de referências, prioridade do catálogo e fallback de cobertura revisada incompleta.
 * `src/lib/services/searchService.ts`: Service interno de busca inicial baseado nas fixtures existentes e retornando contratos de domínio.
 * `src/lib/services/searchService.test.ts`: Testes unitários do service interno de busca inicial.
 * `src/lib/services/voteService.ts`: Service interno para votações associadas e detalhe de votação baseado nas fixtures existentes.

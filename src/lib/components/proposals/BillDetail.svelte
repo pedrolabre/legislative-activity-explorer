@@ -12,11 +12,12 @@
     factualSummary?: string;
     sources: {
       id: string;
-      type: 'official' | 'institutional';
+      type: 'official' | 'press' | 'technical';
       label: string;
       title: string;
       publisher: string;
       url: string;
+      checkedAt?: string;
     }[];
   }
 
@@ -35,10 +36,35 @@
   } = $props();
 
   const unavailableLabel = 'Não disponível nesta visualização.';
+  const requiredReferenceTypes = ['official', 'press', 'technical'] as const;
+  const incompleteReviewedReferencesMessage =
+    'As três referências revisadas (oficial, imprensa e técnica) ainda não estão completas nesta visualização.';
+  const noReviewedReferencesMessage =
+    'Referências revisadas ainda não disponíveis nesta visualização.';
+
+  let hasCompleteReviewedReferences = $derived(
+    requiredReferenceTypes.every((type) =>
+      bill.sources.some((source) => source.type === type && Boolean(source.checkedAt?.trim()))
+    )
+  );
 
   function formatPresentedAt(value?: string) {
     if (!value) {
       return unavailableLabel;
+    }
+
+    const [year, month, day] = value.split('-');
+
+    if (!year || !month || !day) {
+      return value;
+    }
+
+    return `${day}/${month}/${year}`;
+  }
+
+  function formatCheckedAt(value?: string) {
+    if (!value) {
+      return undefined;
     }
 
     const [year, month, day] = value.split('-');
@@ -117,14 +143,16 @@
   </section>
 
   <section class="border-t border-border pt-5" aria-labelledby="bill-sources-title">
-    <h4 id="bill-sources-title" class="text-sm font-bold leading-6 text-ink">Fontes</h4>
+    <h4 id="bill-sources-title" class="text-sm font-bold leading-6 text-ink">
+      Fontes e referências
+    </h4>
     {#if bill.sources.length > 0}
       <ul class="mt-3 grid gap-3">
         {#each bill.sources as source (source.id)}
           <li>
             <article class="rounded-ui border border-border bg-surface-raised p-4">
               <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">
-                {source.label}
+                Tipo: {source.label}
               </p>
               <a
                 class="mt-2 inline-block break-words text-sm font-bold leading-6 text-accent underline-offset-4 hover:underline"
@@ -134,15 +162,33 @@
               >
                 {source.title}<span class="sr-only"> abre em nova aba</span>
               </a>
-              <p class="mt-2 text-sm leading-6 text-ink-muted">{source.publisher}</p>
+              <dl class="mt-2 grid gap-1 text-sm leading-6 text-ink-muted">
+                <div>
+                  <dt class="font-bold text-ink">Publicador</dt>
+                  <dd>{source.publisher}</dd>
+                </div>
+                {#if formatCheckedAt(source.checkedAt)}
+                  <div>
+                    <dt class="font-bold text-ink">Data de revisão</dt>
+                    <dd>{formatCheckedAt(source.checkedAt)}</dd>
+                  </div>
+                {/if}
+              </dl>
             </article>
           </li>
         {/each}
       </ul>
+      {#if !hasCompleteReviewedReferences}
+        <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
+          <p class="text-sm leading-6 text-ink-muted">
+            {incompleteReviewedReferencesMessage}
+          </p>
+        </div>
+      {/if}
     {:else}
       <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
-          Fontes adicionais não disponíveis nesta visualização.
+          {noReviewedReferencesMessage}
         </p>
       </div>
     {/if}

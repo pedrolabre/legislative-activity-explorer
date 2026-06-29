@@ -310,6 +310,39 @@ describe('getOfficialProposalDetail', () => {
     });
   });
 
+  it('applies catalog references when the official proposal id is cataloged', async () => {
+    const result = await getOfficialProposalDetail(
+      {
+        id: 'bill-pl-220-2025',
+        source: 'camara',
+        sourceId: '220',
+        title: 'PL 220/2025',
+        type: 'PL',
+        references: []
+      },
+      {
+        camaraClient: {
+          ...createEmptyCamaraClient(),
+          getProposicaoById: async () => ({
+            id: 220,
+            siglaTipo: 'PL',
+            numero: 220,
+            ano: 2025
+          })
+        },
+        senadoClient: createEmptySenadoClient()
+      }
+    );
+
+    expect(result.data?.references).toEqual([
+      expect.objectContaining({
+        id: 'bill-pl-220-2025-official-camara',
+        type: 'official',
+        checkedAt: '2026-06-29'
+      })
+    ]);
+  });
+
   it('loads a Senado matter detail by official source id', async () => {
     const result = await getOfficialProposalDetail(
       {

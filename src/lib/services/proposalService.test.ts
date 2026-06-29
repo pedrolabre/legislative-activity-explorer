@@ -37,8 +37,10 @@ describe('getProposalById', () => {
     });
     expect(proposal?.references.map((reference) => reference.type)).toEqual([
       'official',
+      'press',
       'technical'
     ]);
+    expect(proposal?.references.every((reference) => reference.checkedAt)).toBe(true);
   });
 
   it('keeps partial proposal data explicit', () => {
@@ -50,7 +52,8 @@ describe('getProposalById', () => {
     });
     expect(proposal?.presentedAt).toBeUndefined();
     expect(proposal?.simplifiedSummary).toBeUndefined();
-    expect(proposal?.references).toEqual([]);
+    expect(proposal?.references.map((reference) => reference.type)).toEqual(['official']);
+    expect(proposal?.references[0].checkedAt).toBe('2026-06-29');
   });
 
   it('returns null for an unknown proposal id', () => {
