@@ -93,6 +93,7 @@ export function mapCamaraDeputadoToParliamentarian(
     normalizeString(status?.nomeEleitoral) ??
     normalizeString(status?.nome) ??
     normalizeString(payload.nomeCivil) ??
+    normalizeString(payload.nome) ??
     `Deputado federal ${sourceId}`;
 
   return {
@@ -102,11 +103,11 @@ export function mapCamaraDeputadoToParliamentarian(
     name,
     fullName: normalizeString(payload.nomeCivil),
     office: 'Deputado federal',
-    party: normalizeString(status?.siglaPartido),
-    state: normalizeString(status?.siglaUf),
+    party: normalizeString(status?.siglaPartido) ?? normalizeString(payload.siglaPartido),
+    state: normalizeString(status?.siglaUf) ?? normalizeString(payload.siglaUf),
     status: normalizeString(status?.situacao),
-    photoUrl: normalizeString(status?.urlFoto),
-    email: normalizeString(status?.email),
+    photoUrl: normalizeString(status?.urlFoto) ?? normalizeString(payload.urlFoto),
+    email: normalizeString(status?.email) ?? normalizeString(payload.email),
     officialUrl: `${camaraDeputadoOfficialUrl}/${sourceId}`
   };
 }

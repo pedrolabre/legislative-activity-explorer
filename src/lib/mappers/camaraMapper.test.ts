@@ -67,6 +67,30 @@ describe('mapCamaraDeputadoToParliamentarian', () => {
     expect(parliamentarian.status).toBeUndefined();
   });
 
+  it('normalizes simplified deputy payloads returned by Camara lists', () => {
+    const parliamentarian = mapCamaraDeputadoToParliamentarian({
+      id: 30,
+      nome: 'Ana Costa',
+      siglaPartido: 'ABC',
+      siglaUf: 'MG',
+      urlFoto: 'https://camara.example/ana.jpg',
+      email: 'dep.anacosta@camara.leg.br'
+    });
+
+    expect(parliamentarian).toMatchObject({
+      id: 'camara-30',
+      source: 'camara',
+      sourceId: '30',
+      name: 'Ana Costa',
+      office: 'Deputado federal',
+      party: 'ABC',
+      state: 'MG',
+      photoUrl: 'https://camara.example/ana.jpg',
+      email: 'dep.anacosta@camara.leg.br',
+      officialUrl: 'https://www.camara.leg.br/deputados/30'
+    });
+  });
+
   it('represents a missing deputy id as a mapper error', () => {
     expect(() => mapCamaraDeputadoToParliamentarian({ nomeCivil: 'Sem id' })).toThrow(
       CamaraMapperError

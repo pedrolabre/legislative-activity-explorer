@@ -45,6 +45,48 @@ describe('CamaraApiClient', () => {
     });
   });
 
+  it('fetches deputies by name with explicit search parameters', async () => {
+    const calls: string[] = [];
+    const fetcher: CamaraFetch = async (input) => {
+      calls.push(input);
+      return jsonResponse({
+        dados: [
+          {
+            id: 10,
+            nome: 'Ana Costa',
+            siglaPartido: 'XYZ'
+          }
+        ]
+      });
+    };
+
+    const client = new CamaraApiClient({
+      baseUrl: 'https://dados.example/api/v2',
+      fetch: fetcher
+    });
+
+    const deputies = await client.getDeputados({
+      nome: 'Ana',
+      itens: 20,
+      ordem: 'ASC',
+      ordenarPor: 'nome'
+    });
+    const url = new URL(calls[0]);
+
+    expect(deputies).toEqual([
+      {
+        id: 10,
+        nome: 'Ana Costa',
+        siglaPartido: 'XYZ'
+      }
+    ]);
+    expect(url.origin + url.pathname).toBe('https://dados.example/api/v2/deputados');
+    expect(url.searchParams.get('nome')).toBe('Ana');
+    expect(url.searchParams.get('itens')).toBe('20');
+    expect(url.searchParams.get('ordem')).toBe('ASC');
+    expect(url.searchParams.get('ordenarPor')).toBe('nome');
+  });
+
   it('fetches propositions by deputy author with explicit pagination parameters', async () => {
     const calls: string[] = [];
     const fetcher: CamaraFetch = async (input) => {
@@ -83,6 +125,37 @@ describe('CamaraApiClient', () => {
     expect(url.searchParams.get('idDeputadoAutor')).toBe('204556');
     expect(url.searchParams.get('pagina')).toBe('2');
     expect(url.searchParams.get('itens')).toBe('50');
+  });
+
+  it('fetches propositions by keyword with official list parameters', async () => {
+    const calls: string[] = [];
+    const client = new CamaraApiClient({
+      baseUrl: 'https://dados.example/api/v2',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          dados: [
+            {
+              id: 9876,
+              siglaTipo: 'PL',
+              numero: 1234,
+              ano: 2024
+            }
+          ]
+        });
+      }
+    });
+
+    const propositions = await client.getProposicoes({
+      keywords: 'educacao',
+      itens: 10
+    });
+    const url = new URL(calls[0]);
+
+    expect(propositions).toHaveLength(1);
+    expect(url.origin + url.pathname).toBe('https://dados.example/api/v2/proposicoes');
+    expect(url.searchParams.get('keywords')).toBe('educacao');
+    expect(url.searchParams.get('itens')).toBe('10');
   });
 
   it('keeps pagination links available when requesting a proposition page', async () => {

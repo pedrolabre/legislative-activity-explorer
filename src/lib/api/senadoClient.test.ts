@@ -99,6 +99,47 @@ describe('SenadoApiClient', () => {
     });
   });
 
+  it('fetches current senators from the list envelope', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          ListaParlamentarEmExercicio: {
+            Parlamentares: {
+              Parlamentar: [
+                {
+                  IdentificacaoParlamentar: {
+                    CodigoParlamentar: '5672',
+                    NomeParlamentar: 'Alan Rick'
+                  }
+                },
+                {
+                  IdentificacaoParlamentar: {
+                    CodigoParlamentar: '5987',
+                    NomeParlamentar: 'Maria Souza'
+                  }
+                }
+              ]
+            }
+          }
+        });
+      }
+    });
+
+    const senators = await client.getSenadoresAtuais();
+
+    expect(senators).toHaveLength(2);
+    expect(senators[0]).toMatchObject({
+      IdentificacaoParlamentar: {
+        CodigoParlamentar: '5672',
+        NomeParlamentar: 'Alan Rick'
+      }
+    });
+    expect(calls[0]).toBe('https://senado.example/dadosabertos/senador/lista/atual.json');
+  });
+
   it('fetches a matter detail from the Senado envelope', async () => {
     const client = new SenadoApiClient({
       baseUrl: 'https://senado.example/dadosabertos',
@@ -127,6 +168,46 @@ describe('SenadoApiClient', () => {
         EmentaMateria: 'Encaminha documento ao Senado Federal.'
       }
     });
+  });
+
+  it('searches matters by term from the Senado list envelope', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          PesquisaBasicaMateria: {
+            Materias: {
+              Materia: {
+                IdentificacaoMateria: {
+                  CodigoMateria: '45',
+                  DescricaoIdentificacaoMateria: 'DIV 7/1999'
+                }
+              }
+            }
+          }
+        });
+      }
+    });
+
+    const matters = await client.searchMaterias({
+      termo: 'educacao'
+    });
+    const url = new URL(calls[0]);
+
+    expect(matters).toEqual([
+      {
+        IdentificacaoMateria: {
+          CodigoMateria: '45',
+          DescricaoIdentificacaoMateria: 'DIV 7/1999'
+        }
+      }
+    ]);
+    expect(url.origin + url.pathname).toBe(
+      'https://senado.example/dadosabertos/materia/pesquisa/lista.json'
+    );
+    expect(url.searchParams.get('termo')).toBe('educacao');
   });
 
   it('wraps network failures in a recoverable client error', async () => {

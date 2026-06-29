@@ -85,6 +85,10 @@ export interface SenadoMateriaPayload {
   } | null;
 }
 
+export interface GetSenadoMateriasPesquisaOptions {
+  termo: string;
+}
+
 interface SenadoDetalheParlamentarResponse {
   DetalheParlamentar?: {
     Parlamentar?: SenadoSenadorPayload | null;
@@ -131,6 +135,14 @@ function readNestedValue(value: unknown, path: NestedPath) {
   return current;
 }
 
+function toArray<T>(value: unknown): T[] {
+  if (value === null || value === undefined) {
+    return [];
+  }
+
+  return Array.isArray(value) ? (value as T[]) : [value as T];
+}
+
 export class SenadoApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: SenadoFetch;
@@ -149,10 +161,32 @@ export class SenadoApiClient {
     ]);
   }
 
+  async getSenadoresAtuais(): Promise<SenadoSenadorPayload[]> {
+    return this.requestNestedArray<SenadoSenadorPayload>('senador/lista/atual', [
+      ['ListaParlamentarEmExercicio', 'Parlamentares', 'Parlamentar'],
+      ['ListaParlamentarEmExercicio', 'Parlamentar']
+    ]);
+  }
+
   async getMateriaById(id: number | string): Promise<SenadoMateriaPayload> {
     return this.requestNestedData<SenadoMateriaPayload>(`materia/${id}`, [
       ['DetalheMateria', 'Materia']
     ]);
+  }
+
+  async searchMaterias(
+    options: GetSenadoMateriasPesquisaOptions
+  ): Promise<SenadoMateriaPayload[]> {
+    return this.requestNestedArray<SenadoMateriaPayload>(
+      'materia/pesquisa/lista',
+      [
+        ['PesquisaBasicaMateria', 'Materias', 'Materia'],
+        ['PesquisaBasicaMateria', 'Materia']
+      ],
+      {
+        termo: options.termo
+      }
+    );
   }
 
   private buildUrl(path: string, params: Record<string, string | number | undefined> = {}) {
@@ -227,6 +261,26 @@ export class SenadoApiClient {
     }
 
     throw new SenadoApiClientError('A resposta do Senado nao contem dados validos.', {
+      kind: 'invalid-payload'
+    });
+  }
+
+  private async requestNestedArray<T>(
+    path: string,
+    acceptedPaths: NestedPath[],
+    params?: Record<string, string | number | undefined>
+  ): Promise<T[]> {
+    const envelope = await this.requestJson<unknown>(path, params);
+
+    for (const acceptedPath of acceptedPaths) {
+      const nestedValue = readNestedValue(envelope, acceptedPath);
+
+      if (nestedValue !== null && nestedValue !== undefined) {
+        return toArray<T>(nestedValue);
+      }
+    }
+
+    throw new SenadoApiClientError('A resposta do Senado nao contem lista de dados valida.', {
       kind: 'invalid-payload'
     });
   }

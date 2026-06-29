@@ -47,7 +47,12 @@ export interface CamaraApiPage<T> {
 export interface CamaraDeputadoPayload {
   id?: number | string | null;
   uri?: string | null;
+  nome?: string | null;
   nomeCivil?: string | null;
+  siglaPartido?: string | null;
+  siglaUf?: string | null;
+  urlFoto?: string | null;
+  email?: string | null;
   ultimoStatus?: {
     id?: number | string | null;
     uri?: string | null;
@@ -79,6 +84,25 @@ export interface CamaraProposicaoPayload {
 export interface GetCamaraProposicoesByDeputadoAutorOptions {
   pagina?: number;
   itens?: number;
+}
+
+export interface GetCamaraDeputadosOptions {
+  nome?: string;
+  pagina?: number;
+  itens?: number;
+  ordem?: 'ASC' | 'DESC';
+  ordenarPor?: string;
+}
+
+export interface GetCamaraProposicoesOptions {
+  keywords?: string;
+  siglaTipo?: string;
+  numero?: string | number;
+  ano?: string | number;
+  pagina?: number;
+  itens?: number;
+  ordem?: 'ASC' | 'DESC';
+  ordenarPor?: string;
 }
 
 export type CamaraFetch = (input: string, init?: RequestInit) => Promise<Response>;
@@ -119,8 +143,49 @@ export class CamaraApiClient {
     return this.requestSingleData<CamaraDeputadoPayload>(`deputados/${id}`);
   }
 
+  async getDeputados(options: GetCamaraDeputadosOptions = {}): Promise<CamaraDeputadoPayload[]> {
+    const page = await this.getDeputadosPage(options);
+
+    return page.data;
+  }
+
+  async getDeputadosPage(
+    options: GetCamaraDeputadosOptions = {}
+  ): Promise<CamaraApiPage<CamaraDeputadoPayload>> {
+    return this.requestListPage<CamaraDeputadoPayload>('deputados', {
+      nome: options.nome,
+      pagina: options.pagina,
+      itens: options.itens,
+      ordem: options.ordem,
+      ordenarPor: options.ordenarPor
+    });
+  }
+
   async getProposicaoById(id: number | string): Promise<CamaraProposicaoPayload> {
     return this.requestSingleData<CamaraProposicaoPayload>(`proposicoes/${id}`);
+  }
+
+  async getProposicoes(
+    options: GetCamaraProposicoesOptions = {}
+  ): Promise<CamaraProposicaoPayload[]> {
+    const page = await this.getProposicoesPage(options);
+
+    return page.data;
+  }
+
+  async getProposicoesPage(
+    options: GetCamaraProposicoesOptions = {}
+  ): Promise<CamaraApiPage<CamaraProposicaoPayload>> {
+    return this.requestListPage<CamaraProposicaoPayload>('proposicoes', {
+      keywords: options.keywords,
+      siglaTipo: options.siglaTipo,
+      numero: options.numero,
+      ano: options.ano,
+      pagina: options.pagina,
+      itens: options.itens,
+      ordem: options.ordem,
+      ordenarPor: options.ordenarPor
+    });
   }
 
   async getProposicoesByDeputadoAutor(
