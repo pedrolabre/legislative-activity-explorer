@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CamaraApiClientError } from '$lib/api/camaraClient';
+import { SenadoApiClientError } from '$lib/api/senadoClient';
 import {
   getOfficialParliamentarianDetail,
   getOfficialProposalDetail,
@@ -149,7 +150,8 @@ describe('getOfficialParliamentarianDetail', () => {
           source: 'camara',
           entity: 'parliamentarian',
           kind: 'client',
-          message: 'A API da Camara retornou uma falha HTTP.'
+          message:
+            'Dados oficiais de parlamentar da Camara dos Deputados nao puderam ser carregados neste momento.'
         }
       ]
     });
@@ -234,7 +236,9 @@ describe('getOfficialProposalsByParliamentarian', () => {
       expect.objectContaining({
         source: 'camara',
         entity: 'parliamentarian-proposals',
-        kind: 'mapper'
+        kind: 'mapper',
+        message:
+          'Dados oficiais de proposicoes associadas da Camara dos Deputados vieram incompletos nesta consulta.'
       })
     ]);
   });
@@ -262,7 +266,8 @@ describe('getOfficialProposalsByParliamentarian', () => {
           source: 'senado',
           entity: 'parliamentarian-proposals',
           kind: 'unsupported-source',
-          message: 'Materias associadas a senador nao estao disponiveis neste bloco.'
+          message:
+            'Dados oficiais de proposicoes associadas do Senado Federal nao estao disponiveis nesta consulta.'
         }
       ]
     });
@@ -342,6 +347,43 @@ describe('getOfficialProposalDetail', () => {
         officialSummary: 'Detalhe oficial da materia.'
       },
       errors: []
+    });
+  });
+
+  it('represents proposal detail timeouts as recoverable failures', async () => {
+    const result = await getOfficialProposalDetail(
+      {
+        id: 'senado-materia-300',
+        source: 'senado',
+        sourceId: '300',
+        title: 'PLS 3/2024',
+        type: 'PLS',
+        references: []
+      },
+      {
+        camaraClient: createEmptyCamaraClient(),
+        senadoClient: {
+          ...createEmptySenadoClient(),
+          getMateriaById: async () => {
+            throw new SenadoApiClientError('timeout', {
+              kind: 'timeout'
+            });
+          }
+        }
+      }
+    );
+
+    expect(result).toEqual({
+      status: 'failed',
+      data: null,
+      errors: [
+        {
+          source: 'senado',
+          entity: 'proposal',
+          kind: 'timeout',
+          message: 'A consulta oficial do Senado Federal excedeu o tempo limite.'
+        }
+      ]
     });
   });
 });

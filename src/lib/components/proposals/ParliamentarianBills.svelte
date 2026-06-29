@@ -65,7 +65,7 @@
     </h3>
     <p class="mt-3 text-sm leading-6 text-ink-muted">{billCountLabel} nesta página.</p>
     <p class="mt-2 text-sm leading-6 text-ink-muted">
-      Dados de exemplo nesta página, sem consulta a bases oficiais.
+      Dados apresentados nesta página conforme a fonte disponível.
     </p>
   </header>
 

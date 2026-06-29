@@ -223,6 +223,26 @@ describe('SenadoApiClient', () => {
     });
   });
 
+  it('represents requests that exceed the configured timeout', async () => {
+    let signal: AbortSignal | undefined;
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      timeoutMs: 1,
+      fetch: async (_input, init) => {
+        signal = init?.signal ?? undefined;
+
+        return new Promise<Response>(() => undefined);
+      }
+    });
+
+    await expect(client.getMateriaById(45)).rejects.toMatchObject({
+      name: 'SenadoApiClientError',
+      kind: 'timeout',
+      url: 'https://senado.example/dadosabertos/materia/45.json'
+    });
+    expect(signal?.aborted).toBe(true);
+  });
+
   it('represents HTTP failures with status and URL', async () => {
     const client = new SenadoApiClient({
       baseUrl: 'https://senado.example/dadosabertos',

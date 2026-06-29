@@ -297,7 +297,7 @@ describe('chatStore actions', () => {
         id: 'senado-20',
         name: 'Maria Souza'
       },
-      errorMessage: 'Nao foi possivel carregar dados oficiais de parlamentar nesta consulta.'
+      errorMessage: 'Dados oficiais de parlamentar nao puderam ser carregados neste momento.'
     });
   });
 
@@ -399,7 +399,70 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_VOTES',
       voteHistory: [],
-      errorMessage: 'Votacoes oficiais nao estao disponiveis neste bloco.'
+      errorMessage: 'Dados oficiais de votacoes nao estao disponiveis nesta consulta.'
+    });
+  });
+
+  it('records a neutral notice for partial official associated proposals', async () => {
+    await executeSearch('ana', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'camara-10',
+            source: 'camara',
+            sourceId: '10',
+            name: 'Ana Costa',
+            office: 'Deputado federal'
+          }
+        ],
+        proposals: []
+      })
+    });
+    await selectParliamentarianById('camara-10', {
+      getOfficialParliamentarianDetail: async (parliamentarian) => ({
+        status: 'fulfilled',
+        data: parliamentarian,
+        errors: []
+      })
+    });
+
+    await expect(
+      openParliamentarianBills({
+        getOfficialProposalsByParliamentarian: async () => ({
+          status: 'partial',
+          data: [
+            {
+              id: 'camara-proposicao-100',
+              source: 'camara',
+              sourceId: '100',
+              title: 'PL 2/2024',
+              type: 'PL',
+              references: []
+            }
+          ],
+          errors: [
+            {
+              source: 'camara',
+              entity: 'parliamentarian-proposals',
+              kind: 'mapper',
+              message: 'payload parcial'
+            }
+          ]
+        })
+      })
+    ).resolves.toBe(true);
+
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_BILLS',
+      parliamentarianProposals: [
+        {
+          id: 'camara-proposicao-100',
+          title: 'PL 2/2024'
+        }
+      ],
+      errorMessage:
+        'Parte dos dados oficiais de proposicoes associadas nao pode ser exibida nesta consulta.'
     });
   });
 

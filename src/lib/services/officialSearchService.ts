@@ -24,7 +24,7 @@ import {
 
 export type OfficialSearchGroup = 'parliamentarians' | 'proposals';
 export type OfficialSearchSourceStatus = 'fulfilled' | 'partial' | 'failed';
-export type OfficialSearchErrorKind = 'client' | 'mapper' | 'unknown';
+export type OfficialSearchErrorKind = 'client' | 'mapper' | 'timeout' | 'unknown';
 
 export interface OfficialSearchRecoverableError {
   source: LegislativeSource;
@@ -199,8 +199,18 @@ function deduplicateById<T extends { id: string }>(items: T[]) {
   return deduplicatedItems;
 }
 
+function isOfficialClientError(
+  error: unknown
+): error is CamaraApiClientError | SenadoApiClientError {
+  return error instanceof CamaraApiClientError || error instanceof SenadoApiClientError;
+}
+
 function getErrorKind(error: unknown): OfficialSearchErrorKind {
-  if (error instanceof CamaraApiClientError || error instanceof SenadoApiClientError) {
+  if (isOfficialClientError(error)) {
+    if (error.kind === 'timeout') {
+      return 'timeout';
+    }
+
     return 'client';
   }
 
@@ -211,12 +221,39 @@ function getErrorKind(error: unknown): OfficialSearchErrorKind {
   return 'unknown';
 }
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return error.message;
+function getSourceReference(source: LegislativeSource) {
+  return source === 'camara' ? 'da Camara dos Deputados' : 'do Senado Federal';
+}
+
+function getGroupLabel(group: OfficialSearchGroup) {
+  return group === 'parliamentarians' ? 'parlamentares' : 'proposicoes ou materias';
+}
+
+function getErrorMessage(
+  source: LegislativeSource,
+  group: OfficialSearchGroup,
+  error: unknown
+) {
+  const sourceReference = getSourceReference(source);
+  const groupLabel = getGroupLabel(group);
+
+  if (isOfficialClientError(error)) {
+    if (error.kind === 'timeout') {
+      return `A consulta oficial ${sourceReference} excedeu o tempo limite.`;
+    }
+
+    if (error.kind === 'invalid-payload') {
+      return `A fonte oficial ${sourceReference} retornou dados incompletos nesta consulta.`;
+    }
+
+    return `A fonte oficial ${sourceReference} nao pode ser consultada neste momento.`;
   }
 
-  return 'Falha inesperada ao processar a busca oficial.';
+  if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
+    return `Parte dos dados oficiais de ${groupLabel} ${sourceReference} veio incompleta e nao foi exibida.`;
+  }
+
+  return `Falha temporaria ao processar dados oficiais de ${groupLabel}.`;
 }
 
 function toRecoverableError(
@@ -228,7 +265,7 @@ function toRecoverableError(
     source,
     group,
     kind: getErrorKind(error),
-    message: getErrorMessage(error)
+    message: getErrorMessage(source, group, error)
   };
 }
 

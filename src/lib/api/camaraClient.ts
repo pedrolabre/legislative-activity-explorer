@@ -1,6 +1,7 @@
 export const CAMARA_API_BASE_URL = 'https://dadosabertos.camara.leg.br/api/v2';
+export const CAMARA_API_DEFAULT_TIMEOUT_MS = 10000;
 
-export type CamaraApiErrorKind = 'http' | 'network' | 'invalid-payload';
+export type CamaraApiErrorKind = 'http' | 'network' | 'invalid-payload' | 'timeout';
 
 export class CamaraApiClientError extends Error {
   kind: CamaraApiErrorKind;
@@ -110,6 +111,7 @@ export type CamaraFetch = (input: string, init?: RequestInit) => Promise<Respons
 export interface CamaraApiClientOptions {
   baseUrl?: string;
   fetch?: CamaraFetch;
+  timeoutMs?: number;
 }
 
 function getDefaultFetch(): CamaraFetch {
@@ -133,10 +135,12 @@ function isResponseWithData(value: unknown): value is { dados: unknown } {
 export class CamaraApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: CamaraFetch;
+  private readonly timeoutMs: number;
 
   constructor(options: CamaraApiClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? CAMARA_API_BASE_URL;
     this.fetcher = options.fetch ?? getDefaultFetch();
+    this.timeoutMs = options.timeoutMs ?? CAMARA_API_DEFAULT_TIMEOUT_MS;
   }
 
   async getDeputadoById(id: number | string): Promise<CamaraDeputadoPayload> {
@@ -230,12 +234,16 @@ export class CamaraApiClient {
     let response: Response;
 
     try {
-      response = await this.fetcher(url, {
+      response = await this.fetchWithTimeout(url, {
         headers: {
           Accept: 'application/json'
         }
       });
     } catch (cause) {
+      if (cause instanceof CamaraApiClientError) {
+        throw cause;
+      }
+
       throw new CamaraApiClientError('Nao foi possivel consultar a API da Camara.', {
         kind: 'network',
         url,
@@ -259,6 +267,55 @@ export class CamaraApiClient {
         url,
         cause
       });
+    }
+  }
+
+  private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    if (!Number.isFinite(this.timeoutMs) || this.timeoutMs <= 0) {
+      return this.fetcher(url, init);
+    }
+
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          reject(
+            new CamaraApiClientError('A consulta a API da Camara excedeu o tempo limite.', {
+              kind: 'timeout',
+              url
+            })
+          );
+        }, this.timeoutMs);
+      });
+
+      return await Promise.race([
+        this.fetcher(url, {
+          ...init,
+          signal: controller.signal
+        }),
+        timeoutPromise
+      ]);
+    } catch (cause) {
+      if (cause instanceof CamaraApiClientError) {
+        throw cause;
+      }
+
+      if (controller.signal.aborted) {
+        throw new CamaraApiClientError('A consulta a API da Camara excedeu o tempo limite.', {
+          kind: 'timeout',
+          url,
+          cause
+        });
+      }
+
+      throw cause;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
   }
 

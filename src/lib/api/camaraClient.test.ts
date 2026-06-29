@@ -227,6 +227,26 @@ describe('CamaraApiClient', () => {
     });
   });
 
+  it('represents requests that exceed the configured timeout', async () => {
+    let signal: AbortSignal | undefined;
+    const client = new CamaraApiClient({
+      baseUrl: 'https://dados.example/api/v2',
+      timeoutMs: 1,
+      fetch: async (_input, init) => {
+        signal = init?.signal ?? undefined;
+
+        return new Promise<Response>(() => undefined);
+      }
+    });
+
+    await expect(client.getDeputadoById(1)).rejects.toMatchObject({
+      name: 'CamaraApiClientError',
+      kind: 'timeout',
+      url: 'https://dados.example/api/v2/deputados/1'
+    });
+    expect(signal?.aborted).toBe(true);
+  });
+
   it('represents HTTP failures with status and URL', async () => {
     const client = new CamaraApiClient({
       baseUrl: 'https://dados.example/api/v2',

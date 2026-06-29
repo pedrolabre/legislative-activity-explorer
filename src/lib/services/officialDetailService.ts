@@ -18,7 +18,12 @@ import {
 
 export type OfficialDetailEntity = 'parliamentarian' | 'parliamentarian-proposals' | 'proposal';
 export type OfficialDetailStatus = 'fulfilled' | 'partial' | 'unavailable' | 'failed';
-export type OfficialDetailErrorKind = 'client' | 'mapper' | 'unsupported-source' | 'unknown';
+export type OfficialDetailErrorKind =
+  | 'client'
+  | 'mapper'
+  | 'timeout'
+  | 'unsupported-source'
+  | 'unknown';
 
 export interface OfficialDetailRecoverableError {
   source: LegislativeSource;
@@ -51,8 +56,18 @@ export interface OfficialDetailServiceOptions {
   senadoClient?: OfficialSenadoDetailClient;
 }
 
+function isOfficialClientError(
+  error: unknown
+): error is CamaraApiClientError | SenadoApiClientError {
+  return error instanceof CamaraApiClientError || error instanceof SenadoApiClientError;
+}
+
 function getErrorKind(error: unknown): OfficialDetailErrorKind {
-  if (error instanceof CamaraApiClientError || error instanceof SenadoApiClientError) {
+  if (isOfficialClientError(error)) {
+    if (error.kind === 'timeout') {
+      return 'timeout';
+    }
+
     return 'client';
   }
 
@@ -63,12 +78,47 @@ function getErrorKind(error: unknown): OfficialDetailErrorKind {
   return 'unknown';
 }
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return error.message;
+function getSourceReference(source: LegislativeSource) {
+  return source === 'camara' ? 'da Camara dos Deputados' : 'do Senado Federal';
+}
+
+function getEntityLabel(entity: OfficialDetailEntity) {
+  if (entity === 'parliamentarian') {
+    return 'parlamentar';
   }
 
-  return 'Falha inesperada ao processar detalhe oficial.';
+  if (entity === 'parliamentarian-proposals') {
+    return 'proposicoes associadas';
+  }
+
+  return 'proposicao ou materia';
+}
+
+function getErrorMessage(
+  source: LegislativeSource,
+  entity: OfficialDetailEntity,
+  error: unknown
+) {
+  const sourceReference = getSourceReference(source);
+  const entityLabel = getEntityLabel(entity);
+
+  if (isOfficialClientError(error)) {
+    if (error.kind === 'timeout') {
+      return `A consulta oficial ${sourceReference} excedeu o tempo limite.`;
+    }
+
+    if (error.kind === 'invalid-payload') {
+      return `Dados oficiais de ${entityLabel} ${sourceReference} vieram incompletos nesta consulta.`;
+    }
+
+    return `Dados oficiais de ${entityLabel} ${sourceReference} nao puderam ser carregados neste momento.`;
+  }
+
+  if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
+    return `Dados oficiais de ${entityLabel} ${sourceReference} vieram incompletos nesta consulta.`;
+  }
+
+  return `Falha temporaria ao processar dados oficiais de ${entityLabel}.`;
 }
 
 function toRecoverableError(
@@ -80,7 +130,7 @@ function toRecoverableError(
     source,
     entity,
     kind: getErrorKind(error),
-    message: getErrorMessage(error)
+    message: getErrorMessage(source, entity, error)
   };
 }
 
@@ -173,7 +223,7 @@ export async function getOfficialProposalsByParliamentarian(
         toUnavailableError(
           'senado',
           'parliamentarian-proposals',
-          'Materias associadas a senador nao estao disponiveis neste bloco.'
+          'Dados oficiais de proposicoes associadas do Senado Federal nao estao disponiveis nesta consulta.'
         )
       ]
     };

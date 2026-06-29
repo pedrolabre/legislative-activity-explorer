@@ -53,10 +53,10 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 
 * `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
 * `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
-* `src/lib/api/camaraClient.ts`: Client HTTP base da Câmara dos Deputados, com tipos mínimos de payload, detalhe, busca/listagem de deputados e proposições e erro recuperável.
-* `src/lib/api/camaraClient.test.ts`: Testes unitários do client da Câmara com `fetch` injetado, busca/listagem controlada e sem rede real.
-* `src/lib/api/senadoClient.ts`: Client HTTP base do Senado Federal, com tipos mínimos de payload, suporte a JSON por sufixo ou cabeçalho, lista de senadores, pesquisa de matérias e erro recuperável.
-* `src/lib/api/senadoClient.test.ts`: Testes unitários do client do Senado com `fetch` injetado, envelopes controlados, busca/listagem controlada e sem rede real.
+* `src/lib/api/camaraClient.ts`: Client HTTP base da Câmara dos Deputados, com tipos mínimos de payload, detalhe, busca/listagem de deputados e proposições, timeout configurável e erro recuperável.
+* `src/lib/api/camaraClient.test.ts`: Testes unitários do client da Câmara com `fetch` injetado, timeout controlado, busca/listagem controlada e sem rede real.
+* `src/lib/api/senadoClient.ts`: Client HTTP base do Senado Federal, com tipos mínimos de payload, suporte a JSON por sufixo ou cabeçalho, lista de senadores, pesquisa de matérias, timeout configurável e erro recuperável.
+* `src/lib/api/senadoClient.test.ts`: Testes unitários do client do Senado com `fetch` injetado, timeout controlado, envelopes controlados, busca/listagem controlada e sem rede real.
 * `src/lib/components/about/AboutPrivacyInfo.svelte`: Área informativa pública sobre finalidade do projeto, neutralidade institucional, privacidade, acessibilidade e consulta a fontes oficiais.
 * `src/lib/components/conversation/ConversationBubble.svelte`: Balão visual para mensagens da experiência conversacional.
 * `src/lib/components/conversation/ConversationLog.svelte`: Container conversacional com semântica de log e atualização acessível.
@@ -92,19 +92,19 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/parliamentarianService.test.ts`: Testes unitários do service interno de parlamentar.
 * `src/lib/services/proposalService.ts`: Service interno para proposições associadas e detalhe de proposição baseado nas fixtures existentes.
 * `src/lib/services/proposalService.test.ts`: Testes unitários do service interno de proposições.
-* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis por fonte.
-* `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, falha parcial, ordenação neutra, deduplicação objetiva e sem rede real.
-* `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com estados recuperáveis de indisponibilidade ou falha parcial.
-* `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, dados parciais, indisponibilidade do Senado para matérias associadas e sem rede real.
+* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeouts e dados parciais por fonte.
+* `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha parcial, ordenação neutra, deduplicação objetiva e sem rede real.
+* `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com estados recuperáveis de indisponibilidade, timeout ou falha parcial.
+* `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, indisponibilidade do Senado para matérias associadas e sem rede real.
 * `src/lib/services/searchService.ts`: Service interno de busca inicial baseado nas fixtures existentes e retornando contratos de domínio.
 * `src/lib/services/searchService.test.ts`: Testes unitários do service interno de busca inicial.
 * `src/lib/services/voteService.ts`: Service interno para votações associadas e detalhe de votação baseado nas fixtures existentes.
 * `src/lib/services/voteService.test.ts`: Testes unitários do service interno de votações.
-* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com seleção gradual de detalhes oficiais quando o resultado em memória vem de fonte oficial.
-* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo fixtures e detalhes oficiais controlados sem rede real.
+* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com seleção gradual de detalhes oficiais e mensagens recuperáveis quando o resultado em memória vem de fonte oficial.
+* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo fixtures, detalhes oficiais, dado parcial controlado e sem rede real.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
-* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial local e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
+* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial local, avisos recuperáveis mínimos e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
 * `static/parliamentarians/ana-costa.svg`: Imagem local neutra usada no perfil com foto disponível.
 * `static/robots.txt`: Configuração inicial de indexação.
 

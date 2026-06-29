@@ -180,14 +180,14 @@ function getOfficialDetailNotice(
   }
 
   if (status === 'partial') {
-    return `Parte dos dados oficiais de ${label} nao pode ser processada.`;
+    return `Parte dos dados oficiais de ${label} nao pode ser exibida nesta consulta.`;
   }
 
   if (status === 'unavailable') {
     return `Dados oficiais de ${label} nao estao disponiveis nesta consulta.`;
   }
 
-  return `Nao foi possivel carregar dados oficiais de ${label} nesta consulta.`;
+  return `Dados oficiais de ${label} nao puderam ser carregados neste momento.`;
 }
 
 export function navigateTo(nextState: UIState, options: NavigateToOptions = {}) {
@@ -400,7 +400,7 @@ export function openParliamentarianVotes() {
       selectedProposal: null,
       selectedVote: null,
       errorMessage: isOfficialSelection
-        ? 'Votacoes oficiais nao estao disponiveis neste bloco.'
+        ? 'Dados oficiais de votacoes nao estao disponiveis nesta consulta.'
         : ''
     }
   });
@@ -474,7 +474,8 @@ export function selectVoteById(id: string) {
   navigateTo('BILL_VOTES', {
     updates: {
       selectedProposal: null,
-      selectedVote: vote
+      selectedVote: vote,
+      errorMessage: ''
     }
   });
 

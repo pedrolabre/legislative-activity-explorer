@@ -1,6 +1,7 @@
 export const SENADO_API_BASE_URL = 'https://legis.senado.leg.br/dadosabertos';
+export const SENADO_API_DEFAULT_TIMEOUT_MS = 10000;
 
-export type SenadoApiErrorKind = 'http' | 'network' | 'invalid-payload';
+export type SenadoApiErrorKind = 'http' | 'network' | 'invalid-payload' | 'timeout';
 
 export class SenadoApiClientError extends Error {
   kind: SenadoApiErrorKind;
@@ -32,6 +33,7 @@ export interface SenadoApiClientOptions {
   baseUrl?: string;
   fetch?: SenadoFetch;
   jsonMode?: SenadoJsonMode;
+  timeoutMs?: number;
 }
 
 export interface SenadoIdentificacaoParlamentarPayload {
@@ -147,11 +149,13 @@ export class SenadoApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: SenadoFetch;
   private readonly jsonMode: SenadoJsonMode;
+  private readonly timeoutMs: number;
 
   constructor(options: SenadoApiClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? SENADO_API_BASE_URL;
     this.fetcher = options.fetch ?? getDefaultFetch();
     this.jsonMode = options.jsonMode ?? 'suffix';
+    this.timeoutMs = options.timeoutMs ?? SENADO_API_DEFAULT_TIMEOUT_MS;
   }
 
   async getSenadorById(id: number | string): Promise<SenadoSenadorPayload> {
@@ -215,12 +219,16 @@ export class SenadoApiClient {
     let response: Response;
 
     try {
-      response = await this.fetcher(url, {
+      response = await this.fetchWithTimeout(url, {
         headers: {
           Accept: 'application/json'
         }
       });
     } catch (cause) {
+      if (cause instanceof SenadoApiClientError) {
+        throw cause;
+      }
+
       throw new SenadoApiClientError('Nao foi possivel consultar a API do Senado.', {
         kind: 'network',
         url,
@@ -244,6 +252,55 @@ export class SenadoApiClient {
         url,
         cause
       });
+    }
+  }
+
+  private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    if (!Number.isFinite(this.timeoutMs) || this.timeoutMs <= 0) {
+      return this.fetcher(url, init);
+    }
+
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          reject(
+            new SenadoApiClientError('A consulta a API do Senado excedeu o tempo limite.', {
+              kind: 'timeout',
+              url
+            })
+          );
+        }, this.timeoutMs);
+      });
+
+      return await Promise.race([
+        this.fetcher(url, {
+          ...init,
+          signal: controller.signal
+        }),
+        timeoutPromise
+      ]);
+    } catch (cause) {
+      if (cause instanceof SenadoApiClientError) {
+        throw cause;
+      }
+
+      if (controller.signal.aborted) {
+        throw new SenadoApiClientError('A consulta a API do Senado excedeu o tempo limite.', {
+          kind: 'timeout',
+          url,
+          cause
+        });
+      }
+
+      throw cause;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
   }
 

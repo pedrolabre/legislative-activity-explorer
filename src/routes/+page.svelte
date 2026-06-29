@@ -303,6 +303,7 @@
         )
       : []
   );
+  let recoverableNotice = $derived(chatContext.errorMessage.trim());
 
   function handleSearch(query: string) {
     searchRenderKey += 1;
@@ -342,7 +343,8 @@
       navigateTo(submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME', {
         updates: {
           selectedProposal: null,
-          selectedVote: null
+          selectedVote: null,
+          errorMessage: ''
         },
         recordHistory: false
       });
@@ -352,7 +354,8 @@
     navigateTo('PARLIAMENTARIAN_DETAIL', {
       updates: {
         selectedProposal: null,
-        selectedVote: null
+        selectedVote: null,
+        errorMessage: ''
       },
       recordHistory: false
     });
@@ -363,7 +366,8 @@
       navigateTo(submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME', {
         updates: {
           selectedProposal: null,
-          selectedVote: null
+          selectedVote: null,
+          errorMessage: ''
         },
         recordHistory: false
       });
@@ -373,7 +377,8 @@
     navigateTo('PARLIAMENTARIAN_BILLS', {
       updates: {
         selectedProposal: null,
-        selectedVote: null
+        selectedVote: null,
+        errorMessage: ''
       },
       recordHistory: false
     });
@@ -384,7 +389,8 @@
       navigateTo(submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME', {
         updates: {
           selectedProposal: null,
-          selectedVote: null
+          selectedVote: null,
+          errorMessage: ''
         },
         recordHistory: false
       });
@@ -394,7 +400,8 @@
     navigateTo('PARLIAMENTARIAN_VOTES', {
       updates: {
         selectedProposal: null,
-        selectedVote: null
+        selectedVote: null,
+        errorMessage: ''
       },
       recordHistory: false
     });
@@ -407,7 +414,8 @@
         parliamentarianProposals: [],
         selectedProposal: null,
         selectedVote: null,
-        voteHistory: []
+        voteHistory: [],
+        errorMessage: ''
       },
       recordHistory: false
     });
@@ -526,6 +534,14 @@
             </ConversationBubble>
 
             <ConversationBubble tone="status">
+              {#if recoverableNotice}
+                <p
+                  class="mb-4 border-l-4 border-accent pl-3 text-sm leading-6 text-ink-muted"
+                  role="status"
+                >
+                  {recoverableNotice}
+                </p>
+              {/if}
               <ParliamentarianDetail
                 parliamentarian={selectedParliamentarian}
                 onOpenBills={handleOpenParliamentarianBills}
@@ -543,6 +559,14 @@
             </ConversationBubble>
 
             <ConversationBubble tone="status">
+              {#if recoverableNotice}
+                <p
+                  class="mb-4 border-l-4 border-accent pl-3 text-sm leading-6 text-ink-muted"
+                  role="status"
+                >
+                  {recoverableNotice}
+                </p>
+              {/if}
               <ParliamentarianBills
                 parliamentarianName={selectedParliamentarian.name}
                 bills={selectedParliamentarianBills}
@@ -560,6 +584,14 @@
             </ConversationBubble>
 
             <ConversationBubble tone="status">
+              {#if recoverableNotice}
+                <p
+                  class="mb-4 border-l-4 border-accent pl-3 text-sm leading-6 text-ink-muted"
+                  role="status"
+                >
+                  {recoverableNotice}
+                </p>
+              {/if}
               <ParliamentarianVotes
                 parliamentarianName={selectedParliamentarian.name}
                 votes={selectedParliamentarianVotes}
@@ -577,6 +609,14 @@
             </ConversationBubble>
 
             <ConversationBubble tone="status">
+              {#if recoverableNotice}
+                <p
+                  class="mb-4 border-l-4 border-accent pl-3 text-sm leading-6 text-ink-muted"
+                  role="status"
+                >
+                  {recoverableNotice}
+                </p>
+              {/if}
               <BillDetail
                 bill={selectedBill}
                 parliamentarianName={selectedParliamentarian.name}

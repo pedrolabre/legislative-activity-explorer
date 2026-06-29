@@ -197,7 +197,38 @@ describe('searchOfficialRecords', () => {
         source: 'camara',
         group: 'parliamentarians',
         kind: 'client',
-        message: 'A API da Camara retornou uma falha HTTP.'
+        message: 'A fonte oficial da Camara dos Deputados nao pode ser consultada neste momento.'
+      }
+    ]);
+  });
+
+  it('represents source timeouts with a neutral recoverable message', async () => {
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => {
+        throw new CamaraApiClientError('timeout', {
+          kind: 'timeout'
+        });
+      },
+      getProposicoes: async () => []
+    };
+
+    const result = await searchOfficialRecords('ana', {
+      camaraClient,
+      senadoClient: createEmptySenadoClient()
+    });
+    const camaraReport = result.sources.find((source) => source.source === 'camara');
+
+    expect(camaraReport).toMatchObject({
+      status: 'partial',
+      parliamentarianCount: 0,
+      proposalCount: 0
+    });
+    expect(camaraReport?.errors).toEqual([
+      {
+        source: 'camara',
+        group: 'parliamentarians',
+        kind: 'timeout',
+        message: 'A consulta oficial da Camara dos Deputados excedeu o tempo limite.'
       }
     ]);
   });
@@ -230,7 +261,9 @@ describe('searchOfficialRecords', () => {
     expect(camaraReport?.errors[0]).toMatchObject({
       source: 'camara',
       group: 'parliamentarians',
-      kind: 'mapper'
+      kind: 'mapper',
+      message:
+        'Parte dos dados oficiais de parlamentares da Camara dos Deputados veio incompleta e nao foi exibida.'
     });
   });
 
