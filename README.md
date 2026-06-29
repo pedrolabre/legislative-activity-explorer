@@ -49,10 +49,12 @@ Escolhi SvelteKit porque queria sair da zona de conforto do React e explorar uma
 
 ## Estrutura atual
 
-O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações, detalhe de votação, services internos mockados e área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade.
+O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações, detalhe de votação, services internos mockados, client e mappers isolados da Câmara dos Deputados e área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade.
 
 * `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
 * `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
+* `src/lib/api/camaraClient.ts`: Client HTTP base da Câmara dos Deputados, com tipos mínimos de payload e erro recuperável.
+* `src/lib/api/camaraClient.test.ts`: Testes unitários do client da Câmara com `fetch` injetado e sem rede real.
 * `src/lib/components/about/AboutPrivacyInfo.svelte`: Área informativa pública sobre finalidade do projeto, neutralidade institucional, privacidade, acessibilidade e consulta a fontes oficiais.
 * `src/lib/components/conversation/ConversationBubble.svelte`: Balão visual para mensagens da experiência conversacional.
 * `src/lib/components/conversation/ConversationLog.svelte`: Container conversacional com semântica de log e atualização acessível.
@@ -79,6 +81,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/domain/types.ts`: Contratos centrais para parlamentares, proposições, votações, votos individuais e referências externas.
 * `src/lib/domain/uiState.ts`: Constantes e união dos estados previstos da interface conversacional.
 * `src/lib/domain/votes.ts`: Constantes, união de posições de voto e contagens agregadas.
+* `src/lib/mappers/camaraMapper.ts`: Mapper da Câmara para normalizar deputados e proposições aos contratos de domínio.
+* `src/lib/mappers/camaraMapper.test.ts`: Testes unitários do mapper da Câmara com payloads completos, parciais e inválidos.
 * `src/lib/services/fixtureAdapters.ts`: Adaptadores internos que convertem fixtures controladas para contratos de domínio.
 * `src/lib/services/parliamentarianService.ts`: Service interno para detalhe de parlamentar baseado nas fixtures existentes.
 * `src/lib/services/parliamentarianService.test.ts`: Testes unitários do service interno de parlamentar.
