@@ -43,7 +43,7 @@
   const noReviewedReferencesMessage =
     'Referências revisadas ainda não disponíveis nesta visualização.';
   const officialSummaryFallbackMessage =
-    'Resumo factual revisado ainda não disponível; exibindo a ementa oficial como fallback neutro.';
+    'Resumo factual revisado ainda não disponível. A ementa oficial é exibida nesta seção.';
 
   let hasCompleteReviewedReferences = $derived(
     requiredReferenceTypes.every((type) =>

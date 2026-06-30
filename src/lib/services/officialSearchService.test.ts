@@ -197,7 +197,7 @@ describe('searchOfficialRecords', () => {
         source: 'camara',
         group: 'parliamentarians',
         kind: 'client',
-        message: 'A fonte oficial da Camara dos Deputados nao pode ser consultada neste momento.'
+        message: 'A fonte oficial da Câmara dos Deputados não pode ser consultada neste momento.'
       }
     ]);
   });
@@ -228,7 +228,7 @@ describe('searchOfficialRecords', () => {
         source: 'camara',
         group: 'parliamentarians',
         kind: 'timeout',
-        message: 'A consulta oficial da Camara dos Deputados excedeu o tempo limite.'
+        message: 'A consulta oficial da Câmara dos Deputados excedeu o tempo limite.'
       }
     ]);
   });
@@ -263,7 +263,7 @@ describe('searchOfficialRecords', () => {
       group: 'parliamentarians',
       kind: 'mapper',
       message:
-        'Parte dos dados oficiais de parlamentares da Camara dos Deputados veio incompleta e nao foi exibida.'
+        'Parte dos dados oficiais de parlamentares da Câmara dos Deputados veio incompleta e não foi exibida.'
     });
   });
 

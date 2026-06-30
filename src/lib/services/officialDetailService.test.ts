@@ -151,7 +151,7 @@ describe('getOfficialParliamentarianDetail', () => {
           entity: 'parliamentarian',
           kind: 'client',
           message:
-            'Dados oficiais de parlamentar da Camara dos Deputados nao puderam ser carregados neste momento.'
+            'Dados oficiais de parlamentar da Câmara dos Deputados não puderam ser carregados neste momento.'
         }
       ]
     });
@@ -238,7 +238,7 @@ describe('getOfficialProposalsByParliamentarian', () => {
         entity: 'parliamentarian-proposals',
         kind: 'mapper',
         message:
-          'Dados oficiais de proposicoes associadas da Camara dos Deputados vieram incompletos nesta consulta.'
+          'Dados oficiais de proposições associadas da Câmara dos Deputados vieram incompletos nesta consulta.'
       })
     ]);
   });
@@ -267,7 +267,7 @@ describe('getOfficialProposalsByParliamentarian', () => {
           entity: 'parliamentarian-proposals',
           kind: 'unsupported-source',
           message:
-            'Dados oficiais de proposicoes associadas do Senado Federal nao estao disponiveis nesta consulta.'
+            'Dados oficiais de proposições associadas do Senado Federal não estão disponíveis nesta consulta.'
         }
       ]
     });
@@ -372,7 +372,7 @@ describe('getOfficialProposalDetail', () => {
       id: 'camara-proposicao-1234',
       officialSummary: 'Ementa oficial retornada pela Camara.',
       simplifiedSummary:
-        'A proposicao trata da publicacao de informacoes educacionais por instituicoes publicas de ensino.'
+        'A proposição trata da publicação de informações educacionais por instituições públicas de ensino.'
     });
   });
 

@@ -21,8 +21,8 @@
       Finalidade pública
     </h4>
     <p class="mt-3 text-sm leading-6 text-ink-muted">
-      O projeto tem caráter público, cívico, educativo e acadêmico. A proposta é facilitar a leitura
-      de registros legislativos públicos em uma navegação guiada.
+      O projeto tem caráter público, cívico, educativo e acadêmico. A navegação guiada apresenta
+      registros legislativos públicos.
     </p>
   </section>
 
@@ -57,8 +57,8 @@
       Acessibilidade
     </h4>
     <p class="mt-3 text-sm leading-6 text-ink-muted">
-      A experiência usa navegação guiada, controles nativos, foco visível e área conversacional com
-      atualização anunciada de forma educada por tecnologias assistivas.
+      A interface usa navegação guiada, controles nativos, foco visível e área conversacional com
+      atualização anunciada por tecnologias assistivas.
     </p>
   </section>
 
@@ -67,9 +67,9 @@
       Dados e fontes oficiais
     </h4>
     <p class="mt-3 text-sm leading-6 text-ink-muted">
-      Os conteúdos legislativos devem ser interpretados como dados públicos de referência. Quando
-      houver necessidade de conferência jurídica, administrativa ou jornalística, consulte as fontes
-      oficiais da Câmara dos Deputados, do Senado Federal ou do órgão responsável pelo registro.
+      Os conteúdos legislativos são dados públicos de referência. Para conferência jurídica,
+      administrativa ou jornalística, consulte as fontes oficiais da Câmara dos Deputados, do Senado
+      Federal ou do órgão responsável pelo registro.
     </p>
   </section>
 

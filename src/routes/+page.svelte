@@ -464,8 +464,7 @@
           Consulta pública sobre projetos e votações do Congresso Nacional.
         </p>
         <p>
-          Um explorador de dados construído sobre registros legislativos públicos, com foco em
-          clareza, neutralidade e privacidade.
+          Um explorador de dados construído sobre registros legislativos públicos.
         </p>
       </div>
 

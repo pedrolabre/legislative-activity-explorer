@@ -81,7 +81,7 @@ function getErrorKind(error: unknown): OfficialDetailErrorKind {
 }
 
 function getSourceReference(source: LegislativeSource) {
-  return source === 'camara' ? 'da Camara dos Deputados' : 'do Senado Federal';
+  return source === 'camara' ? 'da Câmara dos Deputados' : 'do Senado Federal';
 }
 
 function getEntityLabel(entity: OfficialDetailEntity) {
@@ -90,10 +90,10 @@ function getEntityLabel(entity: OfficialDetailEntity) {
   }
 
   if (entity === 'parliamentarian-proposals') {
-    return 'proposicoes associadas';
+    return 'proposições associadas';
   }
 
-  return 'proposicao ou materia';
+  return 'proposição ou matéria';
 }
 
 function getErrorMessage(
@@ -113,14 +113,14 @@ function getErrorMessage(
       return `Dados oficiais de ${entityLabel} ${sourceReference} vieram incompletos nesta consulta.`;
     }
 
-    return `Dados oficiais de ${entityLabel} ${sourceReference} nao puderam ser carregados neste momento.`;
+    return `Dados oficiais de ${entityLabel} ${sourceReference} não puderam ser carregados neste momento.`;
   }
 
   if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
     return `Dados oficiais de ${entityLabel} ${sourceReference} vieram incompletos nesta consulta.`;
   }
 
-  return `Falha temporaria ao processar dados oficiais de ${entityLabel}.`;
+  return `Falha temporária ao processar dados oficiais de ${entityLabel}.`;
 }
 
 function toRecoverableError(
@@ -227,7 +227,7 @@ export async function getOfficialProposalsByParliamentarian(
         toUnavailableError(
           'senado',
           'parliamentarian-proposals',
-          'Dados oficiais de proposicoes associadas do Senado Federal nao estao disponiveis nesta consulta.'
+          'Dados oficiais de proposições associadas do Senado Federal não estão disponíveis nesta consulta.'
         )
       ]
     };

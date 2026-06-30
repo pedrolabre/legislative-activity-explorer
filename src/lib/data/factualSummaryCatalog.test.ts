@@ -64,7 +64,7 @@ describe('factualSummaryCatalog', () => {
       checkedAt: '2026-06-29'
     });
     expect(getReviewedFactualSummaryByProposalId('bill-pl-1234-2024')).toContain(
-      'informacoes educacionais'
+      'informações educacionais'
     );
     expect(getReviewedFactualSummaryByProposalId('proposal-sem-resumo')).toBeUndefined();
   });

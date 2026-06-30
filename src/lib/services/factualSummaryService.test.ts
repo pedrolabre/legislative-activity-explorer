@@ -26,7 +26,7 @@ describe('factualSummaryService', () => {
 
     expect(enrichedProposal).not.toBe(proposal);
     expect(enrichedProposal.simplifiedSummary).toBe(
-      'A proposicao trata da publicacao de informacoes educacionais por instituicoes publicas de ensino.'
+      'A proposição trata da publicação de informações educacionais por instituições públicas de ensino.'
     );
     expect(proposal.simplifiedSummary).toBeUndefined();
   });
@@ -38,7 +38,7 @@ describe('factualSummaryService', () => {
     });
 
     expect(getReviewedFactualSummaryForProposal(proposal, 'bill-pl-1234-2024')).toBe(
-      'A proposicao trata da publicacao de informacoes educacionais por instituicoes publicas de ensino.'
+      'A proposição trata da publicação de informações educacionais por instituições públicas de ensino.'
     );
   });
 
@@ -64,7 +64,7 @@ describe('factualSummaryService', () => {
     ]);
 
     expect(proposals.map((proposal) => proposal.simplifiedSummary)).toEqual([
-      'A proposicao trata da publicacao de informacoes educacionais por instituicoes publicas de ensino.',
+      'A proposição trata da publicação de informações educacionais por instituições públicas de ensino.',
       undefined
     ]);
   });

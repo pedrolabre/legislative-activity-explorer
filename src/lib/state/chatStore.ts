@@ -180,14 +180,14 @@ function getOfficialDetailNotice(
   }
 
   if (status === 'partial') {
-    return `Parte dos dados oficiais de ${label} nao pode ser exibida nesta consulta.`;
+    return `Parte dos dados oficiais de ${label} não pode ser exibida nesta consulta.`;
   }
 
   if (status === 'unavailable') {
-    return `Dados oficiais de ${label} nao estao disponiveis nesta consulta.`;
+    return `Dados oficiais de ${label} não estão disponíveis nesta consulta.`;
   }
 
-  return `Dados oficiais de ${label} nao puderam ser carregados neste momento.`;
+  return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;
 }
 
 export function navigateTo(nextState: UIState, options: NavigateToOptions = {}) {
@@ -363,7 +363,7 @@ export async function openParliamentarianBills(options: OpenParliamentarianBills
       loadOfficialProposalsByParliamentarian)(context.selectedParliamentarian);
 
     parliamentarianProposals = officialResult.data;
-    errorMessage = getOfficialDetailNotice(officialResult.status, 'proposicoes associadas');
+    errorMessage = getOfficialDetailNotice(officialResult.status, 'proposições associadas');
   } else {
     const fixtureLoader =
       options.getFixtureProposalsByParliamentarianId ?? getProposalsByParliamentarianId;
@@ -400,7 +400,7 @@ export function openParliamentarianVotes() {
       selectedProposal: null,
       selectedVote: null,
       errorMessage: isOfficialSelection
-        ? 'Dados oficiais de votacoes nao estao disponiveis nesta consulta.'
+        ? 'Dados oficiais de votações não estão disponíveis nesta consulta.'
         : ''
     }
   });
@@ -443,7 +443,7 @@ export async function selectProposalById(id: string, options: SelectProposalById
           relationship: baseProposal.relationship ?? officialResult.data.relationship
         }
       : baseProposal;
-    errorMessage = getOfficialDetailNotice(officialResult.status, 'proposicao');
+    errorMessage = getOfficialDetailNotice(officialResult.status, 'proposição');
   }
 
   navigateTo('BILL_DETAIL', {

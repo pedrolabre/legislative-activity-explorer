@@ -222,11 +222,11 @@ function getErrorKind(error: unknown): OfficialSearchErrorKind {
 }
 
 function getSourceReference(source: LegislativeSource) {
-  return source === 'camara' ? 'da Camara dos Deputados' : 'do Senado Federal';
+  return source === 'camara' ? 'da Câmara dos Deputados' : 'do Senado Federal';
 }
 
 function getGroupLabel(group: OfficialSearchGroup) {
-  return group === 'parliamentarians' ? 'parlamentares' : 'proposicoes ou materias';
+  return group === 'parliamentarians' ? 'parlamentares' : 'proposições ou matérias';
 }
 
 function getErrorMessage(
@@ -246,14 +246,14 @@ function getErrorMessage(
       return `A fonte oficial ${sourceReference} retornou dados incompletos nesta consulta.`;
     }
 
-    return `A fonte oficial ${sourceReference} nao pode ser consultada neste momento.`;
+    return `A fonte oficial ${sourceReference} não pode ser consultada neste momento.`;
   }
 
   if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
-    return `Parte dos dados oficiais de ${groupLabel} ${sourceReference} veio incompleta e nao foi exibida.`;
+    return `Parte dos dados oficiais de ${groupLabel} ${sourceReference} veio incompleta e não foi exibida.`;
   }
 
-  return `Falha temporaria ao processar dados oficiais de ${groupLabel}.`;
+  return `Falha temporária ao processar dados oficiais de ${groupLabel}.`;
 }
 
 function toRecoverableError(

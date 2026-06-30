@@ -297,7 +297,7 @@ describe('chatStore actions', () => {
         id: 'senado-20',
         name: 'Maria Souza'
       },
-      errorMessage: 'Dados oficiais de parlamentar nao puderam ser carregados neste momento.'
+      errorMessage: 'Dados oficiais de parlamentar não puderam ser carregados neste momento.'
     });
   });
 
@@ -399,7 +399,7 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_VOTES',
       voteHistory: [],
-      errorMessage: 'Dados oficiais de votacoes nao estao disponiveis nesta consulta.'
+      errorMessage: 'Dados oficiais de votações não estão disponíveis nesta consulta.'
     });
   });
 
@@ -462,7 +462,7 @@ describe('chatStore actions', () => {
         }
       ],
       errorMessage:
-        'Parte dos dados oficiais de proposicoes associadas nao pode ser exibida nesta consulta.'
+        'Parte dos dados oficiais de proposições associadas não pode ser exibida nesta consulta.'
     });
   });
 

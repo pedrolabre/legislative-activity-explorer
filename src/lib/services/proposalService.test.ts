@@ -34,7 +34,7 @@ describe('getProposalById', () => {
       subject: 'Educação',
       presentedAt: '2024-03-15',
       simplifiedSummary:
-        'A proposicao trata da publicacao de informacoes educacionais por instituicoes publicas de ensino.',
+        'A proposição trata da publicação de informações educacionais por instituições públicas de ensino.',
       officialUrl: 'https://www.camara.leg.br/propostas-legislativas/1234'
     });
     expect(proposal?.references.map((reference) => reference.type)).toEqual([

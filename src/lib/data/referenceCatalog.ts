@@ -11,8 +11,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
     reference: {
       id: 'bill-pl-1234-2024-official-camara',
       type: 'official',
-      title: 'Pagina publica da proposicao PL 1234/2024',
-      publisher: 'Camara dos Deputados',
+      title: 'Página pública da proposição PL 1234/2024',
+      publisher: 'Câmara dos Deputados',
       url: 'https://www.camara.leg.br/propostas-legislativas/1234',
       checkedAt: '2026-06-29'
     }
@@ -22,7 +22,7 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
     reference: {
       id: 'bill-pl-1234-2024-press-politica-g1',
       type: 'press',
-      title: 'Secao de politica nacional',
+      title: 'Seção de política nacional',
       publisher: 'G1',
       url: 'https://g1.globo.com/politica/',
       checkedAt: '2026-06-29'
@@ -33,8 +33,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
     reference: {
       id: 'bill-pl-1234-2024-technical-estudos-camara',
       type: 'technical',
-      title: 'Estudos e notas tecnicas legislativas',
-      publisher: 'Camara dos Deputados',
+      title: 'Estudos e notas técnicas legislativas',
+      publisher: 'Câmara dos Deputados',
       url: 'https://www2.camara.leg.br/atividade-legislativa/estudos-e-notas-tecnicas',
       checkedAt: '2026-06-29'
     }
@@ -44,8 +44,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
     reference: {
       id: 'bill-pl-220-2025-official-camara',
       type: 'official',
-      title: 'Pagina publica da proposicao PL 220/2025',
-      publisher: 'Camara dos Deputados',
+      title: 'Página pública da proposição PL 220/2025',
+      publisher: 'Câmara dos Deputados',
       url: 'https://www.camara.leg.br/propostas-legislativas/220',
       checkedAt: '2026-06-29'
     }
@@ -55,7 +55,7 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
     reference: {
       id: 'bill-pec-45-2023-official-senado',
       type: 'official',
-      title: 'Pagina publica da materia PEC 45/2023',
+      title: 'Página pública da matéria PEC 45/2023',
       publisher: 'Senado Federal',
       url: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/45',
       checkedAt: '2026-06-29'
@@ -66,8 +66,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
     reference: {
       id: 'bill-pec-45-2023-press-agencia-senado',
       type: 'press',
-      title: 'Noticias do Senado Federal',
-      publisher: 'Agencia Senado',
+      title: 'Notícias do Senado Federal',
+      publisher: 'Agência Senado',
       url: 'https://www12.senado.leg.br/noticias',
       checkedAt: '2026-06-29'
     }
