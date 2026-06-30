@@ -150,12 +150,34 @@ function isOfficialParliamentarian(parliamentarian: Parliamentarian) {
   return parliamentarian.id === `${parliamentarian.source}-${parliamentarian.sourceId}`;
 }
 
+function hasOfficialParliamentarianIdPattern(id: string) {
+  return /^camara-(?!proposicao-).+/.test(id) || /^senado-(?!materia-).+/.test(id);
+}
+
 function isOfficialProposal(proposal: LegislativeProposal) {
   if (proposal.source === 'camara') {
     return proposal.id === `camara-proposicao-${proposal.sourceId}`;
   }
 
   return proposal.id === `senado-materia-${proposal.sourceId}`;
+}
+
+function hasOfficialProposalIdPattern(id: string) {
+  return /^camara-proposicao-.+/.test(id) || /^senado-materia-.+/.test(id);
+}
+
+function mergeDefinedFields<T extends object>(base: T, detail: T): T {
+  const merged = { ...base };
+
+  for (const key of Object.keys(detail) as Array<keyof T>) {
+    const value = detail[key];
+
+    if (value !== undefined) {
+      merged[key] = value;
+    }
+  }
+
+  return merged;
 }
 
 function findParliamentarianInContext(context: ChatContext, id: string) {
@@ -308,26 +330,37 @@ export async function selectParliamentarianById(
   options: SelectParliamentarianByIdOptions = {}
 ) {
   const context = get(chatStore);
-  const fixtureLoader = options.getFixtureParliamentarianById ?? getParliamentarianById;
   const contextParliamentarian = findParliamentarianInContext(context, id);
-  const fixtureParliamentarian = fixtureLoader(id);
   const baseParliamentarian =
     contextParliamentarian && isOfficialParliamentarian(contextParliamentarian)
       ? contextParliamentarian
-      : fixtureParliamentarian ?? contextParliamentarian;
+      : null;
 
   if (!baseParliamentarian) {
+    if (hasOfficialParliamentarianIdPattern(id)) {
+      return false;
+    }
+  }
+
+  const controlledParliamentarian =
+    baseParliamentarian ??
+    (options.getFixtureParliamentarianById ?? getParliamentarianById)(id) ??
+    contextParliamentarian;
+
+  if (!controlledParliamentarian) {
     return false;
   }
 
-  let parliamentarian = baseParliamentarian;
+  let parliamentarian = controlledParliamentarian;
   let errorMessage = '';
 
-  if (isOfficialParliamentarian(baseParliamentarian)) {
+  if (isOfficialParliamentarian(controlledParliamentarian)) {
     const officialResult = await (options.getOfficialParliamentarianDetail ??
-      loadOfficialParliamentarianDetail)(baseParliamentarian);
+      loadOfficialParliamentarianDetail)(controlledParliamentarian);
 
-    parliamentarian = officialResult.data ?? baseParliamentarian;
+    parliamentarian = officialResult.data
+      ? mergeDefinedFields(controlledParliamentarian, officialResult.data)
+      : controlledParliamentarian;
     errorMessage = getOfficialDetailNotice(officialResult.status, 'parlamentar');
   }
 
@@ -407,39 +440,48 @@ export function openParliamentarianVotes() {
 
 export async function selectProposalById(id: string, options: SelectProposalByIdOptions = {}) {
   const context = get(chatStore);
-  const selectedParliamentarianId = context.selectedParliamentarian?.id;
+  const selectedParliamentarian = context.selectedParliamentarian;
+  const selectedParliamentarianId = selectedParliamentarian?.id;
 
-  if (!selectedParliamentarianId) {
+  if (!selectedParliamentarian || !selectedParliamentarianId) {
     return false;
   }
 
-  const fixtureLoader =
-    options.getFixtureProposalByIdForParliamentarian ?? getProposalByIdForParliamentarian;
   const contextProposal = findProposalInContext(context, id);
-  const fixtureProposal = fixtureLoader(id, selectedParliamentarianId);
   const baseProposal =
     contextProposal && isOfficialProposal(contextProposal)
       ? contextProposal
-      : fixtureProposal ?? contextProposal;
+      : null;
 
   if (!baseProposal) {
+    if (isOfficialParliamentarian(selectedParliamentarian) || hasOfficialProposalIdPattern(id)) {
+      return false;
+    }
+  }
+
+  const controlledProposal =
+    baseProposal ??
+    (options.getFixtureProposalByIdForParliamentarian ?? getProposalByIdForParliamentarian)(
+      id,
+      selectedParliamentarianId
+    ) ??
+    contextProposal;
+
+  if (!controlledProposal) {
     return false;
   }
 
-  let proposal = baseProposal;
+  let proposal = controlledProposal;
   let errorMessage = '';
 
-  if (isOfficialProposal(baseProposal)) {
+  if (isOfficialProposal(controlledProposal)) {
     const officialResult = await (options.getOfficialProposalDetail ?? loadOfficialProposalDetail)(
-      baseProposal
+      controlledProposal
     );
 
     proposal = officialResult.data
-      ? {
-          ...officialResult.data,
-          relationship: baseProposal.relationship ?? officialResult.data.relationship
-        }
-      : baseProposal;
+      ? mergeDefinedFields(controlledProposal, officialResult.data)
+      : controlledProposal;
     errorMessage = getOfficialDetailNotice(officialResult.status, 'proposição');
   }
 

@@ -281,12 +281,19 @@ describe('chatStore actions', () => {
       })
     });
 
+    const fixtureParliamentarianLoader = vi.fn();
+
     await expect(
       selectParliamentarianById('camara-10', {
+        getFixtureParliamentarianById: fixtureParliamentarianLoader,
         getOfficialParliamentarianDetail: async (parliamentarian) => ({
           status: 'fulfilled',
           data: {
-            ...parliamentarian,
+            id: parliamentarian.id,
+            source: parliamentarian.source,
+            sourceId: parliamentarian.sourceId,
+            name: parliamentarian.name,
+            office: parliamentarian.office,
             fullName: 'Ana Costa Pereira',
             state: 'MG',
             email: 'dep.ana@camara.leg.br'
@@ -296,11 +303,13 @@ describe('chatStore actions', () => {
       })
     ).resolves.toBe(true);
 
+    expect(fixtureParliamentarianLoader).not.toHaveBeenCalled();
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_DETAIL',
       selectedParliamentarian: {
         id: 'camara-10',
         fullName: 'Ana Costa Pereira',
+        party: 'ABC',
         state: 'MG',
         email: 'dep.ana@camara.leg.br'
       },
@@ -326,8 +335,11 @@ describe('chatStore actions', () => {
       })
     });
 
+    const fixtureParliamentarianLoader = vi.fn();
+
     await expect(
       selectParliamentarianById('senado-20', {
+        getFixtureParliamentarianById: fixtureParliamentarianLoader,
         getOfficialParliamentarianDetail: async () => ({
           status: 'failed',
           data: null,
@@ -343,6 +355,7 @@ describe('chatStore actions', () => {
       })
     ).resolves.toBe(true);
 
+    expect(fixtureParliamentarianLoader).not.toHaveBeenCalled();
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_DETAIL',
       selectedParliamentarian: {
@@ -399,12 +412,20 @@ describe('chatStore actions', () => {
       })
     ).resolves.toBe(true);
 
+    const fixtureProposalLoader = vi.fn();
+
     await expect(
       selectProposalById('camara-proposicao-100', {
+        getFixtureProposalByIdForParliamentarian: fixtureProposalLoader,
         getOfficialProposalDetail: async (proposal) => ({
           status: 'fulfilled',
           data: {
-            ...proposal,
+            id: proposal.id,
+            source: proposal.source,
+            sourceId: proposal.sourceId,
+            title: proposal.title,
+            type: proposal.type,
+            references: proposal.references,
             officialSummary: 'Detalhe oficial controlado.'
           },
           errors: []
@@ -412,6 +433,7 @@ describe('chatStore actions', () => {
       })
     ).resolves.toBe(true);
 
+    expect(fixtureProposalLoader).not.toHaveBeenCalled();
     expect(get(chatStore)).toMatchObject({
       currentState: 'BILL_DETAIL',
       selectedProposal: {
@@ -420,6 +442,86 @@ describe('chatStore actions', () => {
         officialSummary: 'Detalhe oficial controlado.'
       },
       errorMessage: ''
+    });
+  });
+
+  it('keeps an official associated proposal as partial detail when official detail fails', async () => {
+    await executeSearch('ana', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'camara-10',
+            source: 'camara',
+            sourceId: '10',
+            name: 'Ana Costa',
+            office: 'Deputado federal'
+          }
+        ],
+        proposals: []
+      })
+    });
+    await selectParliamentarianById('camara-10', {
+      getOfficialParliamentarianDetail: async (parliamentarian) => ({
+        status: 'fulfilled',
+        data: parliamentarian,
+        errors: []
+      })
+    });
+    await openParliamentarianBills({
+      getOfficialProposalsByParliamentarian: async () => ({
+        status: 'fulfilled',
+        data: [
+          {
+            id: 'camara-proposicao-100',
+            source: 'camara',
+            sourceId: '100',
+            title: 'PL 2/2024',
+            type: 'PL',
+            number: '2',
+            year: 2024,
+            subject: 'Transparencia publica',
+            status: 'Em tramitacao',
+            relationship: 'Autoria',
+            officialSummary: 'Ementa parcial vinda da lista oficial.',
+            references: []
+          }
+        ],
+        errors: []
+      })
+    });
+
+    const fixtureProposalLoader = vi.fn();
+
+    await expect(
+      selectProposalById('camara-proposicao-100', {
+        getFixtureProposalByIdForParliamentarian: fixtureProposalLoader,
+        getOfficialProposalDetail: async () => ({
+          status: 'failed',
+          data: null,
+          errors: [
+            {
+              source: 'camara',
+              entity: 'proposal',
+              kind: 'client',
+              message: 'Falha controlada.'
+            }
+          ]
+        })
+      })
+    ).resolves.toBe(true);
+
+    expect(fixtureProposalLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_DETAIL',
+      selectedProposal: {
+        id: 'camara-proposicao-100',
+        subject: 'Transparencia publica',
+        status: 'Em tramitacao',
+        relationship: 'Autoria',
+        officialSummary: 'Ementa parcial vinda da lista oficial.'
+      },
+      errorMessage: 'Dados oficiais de proposição não puderam ser carregados neste momento.'
     });
   });
 
