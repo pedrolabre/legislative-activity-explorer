@@ -10,6 +10,7 @@
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
+    usesOfficialSummaryAsFactualSummary: boolean;
     sources: {
       id: string;
       type: 'official' | 'press' | 'technical';

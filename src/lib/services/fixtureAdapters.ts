@@ -142,7 +142,6 @@ export function mapBillToDomain(bill: ParliamentarianBill): LegislativeProposal 
     relationship: bill.relationship,
     presentedAt: bill.presentedAt,
     officialSummary: bill.officialSummary,
-    simplifiedSummary: bill.factualSummary,
     officialUrl: references.find((reference) => reference.type === 'official')?.url,
     references
   };

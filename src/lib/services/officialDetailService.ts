@@ -15,6 +15,7 @@ import {
   mapSenadoSenadorToParliamentarian,
   SenadoMapperError
 } from '$lib/mappers/senadoMapper';
+import { attachReviewedFactualSummaryToProposal } from './factualSummaryService';
 import { attachEditorialReferencesToProposal } from './referenceService';
 
 export type OfficialDetailEntity = 'parliamentarian' | 'parliamentarian-proposals' | 'proposal';
@@ -169,7 +170,7 @@ function mapCamaraAuthorProposals(payloads: CamaraProposicaoPayload[]) {
 
       proposals.push(
         attachEditorialReferencesToProposal({
-          ...proposal,
+          ...attachReviewedFactualSummaryToProposal(proposal),
           relationship: proposal.relationship ?? 'Autoria'
         })
       );
@@ -270,7 +271,10 @@ export async function getOfficialProposalDetail(
 
     return {
       status: 'fulfilled',
-      data: attachEditorialReferencesToProposal(data, proposal.id),
+      data: attachReviewedFactualSummaryToProposal(
+        attachEditorialReferencesToProposal(data, proposal.id),
+        proposal.id
+      ),
       errors: []
     };
   } catch (error) {

@@ -21,9 +21,7 @@ describe('getBillById', () => {
       identification: 'PL 1234/2024',
       chamber: 'Câmara dos Deputados',
       subject: 'Educação',
-      presentedAt: '2024-03-15',
-      factualSummary:
-        'A proposição trata da publicação de informações educacionais por instituições públicas de ensino.'
+      presentedAt: '2024-03-15'
     });
     expect(bill?.sources).toHaveLength(2);
   });
@@ -37,7 +35,6 @@ describe('getBillById', () => {
       subject: 'Direitos do consumidor'
     });
     expect(bill?.presentedAt).toBeUndefined();
-    expect(bill?.factualSummary).toBeUndefined();
     expect(bill?.sources).toEqual([]);
   });
 

@@ -1,20 +1,23 @@
 import { getBillById, getBillsByParliamentarianId } from '$lib/data/parliamentarianBillFixtures';
 import type { LegislativeProposal } from '$lib/domain';
 import { mapBillToDomain } from './fixtureAdapters';
+import { attachReviewedFactualSummaryToProposal } from './factualSummaryService';
 import { attachEditorialReferencesToProposal } from './referenceService';
 
-function mapBillToProposalWithReferences(bill: Parameters<typeof mapBillToDomain>[0]) {
-  return attachEditorialReferencesToProposal(mapBillToDomain(bill));
+function mapBillToProposalWithEditorialData(bill: Parameters<typeof mapBillToDomain>[0]) {
+  return attachEditorialReferencesToProposal(
+    attachReviewedFactualSummaryToProposal(mapBillToDomain(bill))
+  );
 }
 
 export function getProposalsByParliamentarianId(parliamentarianId: string): LegislativeProposal[] {
-  return getBillsByParliamentarianId(parliamentarianId).map(mapBillToProposalWithReferences);
+  return getBillsByParliamentarianId(parliamentarianId).map(mapBillToProposalWithEditorialData);
 }
 
 export function getProposalById(id: string): LegislativeProposal | null {
   const proposal = getBillById(id);
 
-  return proposal ? mapBillToProposalWithReferences(proposal) : null;
+  return proposal ? mapBillToProposalWithEditorialData(proposal) : null;
 }
 
 export function getProposalByIdForParliamentarian(
@@ -27,5 +30,5 @@ export function getProposalByIdForParliamentarian(
     return null;
   }
 
-  return mapBillToProposalWithReferences(proposal);
+  return mapBillToProposalWithEditorialData(proposal);
 }

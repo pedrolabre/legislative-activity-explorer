@@ -343,6 +343,39 @@ describe('getOfficialProposalDetail', () => {
     ]);
   });
 
+  it('applies reviewed factual summary when the selected proposal id is cataloged', async () => {
+    const result = await getOfficialProposalDetail(
+      {
+        id: 'bill-pl-1234-2024',
+        source: 'camara',
+        sourceId: '1234',
+        title: 'PL 1234/2024',
+        type: 'PL',
+        references: []
+      },
+      {
+        camaraClient: {
+          ...createEmptyCamaraClient(),
+          getProposicaoById: async () => ({
+            id: 1234,
+            siglaTipo: 'PL',
+            numero: 1234,
+            ano: 2024,
+            ementa: 'Ementa oficial retornada pela Camara.'
+          })
+        },
+        senadoClient: createEmptySenadoClient()
+      }
+    );
+
+    expect(result.data).toMatchObject({
+      id: 'camara-proposicao-1234',
+      officialSummary: 'Ementa oficial retornada pela Camara.',
+      simplifiedSummary:
+        'A proposicao trata da publicacao de informacoes educacionais por instituicoes publicas de ensino.'
+    });
+  });
+
   it('loads a Senado matter detail by official source id', async () => {
     const result = await getOfficialProposalDetail(
       {

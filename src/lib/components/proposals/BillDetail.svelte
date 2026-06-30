@@ -10,6 +10,7 @@
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
+    usesOfficialSummaryAsFactualSummary: boolean;
     sources: {
       id: string;
       type: 'official' | 'press' | 'technical';
@@ -41,6 +42,8 @@
     'As três referências revisadas (oficial, imprensa e técnica) ainda não estão completas nesta visualização.';
   const noReviewedReferencesMessage =
     'Referências revisadas ainda não disponíveis nesta visualização.';
+  const officialSummaryFallbackMessage =
+    'Resumo factual revisado ainda não disponível; exibindo a ementa oficial como fallback neutro.';
 
   let hasCompleteReviewedReferences = $derived(
     requiredReferenceTypes.every((type) =>
@@ -133,10 +136,17 @@
     </h4>
     {#if bill.factualSummary}
       <p class="mt-3 text-sm leading-6 text-ink-muted">{bill.factualSummary}</p>
+      {#if bill.usesOfficialSummaryAsFactualSummary}
+        <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
+          <p class="text-sm leading-6 text-ink-muted">
+            {officialSummaryFallbackMessage}
+          </p>
+        </div>
+      {/if}
     {:else}
       <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
-          Resumo factual não disponível nesta visualização.
+          Resumo factual revisado e ementa oficial não disponíveis nesta visualização.
         </p>
       </div>
     {/if}

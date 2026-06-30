@@ -19,7 +19,6 @@ export interface ParliamentarianBill {
   relationship: string;
   presentedAt?: string;
   officialSummary: string;
-  factualSummary?: string;
   sources: BillSource[];
 }
 
@@ -35,8 +34,6 @@ const parliamentarianBills: ParliamentarianBill[] = [
     presentedAt: '2024-03-15',
     officialSummary:
       'Dispõe sobre diretrizes para transparência de informações educacionais em instituições públicas de ensino.',
-    factualSummary:
-      'A proposição trata da publicação de informações educacionais por instituições públicas de ensino.',
     sources: [
       {
         id: 'source-pl-1234-official',
