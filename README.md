@@ -49,8 +49,9 @@ Escolhi SvelteKit porque queria sair da zona de conforto do React e explorar uma
 
 ## Estrutura atual
 
-O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações, detalhe de votação, services internos mockados, clients e mappers isolados da Câmara dos Deputados e do Senado Federal e área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade.
+O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações, detalhe de votação, services internos mockados, clients e mappers isolados da Câmara dos Deputados e do Senado Federal, área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade e um Worker opcional isolado para proxy CORS das APIs oficiais.
 
+* `vite.config.ts`: Configuração do Vite, SvelteKit, Tailwind CSS e Vitest, incluindo testes unitários em `src/` e `workers/`.
 * `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
 * `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
 * `src/lib/api/camaraClient.ts`: Client HTTP base da Câmara dos Deputados, com tipos mínimos de payload, detalhe, busca/listagem de deputados e proposições, timeout configurável e erro recuperável.
@@ -117,6 +118,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial local, avisos recuperáveis mínimos e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
 * `static/parliamentarians/ana-costa.svg`: Imagem local neutra usada no perfil com foto disponível.
 * `static/robots.txt`: Configuração inicial de indexação.
+* `workers/legislativeProxy.ts`: Worker opcional e isolado para proxy CORS seguro das APIs oficiais, limitado a `GET`, `OPTIONS`, allowlist estrita e cache temporário de borda.
+* `workers/legislativeProxy.test.ts`: Testes unitários do Worker com `fetch` e cache injetados, sem rede real.
 
 ---
 
