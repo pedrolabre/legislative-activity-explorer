@@ -1,5 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
+import { searchPublicRecords } from '$lib/services/publicSearchService';
+import { searchInitialRecords } from '$lib/services/searchService';
 import {
   chatStore,
   executeSearch,
@@ -14,8 +16,26 @@ import {
   selectVoteById
 } from './chatStore';
 
+vi.mock('$lib/services/publicSearchService', () => ({
+  searchPublicRecords: vi.fn()
+}));
+
+const mockedSearchPublicRecords = vi.mocked(searchPublicRecords);
+
+function executeFixtureSearch(query: string) {
+  return executeSearch(query, {
+    delayMs: 0,
+    search: searchInitialRecords
+  });
+}
+
 describe('chatStore actions', () => {
   beforeEach(() => {
+    mockedSearchPublicRecords.mockReset();
+    mockedSearchPublicRecords.mockResolvedValue({
+      parliamentarians: [],
+      proposals: []
+    });
     reset();
   });
 
@@ -45,8 +65,40 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toEqual(initialChatContext);
   });
 
+  it('uses public official search as the runtime default', async () => {
+    mockedSearchPublicRecords.mockResolvedValueOnce({
+      parliamentarians: [
+        {
+          id: 'camara-10',
+          source: 'camara',
+          sourceId: '10',
+          name: 'Ana Costa',
+          office: 'Deputado federal'
+        }
+      ],
+      proposals: [],
+      recoverableMessage: 'Parte das fontes oficiais não respondeu nesta consulta.'
+    });
+
+    await executeSearch(' ana ', { delayMs: 0 });
+
+    expect(mockedSearchPublicRecords).toHaveBeenCalledWith('ana');
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'SEARCH_RESULTS',
+      lastQuery: 'ana',
+      parliamentariansFound: [
+        {
+          id: 'camara-10',
+          name: 'Ana Costa'
+        }
+      ],
+      proposalsFound: [],
+      errorMessage: 'Parte das fontes oficiais não respondeu nesta consulta.'
+    });
+  });
+
   it('routes a search with no matches to an empty result state', async () => {
-    await executeSearch('termo sem fixture', { delayMs: 0 });
+    await executeFixtureSearch('termo sem fixture');
 
     expect(get(chatStore)).toMatchObject({
       currentState: 'SEARCH_RESULTS',
@@ -64,7 +116,7 @@ describe('chatStore actions', () => {
   });
 
   it('routes a shared term search to multiple result groups', async () => {
-    await executeSearch('educacao', { delayMs: 0 });
+    await executeFixtureSearch('educacao');
 
     const context = get(chatStore);
 
@@ -80,7 +132,7 @@ describe('chatStore actions', () => {
   });
 
   it('routes a parliamentarian search without persistence', async () => {
-    await executeSearch('ana', { delayMs: 0 });
+    await executeFixtureSearch('ana');
 
     const context = get(chatStore);
 
@@ -94,7 +146,7 @@ describe('chatStore actions', () => {
   });
 
   it('routes a proposal search without selecting a proposal automatically', async () => {
-    await executeSearch('PEC 45', { delayMs: 0 });
+    await executeFixtureSearch('PEC 45');
 
     const context = get(chatStore);
 
@@ -106,7 +158,7 @@ describe('chatStore actions', () => {
   });
 
   it('resets search results and selections to a new initial context', async () => {
-    await executeSearch('ana', { delayMs: 0 });
+    await executeFixtureSearch('ana');
     await selectParliamentarianById('parliamentarian-ana-costa');
     await openParliamentarianBills();
     await selectProposalById('bill-pl-1234-2024');
@@ -138,7 +190,7 @@ describe('chatStore actions', () => {
   });
 
   it('selects a parliamentarian and a proposal through guided actions', async () => {
-    await executeSearch('ana', { delayMs: 0 });
+    await executeFixtureSearch('ana');
 
     await expect(selectParliamentarianById('parliamentarian-ana-costa')).resolves.toBe(true);
 
@@ -177,7 +229,7 @@ describe('chatStore actions', () => {
   });
 
   it('returns through the deterministic history stack', async () => {
-    await executeSearch('ana', { delayMs: 0 });
+    await executeFixtureSearch('ana');
 
     await selectParliamentarianById('parliamentarian-ana-costa');
     await openParliamentarianBills();
@@ -467,7 +519,7 @@ describe('chatStore actions', () => {
   });
 
   it('opens associated votes and selects a vote through guided actions', async () => {
-    await executeSearch('ana', { delayMs: 0 });
+    await executeFixtureSearch('ana');
 
     await expect(selectParliamentarianById('parliamentarian-ana-costa')).resolves.toBe(true);
     expect(openParliamentarianVotes()).toBe(true);

@@ -506,13 +506,23 @@
 
           {#if searchState === 'SEARCHING'}
             <ConversationBubble tone="status">
-              <p class="font-semibold" role="status">Verificando correspondências nesta página.</p>
+              <p class="font-semibold" role="status">
+                Consultando registros oficiais disponíveis.
+              </p>
               <p class="mt-2 text-sm leading-6 text-ink-muted">
-                Nenhum dado oficial foi consultado.
+                Aguarde enquanto a busca consulta as fontes públicas legislativas.
               </p>
             </ConversationBubble>
           {:else if searchState === 'SEARCH_RESULTS'}
             <ConversationBubble tone="status">
+              {#if recoverableNotice}
+                <p
+                  class="mb-4 border-l-4 border-accent pl-3 text-sm leading-6 text-ink-muted"
+                  role="status"
+                >
+                  {recoverableNotice}
+                </p>
+              {/if}
               <SearchResults
                 query={submittedSearch.query}
                 results={searchResults}

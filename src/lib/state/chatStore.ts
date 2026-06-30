@@ -12,11 +12,8 @@ import {
   getProposalByIdForParliamentarian,
   getProposalsByParliamentarianId
 } from '$lib/services/proposalService';
-import {
-  emptySearchResults,
-  searchInitialRecords,
-  type SearchResults
-} from '$lib/services/searchService';
+import { searchPublicRecords } from '$lib/services/publicSearchService';
+import { emptySearchResults, type SearchResults } from '$lib/services/searchService';
 import {
   getVoteByIdForParliamentarian,
   getVotesByParliamentarianId
@@ -127,7 +124,7 @@ function applySearchResults(context: ChatContext, query: string, results: Search
     selectedProposal: null,
     selectedVote: null,
     voteHistory: [],
-    errorMessage: ''
+    errorMessage: results.recoverableMessage?.trim() ?? ''
   };
 
   if (context.currentState === 'ABOUT') {
@@ -239,7 +236,7 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
 
   cancelPendingSearch();
   const currentSearchId = ++searchSequence;
-  const search = options.search ?? searchInitialRecords;
+  const search = options.search ?? searchPublicRecords;
   const delayMs = options.delayMs ?? defaultSearchDelayMs;
 
   chatStore.update((context) => ({

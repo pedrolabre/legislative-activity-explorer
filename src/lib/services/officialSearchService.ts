@@ -21,6 +21,10 @@ import {
   mapSenadoSenadorToParliamentarian,
   SenadoMapperError
 } from '$lib/mappers/senadoMapper';
+import {
+  createOfficialApiClients,
+  type OfficialApiClientFactoryOptions
+} from './officialApiClientFactory';
 
 export type OfficialSearchGroup = 'parliamentarians' | 'proposals';
 export type OfficialSearchSourceStatus = 'fulfilled' | 'partial' | 'failed';
@@ -59,7 +63,7 @@ export type OfficialSenadoSearchClient = Pick<
   'getSenadoresAtuais' | 'searchMaterias'
 >;
 
-export interface OfficialSearchServiceOptions {
+export interface OfficialSearchServiceOptions extends OfficialApiClientFactoryOptions {
   camaraClient?: OfficialCamaraSearchClient;
   senadoClient?: OfficialSenadoSearchClient;
   limits?: Partial<OfficialSearchLimits>;
@@ -340,6 +344,22 @@ function buildSourceReport(result: SourceSearchResult): OfficialSearchSourceRepo
   };
 }
 
+function resolveOfficialSearchClients(options: OfficialSearchServiceOptions) {
+  if (options.camaraClient && options.senadoClient) {
+    return {
+      camaraClient: options.camaraClient,
+      senadoClient: options.senadoClient
+    };
+  }
+
+  const configuredClients = createOfficialApiClients(options);
+
+  return {
+    camaraClient: options.camaraClient ?? configuredClients.camaraClient,
+    senadoClient: options.senadoClient ?? configuredClients.senadoClient
+  };
+}
+
 async function searchCamaraSource(
   query: string,
   client: OfficialCamaraSearchClient,
@@ -430,8 +450,7 @@ export async function searchOfficialRecords(
     ...defaultLimits,
     ...options.limits
   };
-  const camaraClient = options.camaraClient ?? new CamaraApiClient();
-  const senadoClient = options.senadoClient ?? new SenadoApiClient();
+  const { camaraClient, senadoClient } = resolveOfficialSearchClients(options);
   const sourceResults = await Promise.all([
     searchCamaraSource(normalizedQuery, camaraClient, limits),
     searchSenadoSource(normalizedQuery, senadoClient, limits)

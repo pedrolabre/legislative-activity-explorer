@@ -16,6 +16,10 @@ import {
   SenadoMapperError
 } from '$lib/mappers/senadoMapper';
 import { attachReviewedFactualSummaryToProposal } from './factualSummaryService';
+import {
+  createOfficialApiClients,
+  type OfficialApiClientFactoryOptions
+} from './officialApiClientFactory';
 import { attachEditorialReferencesToProposal } from './referenceService';
 
 export type OfficialDetailEntity = 'parliamentarian' | 'parliamentarian-proposals' | 'proposal';
@@ -53,7 +57,7 @@ export type OfficialCamaraDetailClient = Pick<
 
 export type OfficialSenadoDetailClient = Pick<SenadoApiClient, 'getSenadorById' | 'getMateriaById'>;
 
-export interface OfficialDetailServiceOptions {
+export interface OfficialDetailServiceOptions extends OfficialApiClientFactoryOptions {
   camaraClient?: OfficialCamaraDetailClient;
   senadoClient?: OfficialSenadoDetailClient;
 }
@@ -149,6 +153,14 @@ function toUnavailableError(
   };
 }
 
+function getConfiguredCamaraDetailClient(options: OfficialDetailServiceOptions) {
+  return options.camaraClient ?? createOfficialApiClients(options).camaraClient;
+}
+
+function getConfiguredSenadoDetailClient(options: OfficialDetailServiceOptions) {
+  return options.senadoClient ?? createOfficialApiClients(options).senadoClient;
+}
+
 function getListStatus<T>(
   items: T[],
   errors: OfficialDetailRecoverableError[]
@@ -195,10 +207,10 @@ export async function getOfficialParliamentarianDetail(
     const data =
       source === 'camara'
         ? mapCamaraDeputadoToParliamentarian(
-            await (options.camaraClient ?? new CamaraApiClient()).getDeputadoById(sourceId)
+            await getConfiguredCamaraDetailClient(options).getDeputadoById(sourceId)
           )
         : mapSenadoSenadorToParliamentarian(
-            await (options.senadoClient ?? new SenadoApiClient()).getSenadorById(sourceId)
+            await getConfiguredSenadoDetailClient(options).getSenadorById(sourceId)
           );
 
     return {
@@ -234,9 +246,9 @@ export async function getOfficialProposalsByParliamentarian(
   }
 
   try {
-    const payloads = await (
-      options.camaraClient ?? new CamaraApiClient()
-    ).getProposicoesByDeputadoAutor(parliamentarian.sourceId);
+    const payloads = await getConfiguredCamaraDetailClient(options).getProposicoesByDeputadoAutor(
+      parliamentarian.sourceId
+    );
     const { proposals, errors } = mapCamaraAuthorProposals(payloads);
 
     return {
@@ -263,10 +275,10 @@ export async function getOfficialProposalDetail(
     const data =
       source === 'camara'
         ? mapCamaraProposicaoToLegislativeProposal(
-            await (options.camaraClient ?? new CamaraApiClient()).getProposicaoById(sourceId)
+            await getConfiguredCamaraDetailClient(options).getProposicaoById(sourceId)
           )
         : mapSenadoMateriaToLegislativeProposal(
-            await (options.senadoClient ?? new SenadoApiClient()).getMateriaById(sourceId)
+            await getConfiguredSenadoDetailClient(options).getMateriaById(sourceId)
           );
 
     return {

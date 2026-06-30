@@ -45,7 +45,7 @@
         {resultCountLabel} para <span class="font-medium text-ink">{query}</span>.
       </p>
       <p class="mt-2 text-sm leading-6 text-ink-muted">
-        Dados de exemplo nesta página, sem consulta a bases oficiais.
+        Registros exibidos conforme retorno das fontes oficiais disponíveis.
       </p>
     {:else}
       <p class="mt-1 break-words text-sm leading-6 text-ink-muted">

@@ -103,21 +103,25 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/parliamentarianService.test.ts`: Testes unitários do service interno de parlamentar.
 * `src/lib/services/proposalService.ts`: Service interno para proposições associadas e detalhe de proposição baseado nas fixtures existentes, com combinação de referências editoriais revisadas.
 * `src/lib/services/proposalService.test.ts`: Testes unitários do service interno de proposições e das referências associadas.
-* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeouts e dados parciais por fonte.
+* `src/lib/services/officialApiClientFactory.ts`: Factory testável dos clients oficiais, conectando chamadas diretas ou roteamento por proxy público opcional sem segredos no frontend.
+* `src/lib/services/officialApiClientFactory.test.ts`: Testes unitários da factory de clients oficiais com `fetch` injetado, modo direto, modo proxy e sem rede real.
+* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeouts, dados parciais por fonte e clients configurados por direct/proxy.
 * `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha parcial, ordenação neutra, deduplicação objetiva e sem rede real.
-* `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com estados recuperáveis de indisponibilidade, timeout ou falha parcial.
+* `src/lib/services/publicSearchService.ts`: Adapter da busca pública padrão, convertendo `officialSearchService` para o contrato da store e preservando mensagens recuperáveis de falhas oficiais parciais ou completas.
+* `src/lib/services/publicSearchService.test.ts`: Testes unitários do adapter de busca pública oficial com clients controlados, falha parcial, falha completa e sem fallback para fixtures.
+* `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com clients configurados por direct/proxy e estados recuperáveis de indisponibilidade, timeout ou falha parcial.
 * `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, indisponibilidade do Senado para matérias associadas e sem rede real.
 * `src/lib/services/referenceService.ts`: Service interno para combinar referências existentes da proposição com o catálogo revisado e identificar cobertura editorial incompleta.
 * `src/lib/services/referenceService.test.ts`: Testes unitários da combinação de referências, prioridade do catálogo e fallback de cobertura revisada incompleta.
-* `src/lib/services/searchService.ts`: Service interno de busca inicial baseado nas fixtures existentes e retornando contratos de domínio.
+* `src/lib/services/searchService.ts`: Service interno de busca inicial por fixtures, mantido como caminho explícito e injetável para testes ou desenvolvimento controlado.
 * `src/lib/services/searchService.test.ts`: Testes unitários do service interno de busca inicial.
 * `src/lib/services/voteService.ts`: Service interno para votações associadas e detalhe de votação baseado nas fixtures existentes.
 * `src/lib/services/voteService.test.ts`: Testes unitários do service interno de votações.
-* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com seleção gradual de detalhes oficiais e mensagens recuperáveis quando o resultado em memória vem de fonte oficial.
-* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo fixtures, detalhes oficiais, dado parcial controlado e sem rede real.
+* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com busca pública oficial como caminho padrão, fixtures apenas por injeção explícita, seleção gradual de detalhes oficiais e mensagens recuperáveis quando fontes oficiais retornam dados parciais ou falham.
+* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo busca oficial padrão mockada, fixtures injetadas explicitamente, detalhes oficiais, dado parcial controlado e sem rede real.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
-* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial local, avisos recuperáveis mínimos e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
+* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial oficial, avisos recuperáveis mínimos e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
 * `static/_headers`: Cabeçalhos estáticos mínimos para Cloudflare Pages, sem CSP dependente de domínio futuro e sem cache persistente de navegador criado pela aplicação.
 * `static/parliamentarians/ana-costa.svg`: Imagem local neutra usada no perfil com foto disponível.
 * `static/robots.txt`: Configuração inicial de indexação.
