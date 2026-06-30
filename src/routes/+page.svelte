@@ -521,10 +521,12 @@
             </ConversationBubble>
           {:else if searchState === 'ERROR'}
             <ConversationBubble tone="status">
-              <p class="font-semibold" role="status">A busca não foi concluída.</p>
-              <p class="mt-2 text-sm leading-6 text-ink-muted">
-                {chatContext.errorMessage}
-              </p>
+              <div role="alert">
+                <p class="font-semibold">A busca não foi concluída.</p>
+                <p class="mt-2 text-sm leading-6 text-ink-muted">
+                  {chatContext.errorMessage}
+                </p>
+              </div>
               <button
                 type="button"
                 class="mt-4 min-h-12 rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"

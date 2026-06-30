@@ -145,6 +145,9 @@
         <p class="text-sm leading-6 text-ink-muted">
           Contagens agregadas não disponíveis nesta visualização.
         </p>
+        <p class="mt-2 text-sm leading-6 text-ink-muted">
+          Você pode voltar às votações ou iniciar uma nova consulta.
+        </p>
       </div>
     {/if}
   </section>
@@ -178,6 +181,9 @@
       <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
           Lista nominal não disponível nesta visualização.
+        </p>
+        <p class="mt-2 text-sm leading-6 text-ink-muted">
+          Você pode voltar às votações ou iniciar uma nova consulta.
         </p>
       </div>
     {/if}
