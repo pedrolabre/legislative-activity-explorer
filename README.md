@@ -56,6 +56,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
 * `src/lib/api/camaraClient.ts`: Client HTTP base da Câmara dos Deputados, com tipos mínimos de payload, detalhe, busca/listagem de deputados e proposições, timeout configurável e erro recuperável.
 * `src/lib/api/camaraClient.test.ts`: Testes unitários do client da Câmara com `fetch` injetado, timeout controlado, busca/listagem controlada e sem rede real.
+* `src/lib/api/legislativeDataSourceConfig.ts`: Configuracao publica e testavel para escolher chamadas diretas as APIs oficiais ou roteamento futuro por Worker opcional, sem segredos no frontend.
+* `src/lib/api/legislativeDataSourceConfig.test.ts`: Testes unitarios da configuracao de fonte de dados, cobrindo fallback direto, URL publica de proxy, rejeicao de configuracao insegura e `fetch` injetado sem rede real.
 * `src/lib/api/senadoClient.ts`: Client HTTP base do Senado Federal, com tipos mínimos de payload, suporte a JSON por sufixo ou cabeçalho, lista de senadores, pesquisa de matérias, timeout configurável e erro recuperável.
 * `src/lib/api/senadoClient.test.ts`: Testes unitários do client do Senado com `fetch` injetado, timeout controlado, envelopes controlados, busca/listagem controlada e sem rede real.
 * `src/lib/components/about/AboutPrivacyInfo.svelte`: Área informativa pública sobre finalidade do projeto, neutralidade institucional, privacidade, acessibilidade e consulta a fontes oficiais.
