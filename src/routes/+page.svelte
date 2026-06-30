@@ -448,7 +448,7 @@
 
 <main id="conteudo" tabindex="-1" class="min-h-dvh px-page py-section">
   <section
-    class="mx-auto grid min-h-[calc(100dvh-6rem)] w-full max-w-shell content-center gap-10 border-t-4 border-civic pt-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(22rem,1.1fr)] lg:items-center"
+    class="mx-auto grid min-h-[calc(100dvh-var(--spacing-section)-var(--spacing-section))] w-full max-w-shell content-center gap-10 border-t-4 border-civic pt-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(22rem,1.1fr)] lg:items-center"
     aria-labelledby="home-title"
   >
     <div class="max-w-readable">

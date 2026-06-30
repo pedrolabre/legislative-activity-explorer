@@ -52,6 +52,10 @@
       <img
         src={parliamentarian.photoUrl}
         alt={`Foto de ${parliamentarian.name}`}
+        width="112"
+        height="112"
+        loading="lazy"
+        decoding="async"
         class="h-28 w-28 rounded-ui border border-border bg-surface object-cover"
       />
     {:else}
@@ -154,7 +158,7 @@
     </div>
   </section>
 
-  <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">
+  <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:flex-wrap">
     <button
       type="button"
       class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"

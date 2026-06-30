@@ -102,7 +102,7 @@
                   <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">
                     Votação
                   </p>
-                  <h5 class="mt-2 text-base font-semibold leading-6 text-ink">
+                  <h5 class="mt-2 break-words text-base font-semibold leading-6 text-ink">
                     {vote.billIdentification}
                   </h5>
                 </div>
@@ -146,7 +146,7 @@
     </section>
   {/if}
 
-  <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row">
+  <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:flex-wrap">
     <button
       type="button"
       class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"

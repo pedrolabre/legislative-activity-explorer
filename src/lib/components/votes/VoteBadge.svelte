@@ -8,7 +8,7 @@
 </script>
 
 <span
-  class={`inline-flex min-h-8 items-center rounded-ui border px-3 py-1 text-xs font-bold uppercase leading-5 tracking-normal ${getVotePresentationClass(vote)}`}
+  class={`inline-flex min-h-8 shrink-0 items-center whitespace-nowrap rounded-ui border px-3 py-1 text-xs font-bold uppercase leading-5 tracking-normal ${getVotePresentationClass(vote)}`}
 >
   {vote}
 </span>
