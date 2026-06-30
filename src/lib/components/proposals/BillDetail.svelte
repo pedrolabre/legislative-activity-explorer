@@ -168,7 +168,7 @@
                 class="mt-2 inline-block break-words text-sm font-bold leading-6 text-accent underline-offset-4 hover:underline"
                 href={source.url}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
               >
                 {source.title}<span class="sr-only"> abre em nova aba</span>
               </a>

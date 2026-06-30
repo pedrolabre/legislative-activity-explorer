@@ -129,6 +129,7 @@
         <button
           type="button"
           class="min-h-12 w-full rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
+          aria-label={`Abrir proposições associadas de ${parliamentarian.name}`}
           onclick={onOpenBills}
         >
           Proposições
@@ -141,6 +142,7 @@
         <button
           type="button"
           class="min-h-12 w-full rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
+          aria-label={`Abrir votações associadas de ${parliamentarian.name}`}
           onclick={onOpenVotes}
         >
           Votações

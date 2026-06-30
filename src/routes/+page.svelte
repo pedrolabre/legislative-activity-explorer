@@ -446,7 +446,7 @@
   <title>O que o parlamentar fez</title>
 </svelte:head>
 
-<main id="conteudo" class="min-h-dvh px-page py-section">
+<main id="conteudo" tabindex="-1" class="min-h-dvh px-page py-section">
   <section
     class="mx-auto grid min-h-[calc(100dvh-6rem)] w-full max-w-shell content-center gap-10 border-t-4 border-civic pt-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(22rem,1.1fr)] lg:items-center"
     aria-labelledby="home-title"
@@ -483,7 +483,7 @@
       </div>
     </div>
 
-    <ConversationLog title="Conversa de consulta">
+    <ConversationLog title="Conversa de consulta" busy={searchState === 'SEARCHING'}>
       <ConversationBubble>
         <p>Informe um parlamentar ou uma proposição para iniciar a consulta.</p>
       </ConversationBubble>
