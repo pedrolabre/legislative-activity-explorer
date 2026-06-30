@@ -69,6 +69,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/components/votes/BillVotes.svelte`: Detalhe factual de votação com identificação da proposição, resultado quando disponível, contagens agregadas e lista nominal.
 * `src/lib/components/votes/ParliamentarianVotes.svelte`: Lista factual de votações associadas a parlamentar, com dados parciais tratados de forma neutra.
 * `src/lib/components/votes/VoteBadge.svelte`: Rótulo visual neutro e acessível para votos `SIM`, `NÃO`, `ABSTENÇÃO` e `AUSENTE`.
+* `src/lib/components/votes/votePresentation.ts`: Politica visual auditada para labels e classes neutras de votos.
+* `src/lib/components/votes/votePresentation.test.ts`: Testes unitarios da politica visual de votos, cobrindo labels oficiais e ausencia de tokens verde/vermelho.
 * `src/lib/data/initialSearchFixtures.ts`: Dados de exemplo controlados para validar a busca inicial sem APIs oficiais.
 * `src/lib/data/initialSearchFixtures.test.ts`: Testes unitários da busca inicial local.
 * `src/lib/data/parliamentarianBillFixtures.ts`: Dados de exemplo controlados para proposições associadas e detalhe de proposição.
