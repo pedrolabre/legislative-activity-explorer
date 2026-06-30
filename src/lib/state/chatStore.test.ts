@@ -390,8 +390,11 @@ describe('chatStore actions', () => {
       })
     });
 
+    const fixtureProposalsLoader = vi.fn();
+
     await expect(
       openParliamentarianBills({
+        getFixtureProposalsByParliamentarianId: fixtureProposalsLoader,
         getOfficialProposalsByParliamentarian: async () => ({
           status: 'fulfilled',
           data: [
@@ -411,6 +414,8 @@ describe('chatStore actions', () => {
         })
       })
     ).resolves.toBe(true);
+
+    expect(fixtureProposalsLoader).not.toHaveBeenCalled();
 
     const fixtureProposalLoader = vi.fn();
 
@@ -581,8 +586,11 @@ describe('chatStore actions', () => {
       })
     });
 
+    const fixtureProposalsLoader = vi.fn();
+
     await expect(
       openParliamentarianBills({
+        getFixtureProposalsByParliamentarianId: fixtureProposalsLoader,
         getOfficialProposalsByParliamentarian: async () => ({
           status: 'partial',
           data: [
@@ -607,6 +615,7 @@ describe('chatStore actions', () => {
       })
     ).resolves.toBe(true);
 
+    expect(fixtureProposalsLoader).not.toHaveBeenCalled();
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_BILLS',
       parliamentarianProposals: [
@@ -617,6 +626,113 @@ describe('chatStore actions', () => {
       ],
       errorMessage:
         'Parte dos dados oficiais de proposições associadas não pode ser exibida nesta consulta.'
+    });
+  });
+
+  it('does not load fixture proposals when official associated proposals fail', async () => {
+    await executeSearch('ana', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'camara-10',
+            source: 'camara',
+            sourceId: '10',
+            name: 'Ana Costa',
+            office: 'Deputado federal'
+          }
+        ],
+        proposals: []
+      })
+    });
+    await selectParliamentarianById('camara-10', {
+      getOfficialParliamentarianDetail: async (parliamentarian) => ({
+        status: 'fulfilled',
+        data: parliamentarian,
+        errors: []
+      })
+    });
+
+    const fixtureProposalsLoader = vi.fn();
+
+    await expect(
+      openParliamentarianBills({
+        getFixtureProposalsByParliamentarianId: fixtureProposalsLoader,
+        getOfficialProposalsByParliamentarian: async () => ({
+          status: 'failed',
+          data: [],
+          errors: [
+            {
+              source: 'camara',
+              entity: 'parliamentarian-proposals',
+              kind: 'client',
+              message: 'Falha oficial controlada.'
+            }
+          ]
+        })
+      })
+    ).resolves.toBe(true);
+
+    expect(fixtureProposalsLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_BILLS',
+      parliamentarianProposals: [],
+      errorMessage:
+        'Dados oficiais de proposições associadas não puderam ser carregados neste momento.'
+    });
+  });
+
+  it('represents official Senado associated proposals as unavailable without fixture fallback', async () => {
+    await executeSearch('maria', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'senado-20',
+            source: 'senado',
+            sourceId: '20',
+            name: 'Maria Souza',
+            office: 'Senador'
+          }
+        ],
+        proposals: []
+      })
+    });
+    await selectParliamentarianById('senado-20', {
+      getOfficialParliamentarianDetail: async (parliamentarian) => ({
+        status: 'fulfilled',
+        data: parliamentarian,
+        errors: []
+      })
+    });
+
+    const fixtureProposalsLoader = vi.fn();
+
+    await expect(
+      openParliamentarianBills({
+        getFixtureProposalsByParliamentarianId: fixtureProposalsLoader,
+        getOfficialProposalsByParliamentarian: async () => ({
+          status: 'unavailable',
+          data: [],
+          errors: [
+            {
+              source: 'senado',
+              entity: 'parliamentarian-proposals',
+              kind: 'unsupported-source',
+              message:
+                'Dados oficiais de proposições associadas do Senado Federal não estão disponíveis nesta consulta.'
+            }
+          ]
+        })
+      })
+    ).resolves.toBe(true);
+
+    expect(fixtureProposalsLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_BILLS',
+      parliamentarianProposals: [],
+      errorMessage:
+        'Dados oficiais de proposições associadas do Senado Federal não estão disponíveis nesta consulta.'
     });
   });
 

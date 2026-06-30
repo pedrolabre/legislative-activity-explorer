@@ -4,6 +4,7 @@ import {
   getOfficialParliamentarianDetail as loadOfficialParliamentarianDetail,
   getOfficialProposalDetail as loadOfficialProposalDetail,
   getOfficialProposalsByParliamentarian as loadOfficialProposalsByParliamentarian,
+  type OfficialDetailRecoverableError,
   type OfficialDetailListResult,
   type OfficialDetailResult
 } from '$lib/services/officialDetailService';
@@ -192,7 +193,8 @@ function findProposalInContext(context: ChatContext, id: string) {
 
 function getOfficialDetailNotice(
   status: OfficialDetailResult<unknown>['status'] | OfficialDetailListResult<unknown>['status'],
-  label: string
+  label: string,
+  errors: OfficialDetailRecoverableError[] = []
 ) {
   if (status === 'fulfilled') {
     return '';
@@ -203,7 +205,9 @@ function getOfficialDetailNotice(
   }
 
   if (status === 'unavailable') {
-    return `Dados oficiais de ${label} não estão disponíveis nesta consulta.`;
+    const unavailableMessage = errors.find((error) => error.message.trim())?.message.trim();
+
+    return unavailableMessage ?? `Dados oficiais de ${label} não estão disponíveis nesta consulta.`;
   }
 
   return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;
@@ -393,7 +397,11 @@ export async function openParliamentarianBills(options: OpenParliamentarianBills
       loadOfficialProposalsByParliamentarian)(context.selectedParliamentarian);
 
     parliamentarianProposals = officialResult.data;
-    errorMessage = getOfficialDetailNotice(officialResult.status, 'proposições associadas');
+    errorMessage = getOfficialDetailNotice(
+      officialResult.status,
+      'proposições associadas',
+      officialResult.errors
+    );
   } else {
     const fixtureLoader =
       options.getFixtureProposalsByParliamentarianId ?? getProposalsByParliamentarianId;

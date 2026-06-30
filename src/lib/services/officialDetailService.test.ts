@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CamaraApiClientError } from '$lib/api/camaraClient';
 import { SenadoApiClientError } from '$lib/api/senadoClient';
 import {
@@ -244,6 +244,13 @@ describe('getOfficialProposalsByParliamentarian', () => {
   });
 
   it('represents Senado associated matters as unavailable in this block', async () => {
+    const camaraAuthorLoader = vi.fn(async () => []);
+    const senadoMatterLoader = vi.fn(async () => ({
+      IdentificacaoMateria: {
+        CodigoMateria: '300'
+      }
+    }));
+
     const result = await getOfficialProposalsByParliamentarian(
       {
         id: 'senado-20',
@@ -253,11 +260,19 @@ describe('getOfficialProposalsByParliamentarian', () => {
         office: 'Senador'
       },
       {
-        camaraClient: createEmptyCamaraClient(),
-        senadoClient: createEmptySenadoClient()
+        camaraClient: {
+          ...createEmptyCamaraClient(),
+          getProposicoesByDeputadoAutor: camaraAuthorLoader
+        },
+        senadoClient: {
+          ...createEmptySenadoClient(),
+          getMateriaById: senadoMatterLoader
+        }
       }
     );
 
+    expect(camaraAuthorLoader).not.toHaveBeenCalled();
+    expect(senadoMatterLoader).not.toHaveBeenCalled();
     expect(result).toEqual({
       status: 'unavailable',
       data: [],
