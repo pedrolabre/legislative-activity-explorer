@@ -64,7 +64,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/components/conversation/ConversationBubble.svelte`: Balão visual para mensagens da experiência conversacional.
 * `src/lib/components/conversation/ConversationLog.svelte`: Container conversacional com semântica de log e atualização acessível.
 * `src/lib/components/parliamentarians/ParliamentarianDetail.svelte`: Perfil factual de parlamentar com foto quando disponível, alternativa acessível sem foto e controles para abrir proposições e votações associadas.
-* `src/lib/components/proposals/BillDetail.svelte`: Detalhe factual de proposição com dados gerais, ementa oficial, resumo factual revisado quando disponível, fallback neutro para ementa oficial, fontes e referências revisadas.
+* `src/lib/components/proposals/BillDetail.svelte`: Detalhe factual de proposição com dados gerais, ementa oficial, resumo factual revisado apenas quando disponível em catálogo versionado, indisponibilidade neutra para resumo ausente, fontes e referências revisadas.
+* `src/lib/components/proposals/BillDetail.test.ts`: Testes unitários do detalhe de proposição, cobrindo separação entre ementa oficial, resumo factual revisado e resumo indisponível.
 * `src/lib/components/proposals/ParliamentarianBills.svelte`: Lista factual de proposições associadas a parlamentar, com dados parciais tratados de forma neutra.
 * `src/lib/components/search/InitialSearchForm.svelte`: Formulário inicial de busca com label, envio por `Enter` e validação local.
 * `src/lib/components/search/SearchResultCard.svelte`: Card factual para item de resultado de parlamentar ou proposição, com abertura de perfil para parlamentares.
@@ -97,7 +98,7 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/mappers/senadoMapper.ts`: Mapper do Senado para normalizar senadores e matérias aos contratos de domínio.
 * `src/lib/mappers/senadoMapper.test.ts`: Testes unitários do mapper do Senado com payloads aninhados, parciais e inválidos.
 * `src/lib/services/factualSummaryService.ts`: Service interno para aplicar resumos factuais revisados ao detalhe de proposicao sem geracao dinamica.
-* `src/lib/services/factualSummaryService.test.ts`: Testes unitarios do service de resumos factuais, cobrindo aplicacao revisada e descarte de resumo nao catalogado.
+* `src/lib/services/factualSummaryService.test.ts`: Testes unitarios do service de resumos factuais, cobrindo aplicacao revisada, descarte de resumo nao catalogado e ausencia de inferencia pela ementa oficial.
 * `src/lib/services/fixtureAdapters.ts`: Adaptadores internos que convertem fixtures controladas para contratos de domínio.
 * `src/lib/services/parliamentarianService.ts`: Service interno para detalhe de parlamentar baseado nas fixtures existentes.
 * `src/lib/services/parliamentarianService.test.ts`: Testes unitários do service interno de parlamentar.

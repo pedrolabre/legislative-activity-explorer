@@ -83,7 +83,6 @@
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
-    usesOfficialSummaryAsFactualSummary: boolean;
     sources: {
       id: string;
       type: 'official' | 'press' | 'technical';
@@ -189,7 +188,6 @@
     parliamentarianId: string
   ): ParliamentarianBillView {
     const hasReviewedFactualSummary = Boolean(proposal.simplifiedSummary?.trim());
-    const hasOfficialSummary = Boolean(proposal.officialSummary?.trim());
 
     return {
       id: proposal.id,
@@ -201,10 +199,7 @@
       relationship: proposal.relationship ?? unavailableDetailFieldLabel,
       presentedAt: proposal.presentedAt,
       officialSummary: proposal.officialSummary ?? unavailableDetailFieldLabel,
-      factualSummary: hasReviewedFactualSummary
-        ? proposal.simplifiedSummary
-        : proposal.officialSummary,
-      usesOfficialSummaryAsFactualSummary: !hasReviewedFactualSummary && hasOfficialSummary,
+      factualSummary: hasReviewedFactualSummary ? proposal.simplifiedSummary : undefined,
       sources: proposal.references.map((reference) => ({
         id: reference.id,
         type: reference.type,

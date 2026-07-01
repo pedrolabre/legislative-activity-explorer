@@ -10,7 +10,6 @@
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
-    usesOfficialSummaryAsFactualSummary: boolean;
     sources: {
       id: string;
       type: 'official' | 'press' | 'technical';
@@ -42,8 +41,8 @@
     'As três referências revisadas (oficial, imprensa e técnica) ainda não estão completas nesta visualização.';
   const noReviewedReferencesMessage =
     'Referências revisadas ainda não disponíveis nesta visualização.';
-  const officialSummaryFallbackMessage =
-    'Resumo factual revisado ainda não disponível. A ementa oficial é exibida nesta seção.';
+  const unavailableReviewedFactualSummaryMessage =
+    'Resumo factual revisado ainda não disponível.';
 
   let hasCompleteReviewedReferences = $derived(
     requiredReferenceTypes.every((type) =>
@@ -132,27 +131,22 @@
     <p class="mt-3 text-sm leading-6 text-ink-muted">{bill.officialSummary}</p>
   </section>
 
-  <section class="border-t border-border pt-5" aria-labelledby="factual-summary-title">
-    <h4 id="factual-summary-title" class="text-sm font-bold leading-6 text-ink">
-      Resumo factual
-    </h4>
-    {#if bill.factualSummary}
+  {#if bill.factualSummary}
+    <section class="border-t border-border pt-5" aria-labelledby="factual-summary-title">
+      <h4 id="factual-summary-title" class="text-sm font-bold leading-6 text-ink">
+        Resumo factual revisado
+      </h4>
       <p class="mt-3 text-sm leading-6 text-ink-muted">{bill.factualSummary}</p>
-      {#if bill.usesOfficialSummaryAsFactualSummary}
-        <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
-          <p class="text-sm leading-6 text-ink-muted">
-            {officialSummaryFallbackMessage}
-          </p>
-        </div>
-      {/if}
-    {:else}
-      <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
+    </section>
+  {:else}
+    <div class="border-t border-border pt-5">
+      <div class="rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
-          Resumo factual revisado e ementa oficial não disponíveis nesta visualização.
+          {unavailableReviewedFactualSummaryMessage}
         </p>
       </div>
-    {/if}
-  </section>
+    </div>
+  {/if}
 
   <section class="border-t border-border pt-5" aria-labelledby="bill-sources-title">
     <h4 id="bill-sources-title" class="text-sm font-bold leading-6 text-ink">

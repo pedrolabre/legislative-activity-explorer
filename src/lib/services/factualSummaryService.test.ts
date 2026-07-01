@@ -53,6 +53,19 @@ describe('factualSummaryService', () => {
     expect(enrichedProposal.officialSummary).toBe('Ementa oficial controlada.');
   });
 
+  it('does not derive a reviewed factual summary from the official summary', () => {
+    const proposal = createProposal({
+      id: 'proposal-with-official-summary-only',
+      officialSummary: 'Ementa oficial nao catalogada como resumo revisado.'
+    });
+    const enrichedProposal = attachReviewedFactualSummaryToProposal(proposal);
+
+    expect(enrichedProposal.simplifiedSummary).toBeUndefined();
+    expect(enrichedProposal.officialSummary).toBe(
+      'Ementa oficial nao catalogada como resumo revisado.'
+    );
+  });
+
   it('attaches reviewed factual summaries to proposal lists deterministically', () => {
     const proposals = attachReviewedFactualSummaryToProposals([
       createProposal(),
