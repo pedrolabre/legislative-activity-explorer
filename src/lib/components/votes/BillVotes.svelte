@@ -9,7 +9,8 @@
     billIdentification: string;
     chamber: string;
     description: string;
-    parliamentarianVote: DisplayVotePosition;
+    parliamentarianVote?: DisplayVotePosition;
+    parliamentarianVoteNotice?: string;
     votedAt?: string;
     officialResult?: string;
     counts?: {
@@ -23,6 +24,7 @@
       party: string;
       state: string;
       vote: DisplayVotePosition;
+      isSelectedParliamentarian?: boolean;
     }[];
   }
 
@@ -111,7 +113,13 @@
       <div class="sm:col-span-2">
         <dt class="font-bold text-ink">Voto registrado</dt>
         <dd class="mt-2">
-          <VoteBadge vote={vote.parliamentarianVote} />
+          {#if vote.parliamentarianVote}
+            <VoteBadge vote={vote.parliamentarianVote} />
+          {:else}
+            <p class="text-sm leading-6 text-ink-muted" role="status">
+              {vote.parliamentarianVoteNotice}
+            </p>
+          {/if}
         </dd>
       </div>
     </dl>
@@ -159,9 +167,16 @@
         {#each vote.individualVotes as individualVote (individualVote.parliamentarianName)}
           <li>
             <article
-              class="grid gap-3 rounded-ui border border-border bg-surface-raised p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+              class={`grid gap-3 rounded-ui border bg-surface-raised p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${
+                individualVote.isSelectedParliamentarian ? 'border-accent' : 'border-border'
+              }`}
             >
               <div class="min-w-0">
+                {#if individualVote.isSelectedParliamentarian}
+                  <p class="mb-1 text-xs font-bold uppercase leading-5 tracking-normal text-accent">
+                    Parlamentar selecionado
+                  </p>
+                {/if}
                 <p class="break-words text-sm font-semibold leading-6 text-ink">
                   {individualVote.parliamentarianName}
                 </p>

@@ -1,8 +1,10 @@
-import type { LegislativeProposal, Parliamentarian } from '$lib/domain';
+import type { IndividualVote, LegislativeProposal, Parliamentarian, RollCallVote } from '$lib/domain';
 import type {
   CamaraDeputadoPayload,
   CamaraProposicaoPayload,
-  CamaraProposicaoTemaPayload
+  CamaraProposicaoTemaPayload,
+  CamaraVotacaoPayload,
+  CamaraVotoPayload
 } from '$lib/api/camaraClient';
 
 const camaraDeputadoOfficialUrl = 'https://www.camara.leg.br/deputados';
@@ -66,6 +68,69 @@ function requireSourceId(
   }
 
   return sourceId;
+}
+
+function requireVoteSourceId(entity: 'votacao', value: string | number | null | undefined) {
+  const sourceId = normalizeString(value);
+
+  if (!sourceId) {
+    throw new CamaraMapperError(entity, 'id');
+  }
+
+  return sourceId;
+}
+
+function normalizeVoteLabel(value: string | null | undefined) {
+  const normalized = normalizeString(value);
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleUpperCase('pt-BR');
+}
+
+function mapCamaraTipoVoto(value: string | null | undefined): IndividualVote['vote'] | undefined {
+  const normalized = normalizeVoteLabel(value);
+
+  if (normalized === 'SIM') {
+    return 'SIM';
+  }
+
+  if (normalized === 'NAO') {
+    return 'NAO';
+  }
+
+  if (normalized === 'ABSTENCAO') {
+    return 'ABSTENCAO';
+  }
+
+  if (normalized === 'AUSENTE') {
+    return 'AUSENTE';
+  }
+
+  return undefined;
+}
+
+function normalizeOfficialVoteResult(payload: CamaraVotacaoPayload) {
+  return normalizeString(payload.resultado) ?? normalizeStringTextOnly(payload.aprovacao);
+}
+
+function normalizeStringTextOnly(value: string | number | boolean | null | undefined) {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = normalizeString(value);
+
+  if (!normalized || /^(0|1|true|false)$/i.test(normalized)) {
+    return undefined;
+  }
+
+  return normalized;
 }
 
 function buildProposicaoTitle(payload: CamaraProposicaoPayload, sourceId: string) {
@@ -182,4 +247,55 @@ export function mapCamaraProposicaoTemasToSubject(
   }
 
   return themes.length > 0 ? themes.join('; ') : undefined;
+}
+
+export function mapCamaraVotacaoToRollCallVote(
+  payload: CamaraVotacaoPayload,
+  options: {
+    proposalIdentification: string;
+    individualVotes?: IndividualVote[];
+  }
+): RollCallVote {
+  const sourceId = requireVoteSourceId('votacao', payload.id);
+  const description =
+    normalizeString(payload.descricao) ??
+    normalizeString(payload.proposicaoObjeto) ??
+    `Votacao oficial ${sourceId}`;
+
+  return {
+    id: `camara-votacao-${sourceId}`,
+    source: 'camara',
+    sourceId,
+    proposalId: options.proposalIdentification,
+    votedAt: normalizeDate(payload.data) ?? normalizeDate(payload.dataHoraRegistro),
+    description,
+    result: normalizeOfficialVoteResult(payload),
+    individualVotes: options.individualVotes ?? []
+  };
+}
+
+export function mapCamaraVotosToIndividualVotes(payloads: CamaraVotoPayload[]): IndividualVote[] {
+  const votes: IndividualVote[] = [];
+
+  for (const payload of payloads) {
+    const vote = mapCamaraTipoVoto(payload.tipoVoto);
+    const deputy = payload.deputado_;
+    const parliamentarianName = normalizeString(deputy?.nome);
+
+    if (!vote || !parliamentarianName) {
+      continue;
+    }
+
+    const sourceId = normalizeString(deputy?.id);
+
+    votes.push({
+      parliamentarianId: sourceId ? `camara-${sourceId}` : undefined,
+      parliamentarianName,
+      party: normalizeString(deputy?.siglaPartido),
+      state: normalizeString(deputy?.siglaUf),
+      vote
+    });
+  }
+
+  return votes;
 }

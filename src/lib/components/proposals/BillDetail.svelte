@@ -1,4 +1,8 @@
 <script lang="ts">
+  import VoteBadge from '$lib/components/votes/VoteBadge.svelte';
+
+  type DisplayVotePosition = 'SIM' | 'NÃO' | 'ABSTENÇÃO' | 'AUSENTE';
+
   interface ParliamentarianBillView {
     id: string;
     parliamentarianId: string;
@@ -21,15 +25,32 @@
     }[];
   }
 
+  interface ParliamentarianVoteView {
+    id: string;
+    billIdentification: string;
+    chamber: string;
+    description: string;
+    parliamentarianVote?: DisplayVotePosition;
+    parliamentarianVoteNotice?: string;
+    votedAt?: string;
+    officialResult?: string;
+  }
+
   let {
     bill,
     parliamentarianName,
+    associatedVotes = [],
+    showOfficialVotes = false,
+    onSelectVote = () => undefined,
     onBackToBills,
     onBackToParliamentarian,
     onStartOver
   }: {
     bill: ParliamentarianBillView;
     parliamentarianName: string;
+    associatedVotes?: ParliamentarianVoteView[];
+    showOfficialVotes?: boolean;
+    onSelectVote?: (id: string) => void;
     onBackToBills: () => void;
     onBackToParliamentarian: () => void;
     onStartOver: () => void;
@@ -62,6 +83,10 @@
     }
 
     return `${day}/${month}/${year}`;
+  }
+
+  function formatVotedAt(value?: string) {
+    return formatPresentedAt(value);
   }
 
   function formatCheckedAt(value?: string) {
@@ -199,6 +224,75 @@
       </div>
     {/if}
   </section>
+
+  {#if showOfficialVotes}
+    <section class="border-t border-border pt-5" aria-labelledby="bill-votes-title">
+      <h4 id="bill-votes-title" class="text-sm font-bold leading-6 text-ink">
+        Votações da Câmara
+      </h4>
+      {#if associatedVotes.length > 0}
+        <p class="mt-1 text-xs font-bold uppercase leading-5 tracking-normal text-ink-muted">
+          Registros oficiais associados à proposição aberta.
+        </p>
+        <ul class="mt-3 grid gap-3">
+          {#each associatedVotes as vote (vote.id)}
+            <li>
+              <article class="rounded-ui border border-border bg-surface-raised p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">
+                      Votação
+                    </p>
+                    <h5 class="mt-2 break-words text-base font-semibold leading-6 text-ink">
+                      {vote.description}
+                    </h5>
+                  </div>
+                  <div class="shrink-0">
+                    {#if vote.parliamentarianVote}
+                      <p class="sr-only">Voto registrado</p>
+                      <VoteBadge vote={vote.parliamentarianVote} />
+                    {:else}
+                      <p class="max-w-52 text-sm leading-6 text-ink-muted" role="status">
+                        {vote.parliamentarianVoteNotice}
+                      </p>
+                    {/if}
+                  </div>
+                </div>
+
+                <dl class="mt-4 grid gap-3 text-sm leading-6 text-ink-muted sm:grid-cols-2">
+                  <div>
+                    <dt class="font-bold text-ink">Data</dt>
+                    <dd class:text-ink-muted={!vote.votedAt}>{formatVotedAt(vote.votedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt class="font-bold text-ink">Resultado oficial</dt>
+                    <dd class:text-ink-muted={!vote.officialResult}>
+                      {vote.officialResult ?? unavailableLabel}
+                    </dd>
+                  </div>
+                </dl>
+
+                <button
+                  type="button"
+                  class="mt-4 min-h-11 rounded-ui bg-accent px-4 py-2 text-sm font-bold text-white transition hover:bg-accent-strong"
+                  aria-label={`Ver votação de ${bill.identification}`}
+                  onclick={() => onSelectVote(vote.id)}
+                >
+                  Ver votação
+                </button>
+              </article>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
+          <p class="text-sm leading-6 text-ink-muted">
+            Nenhuma votação oficial da Câmara foi retornada para esta proposição nesta consulta.
+          </p>
+        </div>
+      {/if}
+    </section>
+  {/if}
 
   <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:flex-wrap">
     <button

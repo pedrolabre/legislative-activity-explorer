@@ -54,8 +54,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `vite.config.ts`: Configuração do Vite, SvelteKit, Tailwind CSS e Vitest, incluindo testes unitários em `src/` e `workers/`.
 * `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
 * `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
-* `src/lib/api/camaraClient.ts`: Client HTTP base da Câmara dos Deputados, com tipos mínimos de payload, detalhe, busca/listagem de deputados e proposições, timeout configurável e erro recuperável.
-* `src/lib/api/camaraClient.test.ts`: Testes unitários do client da Câmara com `fetch` injetado, timeout controlado, busca/listagem controlada e sem rede real.
+* `src/lib/api/camaraClient.ts`: Client HTTP base da Câmara dos Deputados, com tipos mínimos de payload, detalhe, busca/listagem de deputados, proposições e votações por proposição, timeout configurável e erro recuperável.
+* `src/lib/api/camaraClient.test.ts`: Testes unitários do client da Câmara com `fetch` injetado, timeout controlado, busca/listagem/votações controladas e sem rede real.
 * `src/lib/api/legislativeDataSourceConfig.ts`: Configuracao publica e testavel para escolher chamadas diretas as APIs oficiais ou roteamento futuro por Worker opcional, sem segredos no frontend.
 * `src/lib/api/legislativeDataSourceConfig.test.ts`: Testes unitarios da configuracao de fonte de dados, cobrindo fallback direto, URL publica de proxy, rejeicao de configuracao insegura e `fetch` injetado sem rede real.
 * `src/lib/api/senadoClient.ts`: Client HTTP base do Senado Federal, com tipos mínimos de payload, suporte a JSON por sufixo ou cabeçalho, lista de senadores, pesquisa de matérias, timeout configurável e erro recuperável.
@@ -70,8 +70,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/components/search/InitialSearchForm.svelte`: Formulário inicial de busca com label, envio por `Enter` e validação local.
 * `src/lib/components/search/SearchResultCard.svelte`: Card factual para item de resultado de parlamentar ou proposição, com abertura de perfil para parlamentares.
 * `src/lib/components/search/SearchResults.svelte`: Lista de resultados agrupada por parlamentares e proposições, incluindo estado vazio e seleção de parlamentar.
-* `src/lib/components/votes/BillVotes.svelte`: Detalhe factual de votação com identificação da proposição, resultado quando disponível, contagens agregadas e lista nominal.
-* `src/lib/components/votes/ParliamentarianVotes.svelte`: Lista factual de votações associadas a parlamentar, com dados parciais tratados de forma neutra.
+* `src/lib/components/votes/BillVotes.svelte`: Detalhe factual de votação com identificação da proposição, resultado quando disponível, contagens agregadas, lista nominal e destaque neutro do parlamentar selecionado quando disponível.
+* `src/lib/components/votes/ParliamentarianVotes.svelte`: Lista factual de votações associadas a parlamentar ou à proposição aberta, com dados parciais tratados de forma neutra.
 * `src/lib/components/votes/VoteBadge.svelte`: Rótulo visual neutro e acessível para votos `SIM`, `NÃO`, `ABSTENÇÃO` e `AUSENTE`.
 * `src/lib/components/votes/votePresentation.ts`: Politica visual auditada para labels e classes neutras de votos.
 * `src/lib/components/votes/votePresentation.test.ts`: Testes unitarios da politica visual de votos, cobrindo labels oficiais e ausencia de tokens verde/vermelho.
@@ -93,8 +93,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/domain/types.ts`: Contratos centrais para parlamentares, proposições, votações, votos individuais e referências externas.
 * `src/lib/domain/uiState.ts`: Constantes e união dos estados previstos da interface conversacional.
 * `src/lib/domain/votes.ts`: Constantes, união de posições de voto e contagens agregadas.
-* `src/lib/mappers/camaraMapper.ts`: Mapper da Câmara para normalizar deputados e proposições aos contratos de domínio.
-* `src/lib/mappers/camaraMapper.test.ts`: Testes unitários do mapper da Câmara com payloads completos, parciais e inválidos.
+* `src/lib/mappers/camaraMapper.ts`: Mapper da Câmara para normalizar deputados, proposições, temas, votações e votos individuais aos contratos de domínio.
+* `src/lib/mappers/camaraMapper.test.ts`: Testes unitários do mapper da Câmara com payloads completos, parciais, inválidos e votos individuais oficiais controlados.
 * `src/lib/mappers/senadoMapper.ts`: Mapper do Senado para normalizar senadores e matérias aos contratos de domínio.
 * `src/lib/mappers/senadoMapper.test.ts`: Testes unitários do mapper do Senado com payloads aninhados, parciais e inválidos.
 * `src/lib/services/factualSummaryService.ts`: Service interno para aplicar resumos factuais revisados ao detalhe de proposicao sem geracao dinamica.
@@ -112,6 +112,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/publicSearchService.test.ts`: Testes unitários do adapter de busca pública oficial com clients controlados, falha parcial, falha completa e sem fallback para fixtures.
 * `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com clients configurados por direct/proxy e estados recuperáveis de indisponibilidade, timeout ou falha parcial.
 * `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, indisponibilidade do Senado para matérias associadas e sem rede real.
+* `src/lib/services/officialVoteService.ts`: Service isolado para votações oficiais da Câmara associadas à proposição aberta, com detalhe de votação, lista nominal quando disponível, limite de paginação leve e sem fallback para fixtures.
+* `src/lib/services/officialVoteService.test.ts`: Testes unitários das votações oficiais da Câmara com clients controlados, falhas parciais, paginação limitada, indisponibilidade do Senado neste bloco e sem rede real.
 * `src/lib/services/referenceService.ts`: Service interno para combinar referências existentes da proposição com o catálogo revisado e identificar cobertura editorial incompleta.
 * `src/lib/services/referenceService.test.ts`: Testes unitários da combinação de referências, prioridade do catálogo e fallback de cobertura revisada incompleta.
 * `src/lib/services/searchService.ts`: Service interno de busca inicial por fixtures, mantido como caminho explícito e injetável para testes ou desenvolvimento controlado.

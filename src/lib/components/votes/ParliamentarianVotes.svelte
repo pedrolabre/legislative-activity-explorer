@@ -9,7 +9,8 @@
     billIdentification: string;
     chamber: string;
     description: string;
-    parliamentarianVote: DisplayVotePosition;
+    parliamentarianVote?: DisplayVotePosition;
+    parliamentarianVoteNotice?: string;
     votedAt?: string;
     officialResult?: string;
     counts?: {
@@ -107,8 +108,14 @@
                   </h5>
                 </div>
                 <div class="shrink-0">
-                  <p class="sr-only">Voto registrado</p>
-                  <VoteBadge vote={vote.parliamentarianVote} />
+                  {#if vote.parliamentarianVote}
+                    <p class="sr-only">Voto registrado</p>
+                    <VoteBadge vote={vote.parliamentarianVote} />
+                  {:else}
+                    <p class="max-w-52 text-sm leading-6 text-ink-muted" role="status">
+                      {vote.parliamentarianVoteNotice}
+                    </p>
+                  {/if}
                 </div>
               </div>
 

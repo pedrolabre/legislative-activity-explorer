@@ -242,6 +242,112 @@ describe('CamaraApiClient', () => {
     expect(calls[0]).toBe('https://dados.example/api/v2/proposicoes/9876/temas');
   });
 
+  it('fetches official proposition votes by proposition id with pagination parameters', async () => {
+    const calls: string[] = [];
+    const client = new CamaraApiClient({
+      baseUrl: 'https://dados.example/api/v2',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          dados: [
+            {
+              id: '9876-1',
+              descricao: 'Votacao nominal.'
+            }
+          ],
+          links: [
+            {
+              rel: 'next',
+              href: 'https://dados.example/api/v2/proposicoes/9876/votacoes?pagina=2'
+            }
+          ]
+        });
+      }
+    });
+
+    await expect(
+      client.getProposicaoVotacoesByIdPage(9876, {
+        pagina: 1,
+        itens: 50
+      })
+    ).resolves.toEqual({
+      data: [
+        {
+          id: '9876-1',
+          descricao: 'Votacao nominal.'
+        }
+      ],
+      links: [
+        {
+          rel: 'next',
+          href: 'https://dados.example/api/v2/proposicoes/9876/votacoes?pagina=2'
+        }
+      ]
+    });
+
+    const url = new URL(calls[0]);
+
+    expect(url.origin + url.pathname).toBe(
+      'https://dados.example/api/v2/proposicoes/9876/votacoes'
+    );
+    expect(url.searchParams.get('pagina')).toBe('1');
+    expect(url.searchParams.get('itens')).toBe('50');
+  });
+
+  it('fetches an official vote detail by vote id', async () => {
+    const calls: string[] = [];
+    const client = new CamaraApiClient({
+      baseUrl: 'https://dados.example/api/v2',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          dados: {
+            id: '9876-1',
+            resultado: 'Aprovado'
+          }
+        });
+      }
+    });
+
+    await expect(client.getVotacaoById('9876-1')).resolves.toEqual({
+      id: '9876-1',
+      resultado: 'Aprovado'
+    });
+    expect(calls[0]).toBe('https://dados.example/api/v2/votacoes/9876-1');
+  });
+
+  it('fetches official individual votes by vote id', async () => {
+    const calls: string[] = [];
+    const client = new CamaraApiClient({
+      baseUrl: 'https://dados.example/api/v2',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          dados: [
+            {
+              tipoVoto: 'Sim',
+              deputado_: {
+                id: 10,
+                nome: 'Ana Costa'
+              }
+            }
+          ]
+        });
+      }
+    });
+
+    await expect(client.getVotacaoVotosById('9876-1')).resolves.toEqual([
+      {
+        tipoVoto: 'Sim',
+        deputado_: {
+          id: 10,
+          nome: 'Ana Costa'
+        }
+      }
+    ]);
+    expect(calls[0]).toBe('https://dados.example/api/v2/votacoes/9876-1/votos');
+  });
+
   it('wraps network failures in a recoverable client error', async () => {
     const client = new CamaraApiClient({
       fetch: async () => {

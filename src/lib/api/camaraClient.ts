@@ -88,7 +88,42 @@ export interface CamaraProposicaoTemaPayload {
   relevancia?: number | string | null;
 }
 
+export interface CamaraVotacaoPayload {
+  id?: number | string | null;
+  uri?: string | null;
+  data?: string | null;
+  dataHoraRegistro?: string | null;
+  siglaOrgao?: string | null;
+  uriOrgao?: string | null;
+  uriEvento?: string | null;
+  proposicaoObjeto?: string | null;
+  uriProposicaoObjeto?: string | null;
+  descricao?: string | null;
+  resultado?: string | null;
+  aprovacao?: string | number | boolean | null;
+}
+
+export interface CamaraVotoPayload {
+  tipoVoto?: string | null;
+  dataRegistroVoto?: string | null;
+  deputado_?: {
+    id?: number | string | null;
+    uri?: string | null;
+    nome?: string | null;
+    siglaPartido?: string | null;
+    uriPartido?: string | null;
+    siglaUf?: string | null;
+    idLegislatura?: number | string | null;
+    urlFoto?: string | null;
+  } | null;
+}
+
 export interface GetCamaraProposicoesByDeputadoAutorOptions {
+  pagina?: number;
+  itens?: number;
+}
+
+export interface GetCamaraProposicaoVotacoesOptions {
   pagina?: number;
   itens?: number;
 }
@@ -185,6 +220,39 @@ export class CamaraApiClient {
     id: number | string
   ): Promise<CamaraApiPage<CamaraProposicaoTemaPayload>> {
     return this.requestListPage<CamaraProposicaoTemaPayload>(`proposicoes/${id}/temas`);
+  }
+
+  async getProposicaoVotacoesById(
+    id: number | string,
+    options: GetCamaraProposicaoVotacoesOptions = {}
+  ): Promise<CamaraVotacaoPayload[]> {
+    const page = await this.getProposicaoVotacoesByIdPage(id, options);
+
+    return page.data;
+  }
+
+  async getProposicaoVotacoesByIdPage(
+    id: number | string,
+    options: GetCamaraProposicaoVotacoesOptions = {}
+  ): Promise<CamaraApiPage<CamaraVotacaoPayload>> {
+    return this.requestListPage<CamaraVotacaoPayload>(`proposicoes/${id}/votacoes`, {
+      pagina: options.pagina,
+      itens: options.itens
+    });
+  }
+
+  async getVotacaoById(id: number | string): Promise<CamaraVotacaoPayload> {
+    return this.requestSingleData<CamaraVotacaoPayload>(`votacoes/${id}`);
+  }
+
+  async getVotacaoVotosById(id: number | string): Promise<CamaraVotoPayload[]> {
+    const page = await this.getVotacaoVotosByIdPage(id);
+
+    return page.data;
+  }
+
+  async getVotacaoVotosByIdPage(id: number | string): Promise<CamaraApiPage<CamaraVotoPayload>> {
+    return this.requestListPage<CamaraVotoPayload>(`votacoes/${id}/votos`);
   }
 
   async getProposicoes(

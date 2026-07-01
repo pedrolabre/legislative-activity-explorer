@@ -100,7 +100,8 @@
     billIdentification: string;
     chamber: string;
     description: string;
-    parliamentarianVote: DisplayVotePosition;
+    parliamentarianVote?: DisplayVotePosition;
+    parliamentarianVoteNotice?: string;
     votedAt?: string;
     officialResult?: string;
     counts?: {
@@ -114,6 +115,7 @@
       party: string;
       state: string;
       vote: DisplayVotePosition;
+      isSelectedParliamentarian: boolean;
     }[];
   }
 
@@ -231,30 +233,58 @@
       .toLocaleLowerCase('pt-BR');
   }
 
+  function isOfficialCamaraProposal(proposal: LegislativeProposal) {
+    return proposal.source === 'camara' && proposal.id === `camara-proposicao-${proposal.sourceId}`;
+  }
+
+  function isIndividualVoteForParliamentarian(
+    individualVote: RollCallVote['individualVotes'][number],
+    parliamentarian: Parliamentarian
+  ) {
+    if (individualVote.parliamentarianId) {
+      return individualVote.parliamentarianId === parliamentarian.id;
+    }
+
+    return normalizeName(individualVote.parliamentarianName) === normalizeName(parliamentarian.name);
+  }
+
   function getParliamentarianVote(
     vote: RollCallVote,
     parliamentarian: Parliamentarian
-  ): DisplayVotePosition {
-    const normalizedParliamentarianName = normalizeName(parliamentarian.name);
+  ): DisplayVotePosition | undefined {
     const individualVote = vote.individualVotes.find(
-      (currentVote) =>
-        normalizeName(currentVote.parliamentarianName) === normalizedParliamentarianName
+      (currentVote) => isIndividualVoteForParliamentarian(currentVote, parliamentarian)
     );
 
-    return individualVote ? toDisplayVotePosition(individualVote.vote) : 'AUSENTE';
+    return individualVote ? toDisplayVotePosition(individualVote.vote) : undefined;
+  }
+
+  function getParliamentarianVoteNotice(vote: RollCallVote, parliamentarianVote?: DisplayVotePosition) {
+    if (parliamentarianVote) {
+      return undefined;
+    }
+
+    if (vote.individualVotes.length > 0) {
+      return 'Voto individual do parlamentar não localizado na lista nominal consultada.';
+    }
+
+    return 'Lista nominal não disponível nesta votação.';
   }
 
   function toParliamentarianVoteView(
     vote: RollCallVote,
     parliamentarian: Parliamentarian
   ): ParliamentarianVoteView {
+    const parliamentarianVote = getParliamentarianVote(vote, parliamentarian);
+
     return {
       id: vote.id,
       parliamentarianId: parliamentarian.id,
       billIdentification: vote.proposalId,
       chamber: getChamberLabel(vote.source),
       description: vote.description,
-      parliamentarianVote: getParliamentarianVote(vote, parliamentarian),
+      parliamentarianVote,
+      parliamentarianVoteNotice: getParliamentarianVoteNotice(vote, parliamentarianVote),
       votedAt: vote.votedAt,
       officialResult: vote.result,
       counts: vote.counts,
@@ -262,7 +292,11 @@
         parliamentarianName: individualVote.parliamentarianName,
         party: individualVote.party ?? unavailableDetailFieldLabel,
         state: individualVote.state ?? unavailableDetailFieldLabel,
-        vote: toDisplayVotePosition(individualVote.vote)
+        vote: toDisplayVotePosition(individualVote.vote),
+        isSelectedParliamentarian: isIndividualVoteForParliamentarian(
+          individualVote,
+          parliamentarian
+        )
       }))
     };
   }
@@ -306,6 +340,16 @@
           toParliamentarianVoteView(vote, chatContext.selectedParliamentarian!)
         )
       : []
+  );
+  let selectedBillVotes: ParliamentarianVoteView[] = $derived(
+    chatContext.selectedParliamentarian && chatContext.selectedProposal
+      ? chatContext.voteHistory.map((vote) =>
+          toParliamentarianVoteView(vote, chatContext.selectedParliamentarian!)
+        )
+      : []
+  );
+  let selectedBillShowsOfficialVotes = $derived(
+    chatContext.selectedProposal ? isOfficialCamaraProposal(chatContext.selectedProposal) : false
   );
   let recoverableNotice = $derived(chatContext.errorMessage.trim());
 
@@ -389,6 +433,17 @@
   }
 
   function handleBackToVotes() {
+    if (selectedBill) {
+      navigateTo('BILL_DETAIL', {
+        updates: {
+          selectedVote: null,
+          errorMessage: ''
+        },
+        recordHistory: false
+      });
+      return;
+    }
+
     if (!selectedParliamentarian) {
       navigateTo(submittedSearch ? 'SEARCH_RESULTS' : 'WELCOME', {
         updates: {
@@ -635,6 +690,9 @@
               <BillDetail
                 bill={selectedBill}
                 parliamentarianName={selectedParliamentarian.name}
+                associatedVotes={selectedBillVotes}
+                showOfficialVotes={selectedBillShowsOfficialVotes}
+                onSelectVote={handleSelectVote}
                 onBackToBills={handleBackToBills}
                 onBackToParliamentarian={handleBackToParliamentarian}
                 onStartOver={handleStartOver}

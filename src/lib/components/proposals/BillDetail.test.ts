@@ -16,14 +16,15 @@ function createBill(overrides = {}) {
   };
 }
 
-function renderBillDetail(overrides = {}) {
+function renderBillDetail(overrides = {}, propOverrides = {}) {
   return render(BillDetail, {
     props: {
       bill: createBill(overrides),
       parliamentarianName: 'Ana Costa',
       onBackToBills: () => undefined,
       onBackToParliamentarian: () => undefined,
-      onStartOver: () => undefined
+      onStartOver: () => undefined,
+      ...propOverrides
     }
   }).body;
 }
@@ -102,5 +103,50 @@ describe('BillDetail', () => {
     expect(html).not.toContain(
       'Referências externas revisadas ainda não foram adicionadas para esta proposição.'
     );
+  });
+
+  it('renders official Camara votes for an opened proposition when provided', () => {
+    const html = renderBillDetail(
+      {},
+      {
+        showOfficialVotes: true,
+        associatedVotes: [
+          {
+            id: 'camara-votacao-100-1',
+            billIdentification: 'PL 2/2024',
+            chamber: 'Câmara dos Deputados',
+            description: 'Votação nominal do texto-base.',
+            parliamentarianVote: 'SIM',
+            votedAt: '2024-06-12',
+            officialResult: 'Aprovado'
+          }
+        ],
+        onSelectVote: () => undefined
+      }
+    );
+
+    expect(html).toContain('Votações da Câmara');
+    expect(html).toContain('Votação nominal do texto-base.');
+    expect(html).toContain('SIM');
+    expect(html).toContain('Aprovado');
+  });
+
+  it('keeps official Camara votes section hidden when coverage is not requested', () => {
+    const html = renderBillDetail(
+      {},
+      {
+        associatedVotes: [
+          {
+            id: 'camara-votacao-100-1',
+            billIdentification: 'PL 2/2024',
+            chamber: 'Câmara dos Deputados',
+            description: 'Votação nominal do texto-base.',
+            parliamentarianVote: 'SIM'
+          }
+        ]
+      }
+    );
+
+    expect(html).not.toContain('Votações da Câmara');
   });
 });

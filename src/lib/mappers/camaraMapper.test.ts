@@ -4,7 +4,9 @@ import {
   mapCamaraDeputadoToParliamentarian,
   mapCamaraProposicaoTemasToSubject,
   mapCamaraProposicaoToLegislativeProposal,
-  mapCamaraProposicoesToLegislativeProposals
+  mapCamaraProposicoesToLegislativeProposals,
+  mapCamaraVotacaoToRollCallVote,
+  mapCamaraVotosToIndividualVotes
 } from './camaraMapper';
 
 describe('mapCamaraDeputadoToParliamentarian', () => {
@@ -241,5 +243,176 @@ describe('mapCamaraProposicaoTemasToSubject', () => {
         }
       ])
     ).toBeUndefined();
+  });
+});
+
+describe('mapCamaraVotacaoToRollCallVote', () => {
+  it('normalizes an official Camara vote to the domain contract', () => {
+    const vote = mapCamaraVotacaoToRollCallVote(
+      {
+        id: '9876-1',
+        data: '2024-06-12',
+        dataHoraRegistro: '2024-06-12T18:30:00',
+        descricao: 'Votacao nominal do texto-base.',
+        resultado: 'Aprovado'
+      },
+      {
+        proposalIdentification: 'PL 2/2024',
+        individualVotes: [
+          {
+            parliamentarianId: 'camara-10',
+            parliamentarianName: 'Ana Costa',
+            party: 'ABC',
+            state: 'MG',
+            vote: 'SIM'
+          }
+        ]
+      }
+    );
+
+    expect(vote).toEqual({
+      id: 'camara-votacao-9876-1',
+      source: 'camara',
+      sourceId: '9876-1',
+      proposalId: 'PL 2/2024',
+      votedAt: '2024-06-12',
+      description: 'Votacao nominal do texto-base.',
+      result: 'Aprovado',
+      individualVotes: [
+        {
+          parliamentarianId: 'camara-10',
+          parliamentarianName: 'Ana Costa',
+          party: 'ABC',
+          state: 'MG',
+          vote: 'SIM'
+        }
+      ]
+    });
+  });
+
+  it('keeps non textual approval flags out of the official result field', () => {
+    const vote = mapCamaraVotacaoToRollCallVote(
+      {
+        id: '9876-1',
+        descricao: 'Votacao nominal.',
+        aprovacao: true
+      },
+      {
+        proposalIdentification: 'PL 2/2024'
+      }
+    );
+
+    expect(vote.result).toBeUndefined();
+  });
+
+  it('represents a missing vote id as a mapper error', () => {
+    expect(() =>
+      mapCamaraVotacaoToRollCallVote(
+        {
+          descricao: 'Sem id.'
+        },
+        {
+          proposalIdentification: 'PL 2/2024'
+        }
+      )
+    ).toThrow(CamaraMapperError);
+  });
+});
+
+describe('mapCamaraVotosToIndividualVotes', () => {
+  it('normalizes recognized official individual vote labels', () => {
+    expect(
+      mapCamaraVotosToIndividualVotes([
+        {
+          tipoVoto: 'Sim',
+          deputado_: {
+            id: 10,
+            nome: 'Ana Costa',
+            siglaPartido: 'ABC',
+            siglaUf: 'MG'
+          }
+        },
+        {
+          tipoVoto: 'Nao',
+          deputado_: {
+            id: 11,
+            nome: 'Bruno Ribeiro',
+            siglaPartido: 'XYZ',
+            siglaUf: 'SP'
+          }
+        },
+        {
+          tipoVoto: 'Abstencao',
+          deputado_: {
+            id: 12,
+            nome: 'Carla Lima'
+          }
+        },
+        {
+          tipoVoto: 'Ausente',
+          deputado_: {
+            id: 13,
+            nome: 'Diego Souza'
+          }
+        }
+      ])
+    ).toEqual([
+      {
+        parliamentarianId: 'camara-10',
+        parliamentarianName: 'Ana Costa',
+        party: 'ABC',
+        state: 'MG',
+        vote: 'SIM'
+      },
+      {
+        parliamentarianId: 'camara-11',
+        parliamentarianName: 'Bruno Ribeiro',
+        party: 'XYZ',
+        state: 'SP',
+        vote: 'NAO'
+      },
+      {
+        parliamentarianId: 'camara-12',
+        parliamentarianName: 'Carla Lima',
+        party: undefined,
+        state: undefined,
+        vote: 'ABSTENCAO'
+      },
+      {
+        parliamentarianId: 'camara-13',
+        parliamentarianName: 'Diego Souza',
+        party: undefined,
+        state: undefined,
+        vote: 'AUSENTE'
+      }
+    ]);
+  });
+
+  it('does not infer unsupported or incomplete individual votes', () => {
+    expect(
+      mapCamaraVotosToIndividualVotes([
+        {
+          tipoVoto: 'Obstrucao',
+          deputado_: {
+            id: 10,
+            nome: 'Ana Costa'
+          }
+        },
+        {
+          tipoVoto: 'Sim',
+          deputado_: {
+            id: 11,
+            nome: ''
+          }
+        },
+        {
+          tipoVoto: null,
+          deputado_: {
+            id: 12,
+            nome: 'Carla Lima'
+          }
+        }
+      ])
+    ).toEqual([]);
   });
 });

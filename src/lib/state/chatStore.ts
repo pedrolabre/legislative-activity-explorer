@@ -8,6 +8,11 @@ import {
   type OfficialDetailListResult,
   type OfficialDetailResult
 } from '$lib/services/officialDetailService';
+import {
+  getOfficialVotesByProposal as loadOfficialVotesByProposal,
+  type OfficialVoteListResult,
+  type OfficialVoteRecoverableError
+} from '$lib/services/officialVoteService';
 import { getParliamentarianById } from '$lib/services/parliamentarianService';
 import {
   getProposalByIdForParliamentarian,
@@ -72,6 +77,9 @@ export interface SelectProposalByIdOptions {
   getOfficialProposalDetail?: (
     proposal: LegislativeProposal
   ) => Promise<OfficialDetailResult<LegislativeProposal>>;
+  getOfficialVotesByProposal?: (
+    proposal: LegislativeProposal
+  ) => Promise<OfficialVoteListResult<RollCallVote>>;
 }
 
 export interface SelectVoteByIdOptions {
@@ -178,6 +186,10 @@ function hasOfficialProposalIdPattern(id: string) {
   return /^camara-proposicao-.+/.test(id) || /^senado-materia-.+/.test(id);
 }
 
+function isOfficialCamaraProposal(proposal: LegislativeProposal) {
+  return proposal.source === 'camara' && isOfficialProposal(proposal);
+}
+
 function mergeDefinedFields<T extends object>(base: T, detail: T): T {
   const merged = { ...base };
 
@@ -226,6 +238,35 @@ function getOfficialDetailNotice(
   }
 
   return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;
+}
+
+function getOfficialVoteNotice(
+  status: OfficialVoteListResult<unknown>['status'],
+  label: string,
+  errors: OfficialVoteRecoverableError[] = []
+) {
+  if (status === 'fulfilled') {
+    return '';
+  }
+
+  if (status === 'partial') {
+    return `Parte dos dados oficiais de ${label} não pode ser exibida nesta consulta.`;
+  }
+
+  if (status === 'unavailable') {
+    const unavailableMessage = errors.find((error) => error.message.trim())?.message.trim();
+
+    return unavailableMessage ?? `Dados oficiais de ${label} não estão disponíveis nesta consulta.`;
+  }
+
+  return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;
+}
+
+function joinRecoverableNotices(...notices: string[]) {
+  return notices
+    .map((notice) => notice.trim())
+    .filter(Boolean)
+    .join(' ');
 }
 
 export function navigateTo(nextState: UIState, options: NavigateToOptions = {}) {
@@ -498,6 +539,7 @@ export async function selectProposalById(id: string, options: SelectProposalById
 
   let proposal = controlledProposal;
   let errorMessage = '';
+  let voteHistory = isOfficialProposal(controlledProposal) ? [] : context.voteHistory;
 
   if (isOfficialProposal(controlledProposal)) {
     const officialResult = await (options.getOfficialProposalDetail ?? loadOfficialProposalDetail)(
@@ -507,13 +549,29 @@ export async function selectProposalById(id: string, options: SelectProposalById
     proposal = officialResult.data
       ? mergeDefinedFields(controlledProposal, officialResult.data)
       : controlledProposal;
-    errorMessage = getOfficialDetailNotice(officialResult.status, 'proposição');
+    const proposalNotice = getOfficialDetailNotice(officialResult.status, 'proposição');
+    let proposalVotesNotice = '';
+
+    if (isOfficialCamaraProposal(proposal)) {
+      const officialVoteResult = await (options.getOfficialVotesByProposal ??
+        loadOfficialVotesByProposal)(proposal);
+
+      voteHistory = officialVoteResult.data;
+      proposalVotesNotice = getOfficialVoteNotice(
+        officialVoteResult.status,
+        'votações da proposição',
+        officialVoteResult.errors
+      );
+    }
+
+    errorMessage = joinRecoverableNotices(proposalNotice, proposalVotesNotice);
   }
 
   navigateTo('BILL_DETAIL', {
     updates: {
       selectedProposal: proposal,
       selectedVote: null,
+      voteHistory,
       errorMessage
     }
   });
@@ -530,12 +588,25 @@ export function selectVoteById(id: string, options: SelectVoteByIdOptions = {}) 
     return false;
   }
 
+  const contextVote = findVoteInContext(context, id);
+
   if (isOfficialParliamentarian(selectedParliamentarian)) {
-    return false;
+    if (!contextVote || contextVote.source !== selectedParliamentarian.source) {
+      return false;
+    }
+
+    navigateTo('BILL_VOTES', {
+      updates: {
+        selectedVote: contextVote,
+        errorMessage: ''
+      }
+    });
+
+    return true;
   }
 
   const vote =
-    findVoteInContext(context, id) ??
+    contextVote ??
     (options.getFixtureVoteByIdForParliamentarian ?? getVoteByIdForParliamentarian)(
       id,
       selectedParliamentarianId

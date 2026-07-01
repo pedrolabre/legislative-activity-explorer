@@ -430,6 +430,28 @@ describe('chatStore actions', () => {
     expect(fixtureProposalsLoader).not.toHaveBeenCalled();
 
     const fixtureProposalLoader = vi.fn();
+    const officialVote: RollCallVote = {
+      id: 'camara-votacao-100-1',
+      source: 'camara',
+      sourceId: '100-1',
+      proposalId: 'PL 2/2024',
+      votedAt: '2024-06-12',
+      description: 'Votacao nominal oficial.',
+      individualVotes: [
+        {
+          parliamentarianId: 'camara-10',
+          parliamentarianName: 'Ana Costa',
+          party: 'ABC',
+          state: 'MG',
+          vote: 'SIM'
+        }
+      ]
+    };
+    const officialVotesLoader = vi.fn(async () => ({
+      status: 'fulfilled' as const,
+      data: [officialVote],
+      errors: []
+    }));
 
     await expect(
       selectProposalById('camara-proposicao-100', {
@@ -446,11 +468,18 @@ describe('chatStore actions', () => {
             officialSummary: 'Detalhe oficial controlado.'
           },
           errors: []
-        })
+        }),
+        getOfficialVotesByProposal: officialVotesLoader
       })
     ).resolves.toBe(true);
 
     expect(fixtureProposalLoader).not.toHaveBeenCalled();
+    expect(officialVotesLoader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'camara-proposicao-100',
+        officialSummary: 'Detalhe oficial controlado.'
+      })
+    );
     expect(get(chatStore)).toMatchObject({
       currentState: 'BILL_DETAIL',
       selectedProposal: {
@@ -458,7 +487,31 @@ describe('chatStore actions', () => {
         relationship: 'Autoria',
         officialSummary: 'Detalhe oficial controlado.'
       },
+      voteHistory: [
+        {
+          id: 'camara-votacao-100-1',
+          proposalId: 'PL 2/2024'
+        }
+      ],
       errorMessage: ''
+    });
+
+    const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('fixture-vote-detail'));
+
+    expect(
+      selectVoteById('camara-votacao-100-1', {
+        getFixtureVoteByIdForParliamentarian: fixtureVoteDetailLoader
+      })
+    ).toBe(true);
+    expect(fixtureVoteDetailLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_VOTES',
+      selectedProposal: {
+        id: 'camara-proposicao-100'
+      },
+      selectedVote: {
+        id: 'camara-votacao-100-1'
+      }
     });
   });
 
@@ -509,6 +562,11 @@ describe('chatStore actions', () => {
     });
 
     const fixtureProposalLoader = vi.fn();
+    const officialVotesLoader = vi.fn(async () => ({
+      status: 'fulfilled' as const,
+      data: [],
+      errors: []
+    }));
 
     await expect(
       selectProposalById('camara-proposicao-100', {
@@ -524,11 +582,17 @@ describe('chatStore actions', () => {
               message: 'Falha controlada.'
             }
           ]
-        })
+        }),
+        getOfficialVotesByProposal: officialVotesLoader
       })
     ).resolves.toBe(true);
 
     expect(fixtureProposalLoader).not.toHaveBeenCalled();
+    expect(officialVotesLoader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'camara-proposicao-100'
+      })
+    );
     expect(get(chatStore)).toMatchObject({
       currentState: 'BILL_DETAIL',
       selectedProposal: {
