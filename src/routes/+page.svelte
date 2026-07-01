@@ -22,6 +22,8 @@
     goBack,
     initialChatContext,
     navigateTo,
+    officialParliamentarianSessionVotesCoverageMessage,
+    officialParliamentarianVoteHistoryUnavailableMessage,
     openParliamentarianBills,
     openParliamentarianVotes,
     reset,
@@ -237,6 +239,10 @@
     return proposal.source === 'camara' && proposal.id === `camara-proposicao-${proposal.sourceId}`;
   }
 
+  function isOfficialParliamentarian(parliamentarian: Parliamentarian) {
+    return parliamentarian.id === `${parliamentarian.source}-${parliamentarian.sourceId}`;
+  }
+
   function isIndividualVoteForParliamentarian(
     individualVote: RollCallVote['individualVotes'][number],
     parliamentarian: Parliamentarian
@@ -340,6 +346,26 @@
           toParliamentarianVoteView(vote, chatContext.selectedParliamentarian!)
         )
       : []
+  );
+  let selectedParliamentarianIsOfficial = $derived(
+    chatContext.selectedParliamentarian
+      ? isOfficialParliamentarian(chatContext.selectedParliamentarian)
+      : false
+  );
+  let selectedParliamentarianVotesCoverageDescription = $derived(
+    selectedParliamentarianIsOfficial && selectedParliamentarianVotes.length > 0
+      ? officialParliamentarianSessionVotesCoverageMessage
+      : undefined
+  );
+  let selectedParliamentarianVotesEmptyTitle = $derived(
+    selectedParliamentarianIsOfficial
+      ? officialParliamentarianVoteHistoryUnavailableMessage
+      : undefined
+  );
+  let selectedParliamentarianVotesEmptyDescription = $derived(
+    selectedParliamentarianIsOfficial
+      ? 'Esta versão estática não varre anos, proposições, votações ou arquivos grandes para montar esse histórico.'
+      : undefined
   );
   let selectedBillVotes: ParliamentarianVoteView[] = $derived(
     chatContext.selectedParliamentarian && chatContext.selectedProposal
@@ -665,6 +691,9 @@
               <ParliamentarianVotes
                 parliamentarianName={selectedParliamentarian.name}
                 votes={selectedParliamentarianVotes}
+                coverageDescription={selectedParliamentarianVotesCoverageDescription}
+                emptyTitle={selectedParliamentarianVotesEmptyTitle}
+                emptyDescription={selectedParliamentarianVotesEmptyDescription}
                 onSelectVote={handleSelectVote}
                 onBackToParliamentarian={handleBackToParliamentarian}
                 onStartOver={handleStartOver}

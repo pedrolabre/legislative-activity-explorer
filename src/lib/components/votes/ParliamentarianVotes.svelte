@@ -30,12 +30,18 @@
   let {
     parliamentarianName,
     votes,
+    coverageDescription = 'Dados apresentados nesta página conforme a fonte disponível.',
+    emptyTitle = 'Não há votações associadas nesta visualização.',
+    emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
     onSelectVote,
     onBackToParliamentarian,
     onStartOver
   }: {
     parliamentarianName: string;
     votes: ParliamentarianVoteView[];
+    coverageDescription?: string;
+    emptyTitle?: string;
+    emptyDescription?: string;
     onSelectVote: (id: string) => void;
     onBackToParliamentarian: () => void;
     onStartOver: () => void;
@@ -72,17 +78,17 @@
     </h3>
     <p class="mt-3 text-sm leading-6 text-ink-muted">{voteCountLabel} nesta página.</p>
     <p class="mt-2 text-sm leading-6 text-ink-muted">
-      Dados apresentados nesta página conforme a fonte disponível.
+      {coverageDescription}
     </p>
   </header>
 
   {#if votes.length === 0}
     <div class="rounded-ui border border-border bg-surface-raised p-4" role="status">
       <p class="text-sm font-semibold leading-6 text-ink">
-        Não há votações associadas nesta visualização.
+        {emptyTitle}
       </p>
       <p class="mt-2 text-sm leading-6 text-ink-muted">
-        Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.
+        {emptyDescription}
       </p>
     </div>
   {:else}

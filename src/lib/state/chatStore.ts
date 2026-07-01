@@ -91,6 +91,10 @@ export interface SelectVoteByIdOptions {
 
 const defaultSearchDelayMs = 450;
 const genericSearchErrorMessage = 'Não foi possível concluir a busca nesta página.';
+export const officialParliamentarianVoteHistoryUnavailableMessage =
+  'Histórico completo de votações por parlamentar ainda não está disponível nesta versão.';
+export const officialParliamentarianSessionVotesCoverageMessage =
+  'Esta visualização mostra somente votações oficiais carregadas a partir de proposições abertas nesta sessão.';
 
 let searchSequence = 0;
 let pendingSearch:
@@ -485,19 +489,33 @@ export function openParliamentarianVotes(options: OpenParliamentarianVotesOption
   }
 
   const isOfficialSelection = isOfficialParliamentarian(context.selectedParliamentarian);
-  const fixtureLoader =
-    options.getFixtureVotesByParliamentarianId ?? getVotesByParliamentarianId;
+  let voteHistory: RollCallVote[];
+  let errorMessage = '';
+
+  if (isOfficialSelection) {
+    voteHistory = context.voteHistory.filter(
+      (vote) => vote.source === context.selectedParliamentarian?.source
+    );
+    errorMessage =
+      voteHistory.length > 0
+        ? joinRecoverableNotices(
+            officialParliamentarianVoteHistoryUnavailableMessage,
+            officialParliamentarianSessionVotesCoverageMessage
+          )
+        : officialParliamentarianVoteHistoryUnavailableMessage;
+  } else {
+    const fixtureLoader =
+      options.getFixtureVotesByParliamentarianId ?? getVotesByParliamentarianId;
+
+    voteHistory = fixtureLoader(context.selectedParliamentarian.id);
+  }
 
   navigateTo('PARLIAMENTARIAN_VOTES', {
     updates: {
-      voteHistory: isOfficialSelection
-        ? []
-        : fixtureLoader(context.selectedParliamentarian.id),
+      voteHistory,
       selectedProposal: null,
       selectedVote: null,
-      errorMessage: isOfficialSelection
-        ? 'Dados oficiais de votações não estão disponíveis nesta consulta.'
-        : ''
+      errorMessage
     }
   });
 

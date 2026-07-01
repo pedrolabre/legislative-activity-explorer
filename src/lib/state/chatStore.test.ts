@@ -9,6 +9,8 @@ import {
   goBack,
   initialChatContext,
   navigateTo,
+  officialParliamentarianSessionVotesCoverageMessage,
+  officialParliamentarianVoteHistoryUnavailableMessage,
   openParliamentarianBills,
   openParliamentarianVotes,
   reset,
@@ -641,7 +643,7 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_VOTES',
       voteHistory: [],
-      errorMessage: 'Dados oficiais de votações não estão disponíveis nesta consulta.'
+      errorMessage: officialParliamentarianVoteHistoryUnavailableMessage
     });
 
     const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('fixture-vote-detail'));
@@ -655,6 +657,122 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_VOTES',
       selectedVote: null
+    });
+  });
+
+  it('uses official votes already loaded from opened proposals as session partial coverage', async () => {
+    await executeSearch('ana', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'camara-10',
+            source: 'camara',
+            sourceId: '10',
+            name: 'Ana Costa',
+            office: 'Deputado federal'
+          }
+        ],
+        proposals: []
+      })
+    });
+    await selectParliamentarianById('camara-10', {
+      getOfficialParliamentarianDetail: async (parliamentarian) => ({
+        status: 'fulfilled',
+        data: parliamentarian,
+        errors: []
+      })
+    });
+    await openParliamentarianBills({
+      getOfficialProposalsByParliamentarian: async () => ({
+        status: 'fulfilled',
+        data: [
+          {
+            id: 'camara-proposicao-100',
+            source: 'camara',
+            sourceId: '100',
+            title: 'PL 2/2024',
+            type: 'PL',
+            relationship: 'Autoria',
+            references: []
+          }
+        ],
+        errors: []
+      })
+    });
+
+    const officialVote: RollCallVote = {
+      id: 'camara-votacao-100-1',
+      source: 'camara',
+      sourceId: '100-1',
+      proposalId: 'PL 2/2024',
+      votedAt: '2024-06-12',
+      description: 'Votacao nominal oficial.',
+      individualVotes: [
+        {
+          parliamentarianId: 'camara-10',
+          parliamentarianName: 'Ana Costa',
+          party: 'ABC',
+          state: 'MG',
+          vote: 'SIM'
+        }
+      ]
+    };
+
+    await selectProposalById('camara-proposicao-100', {
+      getOfficialProposalDetail: async (proposal) => ({
+        status: 'fulfilled',
+        data: proposal,
+        errors: []
+      }),
+      getOfficialVotesByProposal: async () => ({
+        status: 'fulfilled',
+        data: [officialVote],
+        errors: []
+      })
+    });
+    navigateTo('PARLIAMENTARIAN_DETAIL', {
+      updates: {
+        selectedProposal: null,
+        selectedVote: null,
+        errorMessage: ''
+      },
+      recordHistory: false
+    });
+
+    const fixtureVotesLoader = vi.fn(() => [createControlledVote('fixture-vote-for-official')]);
+
+    expect(
+      openParliamentarianVotes({
+        getFixtureVotesByParliamentarianId: fixtureVotesLoader
+      })
+    ).toBe(true);
+    expect(fixtureVotesLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_VOTES',
+      selectedProposal: null,
+      voteHistory: [
+        {
+          id: 'camara-votacao-100-1',
+          proposalId: 'PL 2/2024'
+        }
+      ],
+      errorMessage: `${officialParliamentarianVoteHistoryUnavailableMessage} ${officialParliamentarianSessionVotesCoverageMessage}`
+    });
+
+    const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('unused-fixture-detail'));
+
+    expect(
+      selectVoteById('camara-votacao-100-1', {
+        getFixtureVoteByIdForParliamentarian: fixtureVoteDetailLoader
+      })
+    ).toBe(true);
+    expect(fixtureVoteDetailLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_VOTES',
+      selectedVote: {
+        id: 'camara-votacao-100-1'
+      }
     });
   });
 
@@ -693,7 +811,7 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_VOTES',
       voteHistory: [],
-      errorMessage: 'Dados oficiais de votações não estão disponíveis nesta consulta.'
+      errorMessage: officialParliamentarianVoteHistoryUnavailableMessage
     });
 
     const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('fixture-senado-detail'));

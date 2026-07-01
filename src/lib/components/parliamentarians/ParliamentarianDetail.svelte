@@ -152,7 +152,7 @@
           Votações
         </button>
         <p class="mt-2 text-sm leading-6 text-ink-muted">
-          Abrir histórico associado ao parlamentar.
+          Abrir cobertura disponível de votações.
         </p>
       </div>
     </div>

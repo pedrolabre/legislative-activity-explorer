@@ -71,7 +71,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/components/search/SearchResultCard.svelte`: Card factual para item de resultado de parlamentar ou proposição, com abertura de perfil para parlamentares.
 * `src/lib/components/search/SearchResults.svelte`: Lista de resultados agrupada por parlamentares e proposições, incluindo estado vazio e seleção de parlamentar.
 * `src/lib/components/votes/BillVotes.svelte`: Detalhe factual de votação com identificação da proposição, resultado quando disponível, contagens agregadas, lista nominal e destaque neutro do parlamentar selecionado quando disponível.
-* `src/lib/components/votes/ParliamentarianVotes.svelte`: Lista factual de votações associadas a parlamentar ou à proposição aberta, com dados parciais tratados de forma neutra.
+* `src/lib/components/votes/ParliamentarianVotes.svelte`: Lista factual de votações associadas a parlamentar ou à proposição aberta, com cobertura parcial da sessão para parlamentar oficial e dados parciais tratados de forma neutra.
+* `src/lib/components/votes/ParliamentarianVotes.test.ts`: Testes unitários da lista de votações por parlamentar, cobrindo estado vazio oficial específico e cobertura parcial da sessão.
 * `src/lib/components/votes/VoteBadge.svelte`: Rótulo visual neutro e acessível para votos `SIM`, `NÃO`, `ABSTENÇÃO` e `AUSENTE`.
 * `src/lib/components/votes/votePresentation.ts`: Politica visual auditada para labels e classes neutras de votos.
 * `src/lib/components/votes/votePresentation.test.ts`: Testes unitarios da politica visual de votos, cobrindo labels oficiais e ausencia de tokens verde/vermelho.
