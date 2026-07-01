@@ -58,8 +58,8 @@ export class LegislativeDataSourceConfigError extends Error {
   }
 }
 
-function isHttpProtocol(protocol: string) {
-  return protocol === 'http:' || protocol === 'https:';
+function isHttpsProtocol(protocol: string) {
+  return protocol === 'https:';
 }
 
 function isAllowedOfficialHost(hostname: string): hostname is LegislativeDataSourceAllowedHost {
@@ -87,7 +87,7 @@ function resolvePublicProxyUrl(rawProxyUrl: string | null | undefined): ProxyUrl
     };
   }
 
-  if (!isHttpProtocol(proxyUrl.protocol)) {
+  if (!isHttpsProtocol(proxyUrl.protocol)) {
     return {
       issue: 'proxy-url-with-unsupported-protocol'
     };
@@ -144,7 +144,7 @@ export function isAllowedLegislativeApiTargetUrl(targetUrl: string) {
   }
 
   return (
-    isHttpProtocol(parsedTargetUrl.protocol) &&
+    isHttpsProtocol(parsedTargetUrl.protocol) &&
     !parsedTargetUrl.username &&
     !parsedTargetUrl.password &&
     isAllowedOfficialHost(parsedTargetUrl.hostname)

@@ -71,6 +71,17 @@ describe('resolveLegislativeDataSourceConfig', () => {
       issue: 'proxy-url-with-query-or-hash'
     });
   });
+
+  it('does not accept an insecure public proxy URL protocol', () => {
+    expect(
+      resolveLegislativeDataSourceConfig({
+        PUBLIC_LEGISLATIVE_PROXY_URL: 'http://worker.example/legislative'
+      })
+    ).toMatchObject({
+      mode: 'direct',
+      issue: 'proxy-url-with-unsupported-protocol'
+    });
+  });
 });
 
 describe('buildLegislativeProxyRequestUrl', () => {
@@ -90,6 +101,18 @@ describe('buildLegislativeProxyRequestUrl', () => {
       buildLegislativeProxyRequestUrl(
         'https://worker.example/legislative',
         'https://example.com/api'
+      )
+    ).toThrow('URL oficial nao autorizada');
+  });
+
+  it('rejects insecure official target URLs before calling the proxy', () => {
+    expect(isAllowedLegislativeApiTargetUrl('http://dadosabertos.camara.leg.br/api/v2')).toBe(
+      false
+    );
+    expect(() =>
+      buildLegislativeProxyRequestUrl(
+        'https://worker.example/legislative',
+        'http://dadosabertos.camara.leg.br/api/v2/deputados'
       )
     ).toThrow('URL oficial nao autorizada');
   });

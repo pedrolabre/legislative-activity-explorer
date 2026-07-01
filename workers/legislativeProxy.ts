@@ -70,8 +70,8 @@ function createOptionsResponse() {
   });
 }
 
-function isHttpProtocol(protocol: string) {
-  return protocol === 'http:' || protocol === 'https:';
+function isHttpsProtocol(protocol: string) {
+  return protocol === 'https:';
 }
 
 function isAllowedHost(hostname: string): hostname is LegislativeProxyAllowedHost {
@@ -104,7 +104,7 @@ export function validateLegislativeProxyTarget(request: Request): TargetValidati
     };
   }
 
-  if (!isHttpProtocol(targetUrl.protocol)) {
+  if (!isHttpsProtocol(targetUrl.protocol)) {
     return {
       ok: false,
       status: 400,

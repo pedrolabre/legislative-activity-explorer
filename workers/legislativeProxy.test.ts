@@ -75,9 +75,20 @@ describe('handleLegislativeProxyRequest', () => {
     });
   });
 
-  it('rejects target URLs outside HTTP and HTTPS', async () => {
+  it('rejects non-HTTPS target URL protocols', async () => {
     const response = await handleLegislativeProxyRequest(
       createProxyRequest('ftp://dadosabertos.camara.leg.br/api/v2/deputados/1')
+    );
+
+    expect(response.status).toBe(400);
+    expect(await readJson(response)).toEqual({
+      error: 'Protocolo nao aceito para consulta oficial.'
+    });
+  });
+
+  it('rejects insecure official target URLs', async () => {
+    const response = await handleLegislativeProxyRequest(
+      createProxyRequest('http://dadosabertos.camara.leg.br/api/v2/deputados/1')
     );
 
     expect(response.status).toBe(400);
