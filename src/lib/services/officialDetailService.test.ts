@@ -17,7 +17,8 @@ function createEmptyCamaraClient(): OfficialCamaraDetailClient {
     getProposicoesByDeputadoAutor: async () => [],
     getProposicaoById: async () => ({
       id: 100
-    })
+    }),
+    getProposicaoTemasById: async () => []
   };
 }
 
@@ -323,6 +324,114 @@ describe('getOfficialProposalDetail', () => {
       },
       errors: []
     });
+  });
+
+  it('enriches a Camara proposition detail with official themes', async () => {
+    let requestedDetailId: string | number | undefined;
+    let requestedThemeId: string | number | undefined;
+    const result = await getOfficialProposalDetail(
+      {
+        id: 'camara-proposicao-100',
+        source: 'camara',
+        sourceId: '100',
+        title: 'PL 2/2024',
+        type: 'PL',
+        references: []
+      },
+      {
+        camaraClient: {
+          ...createEmptyCamaraClient(),
+          getProposicaoById: async (id) => {
+            requestedDetailId = id;
+            return {
+              id: 100,
+              siglaTipo: 'PL',
+              numero: 2,
+              ano: 2024,
+              ementa: 'Detalhe oficial da proposicao.',
+              statusProposicao: {
+                descricaoSituacao: 'Aguardando parecer'
+              }
+            };
+          },
+          getProposicaoTemasById: async (id) => {
+            requestedThemeId = id;
+            return [
+              {
+                codTema: 40,
+                tema: 'Educacao'
+              },
+              {
+                codTema: 60,
+                tema: 'Saude'
+              }
+            ];
+          }
+        },
+        senadoClient: createEmptySenadoClient()
+      }
+    );
+
+    expect(requestedDetailId).toBe('100');
+    expect(requestedThemeId).toBe('100');
+    expect(result).toMatchObject({
+      status: 'fulfilled',
+      data: {
+        id: 'camara-proposicao-100',
+        subject: 'Educacao; Saude',
+        status: 'Aguardando parecer',
+        officialSummary: 'Detalhe oficial da proposicao.'
+      },
+      errors: []
+    });
+  });
+
+  it('keeps Camara proposition detail available when official themes fail', async () => {
+    const result = await getOfficialProposalDetail(
+      {
+        id: 'camara-proposicao-100',
+        source: 'camara',
+        sourceId: '100',
+        title: 'PL 2/2024',
+        type: 'PL',
+        references: []
+      },
+      {
+        camaraClient: {
+          ...createEmptyCamaraClient(),
+          getProposicaoById: async () => ({
+            id: 100,
+            siglaTipo: 'PL',
+            numero: 2,
+            ano: 2024,
+            ementa: 'Detalhe oficial da proposicao.'
+          }),
+          getProposicaoTemasById: async () => {
+            throw new CamaraApiClientError('A API da Camara retornou uma falha HTTP.', {
+              kind: 'http',
+              status: 503
+            });
+          }
+        },
+        senadoClient: createEmptySenadoClient()
+      }
+    );
+
+    expect(result).toMatchObject({
+      status: 'partial',
+      data: {
+        id: 'camara-proposicao-100',
+        officialSummary: 'Detalhe oficial da proposicao.'
+      },
+      errors: [
+        {
+          source: 'camara',
+          entity: 'proposal',
+          kind: 'client'
+        }
+      ]
+    });
+    expect(result.data?.subject).toBeUndefined();
   });
 
   it('applies catalog references when the official proposal id is cataloged', async () => {

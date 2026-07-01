@@ -4,7 +4,7 @@
     parliamentarianId: string;
     identification: string;
     chamber: string;
-    subject: string;
+    subject?: string;
     status: string;
     relationship: string;
     presentedAt?: string;
@@ -105,10 +105,12 @@
                   <dt class="font-bold text-ink">Casa legislativa</dt>
                   <dd>{bill.chamber}</dd>
                 </div>
-                <div>
-                  <dt class="font-bold text-ink">Tema</dt>
-                  <dd>{bill.subject}</dd>
-                </div>
+                {#if bill.subject}
+                  <div>
+                    <dt class="font-bold text-ink">Tema</dt>
+                    <dd>{bill.subject}</dd>
+                  </div>
+                {/if}
                 <div>
                   <dt class="font-bold text-ink">Situação</dt>
                   <dd>{bill.status}</dd>

@@ -1,5 +1,9 @@
 import type { LegislativeProposal, Parliamentarian } from '$lib/domain';
-import type { CamaraDeputadoPayload, CamaraProposicaoPayload } from '$lib/api/camaraClient';
+import type {
+  CamaraDeputadoPayload,
+  CamaraProposicaoPayload,
+  CamaraProposicaoTemaPayload
+} from '$lib/api/camaraClient';
 
 const camaraDeputadoOfficialUrl = 'https://www.camara.leg.br/deputados';
 const camaraProposicaoOfficialUrl = 'https://www.camara.leg.br/propostas-legislativas';
@@ -152,4 +156,30 @@ export function mapCamaraProposicoesToLegislativeProposals(
   payloads: CamaraProposicaoPayload[]
 ): LegislativeProposal[] {
   return payloads.map(mapCamaraProposicaoToLegislativeProposal);
+}
+
+export function mapCamaraProposicaoTemasToSubject(
+  payloads: CamaraProposicaoTemaPayload[]
+): string | undefined {
+  const seenThemes = new Set<string>();
+  const themes: string[] = [];
+
+  for (const payload of payloads) {
+    const theme = normalizeString(payload.tema);
+
+    if (!theme) {
+      continue;
+    }
+
+    const dedupeKey = theme.toLocaleLowerCase('pt-BR');
+
+    if (seenThemes.has(dedupeKey)) {
+      continue;
+    }
+
+    seenThemes.add(dedupeKey);
+    themes.push(theme);
+  }
+
+  return themes.length > 0 ? themes.join('; ') : undefined;
 }

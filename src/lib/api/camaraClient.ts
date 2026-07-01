@@ -82,6 +82,12 @@ export interface CamaraProposicaoPayload {
   } | null;
 }
 
+export interface CamaraProposicaoTemaPayload {
+  codTema?: number | string | null;
+  tema?: string | null;
+  relevancia?: number | string | null;
+}
+
 export interface GetCamaraProposicoesByDeputadoAutorOptions {
   pagina?: number;
   itens?: number;
@@ -167,6 +173,18 @@ export class CamaraApiClient {
 
   async getProposicaoById(id: number | string): Promise<CamaraProposicaoPayload> {
     return this.requestSingleData<CamaraProposicaoPayload>(`proposicoes/${id}`);
+  }
+
+  async getProposicaoTemasById(id: number | string): Promise<CamaraProposicaoTemaPayload[]> {
+    const page = await this.getProposicaoTemasByIdPage(id);
+
+    return page.data;
+  }
+
+  async getProposicaoTemasByIdPage(
+    id: number | string
+  ): Promise<CamaraApiPage<CamaraProposicaoTemaPayload>> {
+    return this.requestListPage<CamaraProposicaoTemaPayload>(`proposicoes/${id}/temas`);
   }
 
   async getProposicoes(

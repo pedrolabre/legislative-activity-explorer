@@ -52,7 +52,7 @@
       id: string;
       title: string;
       chamber: string;
-      subject: string;
+      subject?: string;
       status: string;
       searchTerms: string[];
     }[];
@@ -77,7 +77,7 @@
     parliamentarianId: string;
     identification: string;
     chamber: string;
-    subject: string;
+    subject?: string;
     status: string;
     relationship: string;
     presentedAt?: string;
@@ -148,7 +148,7 @@
       id: proposal.id,
       title: proposal.title,
       chamber: getChamberLabel(proposal.source),
-      subject: proposal.subject ?? unavailableSearchFieldLabel,
+      subject: proposal.subject,
       status: proposal.status ?? unavailableSearchFieldLabel,
       searchTerms: []
     };
@@ -196,7 +196,7 @@
       parliamentarianId,
       identification: proposal.title,
       chamber: getChamberLabel(proposal.source),
-      subject: proposal.subject ?? unavailableDetailFieldLabel,
+      subject: proposal.subject,
       status: proposal.status ?? unavailableDetailFieldLabel,
       relationship: proposal.relationship ?? unavailableDetailFieldLabel,
       presentedAt: proposal.presentedAt,

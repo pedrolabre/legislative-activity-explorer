@@ -8,6 +8,7 @@ import type { LegislativeProposal, LegislativeSource, Parliamentarian } from '$l
 import {
   CamaraMapperError,
   mapCamaraDeputadoToParliamentarian,
+  mapCamaraProposicaoTemasToSubject,
   mapCamaraProposicaoToLegislativeProposal
 } from '$lib/mappers/camaraMapper';
 import {
@@ -52,7 +53,10 @@ export interface OfficialDetailListResult<T> {
 
 export type OfficialCamaraDetailClient = Pick<
   CamaraApiClient,
-  'getDeputadoById' | 'getProposicoesByDeputadoAutor' | 'getProposicaoById'
+  | 'getDeputadoById'
+  | 'getProposicoesByDeputadoAutor'
+  | 'getProposicaoById'
+  | 'getProposicaoTemasById'
 >;
 
 export type OfficialSenadoDetailClient = Pick<SenadoApiClient, 'getSenadorById' | 'getMateriaById'>;
@@ -197,6 +201,50 @@ function mapCamaraAuthorProposals(payloads: CamaraProposicaoPayload[]) {
   };
 }
 
+async function getOfficialCamaraProposalDetail(
+  proposal: LegislativeProposal,
+  client: OfficialCamaraDetailClient
+): Promise<OfficialDetailResult<LegislativeProposal>> {
+  const errors: OfficialDetailRecoverableError[] = [];
+  let data: LegislativeProposal;
+
+  try {
+    data = mapCamaraProposicaoToLegislativeProposal(
+      await client.getProposicaoById(proposal.sourceId)
+    );
+  } catch (error) {
+    return {
+      status: 'failed',
+      data: null,
+      errors: [toRecoverableError('camara', 'proposal', error)]
+    };
+  }
+
+  try {
+    const subject = mapCamaraProposicaoTemasToSubject(
+      await client.getProposicaoTemasById(proposal.sourceId)
+    );
+
+    if (subject) {
+      data = {
+        ...data,
+        subject
+      };
+    }
+  } catch (error) {
+    errors.push(toRecoverableError('camara', 'proposal', error));
+  }
+
+  return {
+    status: errors.length > 0 ? 'partial' : 'fulfilled',
+    data: attachReviewedFactualSummaryToProposal(
+      attachEditorialReferencesToProposal(data, proposal.id),
+      proposal.id
+    ),
+    errors
+  };
+}
+
 export async function getOfficialParliamentarianDetail(
   parliamentarian: Parliamentarian,
   options: OfficialDetailServiceOptions = {}
@@ -271,15 +319,14 @@ export async function getOfficialProposalDetail(
 ): Promise<OfficialDetailResult<LegislativeProposal>> {
   const { source, sourceId } = proposal;
 
+  if (source === 'camara') {
+    return getOfficialCamaraProposalDetail(proposal, getConfiguredCamaraDetailClient(options));
+  }
+
   try {
-    const data =
-      source === 'camara'
-        ? mapCamaraProposicaoToLegislativeProposal(
-            await getConfiguredCamaraDetailClient(options).getProposicaoById(sourceId)
-          )
-        : mapSenadoMateriaToLegislativeProposal(
-            await getConfiguredSenadoDetailClient(options).getMateriaById(sourceId)
-          );
+    const data = mapSenadoMateriaToLegislativeProposal(
+      await getConfiguredSenadoDetailClient(options).getMateriaById(sourceId)
+    );
 
     return {
       status: 'fulfilled',

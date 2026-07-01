@@ -214,6 +214,34 @@ describe('CamaraApiClient', () => {
     expect(calls[0]).toBe('https://dados.example/api/v2/proposicoes/9876');
   });
 
+  it('fetches official proposition themes by id', async () => {
+    const calls: string[] = [];
+    const client = new CamaraApiClient({
+      baseUrl: 'https://dados.example/api/v2',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          dados: [
+            {
+              codTema: 40,
+              tema: 'Educacao',
+              relevancia: 1
+            }
+          ]
+        });
+      }
+    });
+
+    await expect(client.getProposicaoTemasById(9876)).resolves.toEqual([
+      {
+        codTema: 40,
+        tema: 'Educacao',
+        relevancia: 1
+      }
+    ]);
+    expect(calls[0]).toBe('https://dados.example/api/v2/proposicoes/9876/temas');
+  });
+
   it('wraps network failures in a recoverable client error', async () => {
     const client = new CamaraApiClient({
       fetch: async () => {

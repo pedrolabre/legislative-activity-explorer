@@ -14,7 +14,7 @@
         id: string;
         title: string;
         chamber: string;
-        subject: string;
+        subject?: string;
         status: string;
       };
 
@@ -74,10 +74,12 @@
         <dt class="font-bold text-ink">Casa</dt>
         <dd>{result.chamber}</dd>
       </div>
-      <div>
-        <dt class="font-bold text-ink">Tema</dt>
-        <dd>{result.subject}</dd>
-      </div>
+      {#if result.subject}
+        <div>
+          <dt class="font-bold text-ink">Tema</dt>
+          <dd>{result.subject}</dd>
+        </div>
+      {/if}
       <div class="sm:col-span-2">
         <dt class="font-bold text-ink">Situação</dt>
         <dd>{result.status}</dd>

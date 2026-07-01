@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CamaraMapperError } from './camaraMapper';
 import {
   mapCamaraDeputadoToParliamentarian,
+  mapCamaraProposicaoTemasToSubject,
   mapCamaraProposicaoToLegislativeProposal,
   mapCamaraProposicoesToLegislativeProposals
 } from './camaraMapper';
@@ -185,5 +186,52 @@ describe('mapCamaraProposicaoToLegislativeProposal', () => {
     expect(() => mapCamaraProposicaoToLegislativeProposal({ siglaTipo: 'PL' })).toThrow(
       CamaraMapperError
     );
+  });
+});
+
+describe('mapCamaraProposicaoTemasToSubject', () => {
+  it('joins official Camara proposition themes without inventing labels', () => {
+    expect(
+      mapCamaraProposicaoTemasToSubject([
+        {
+          codTema: 40,
+          tema: 'Educacao'
+        },
+        {
+          codTema: 60,
+          tema: 'Saude'
+        }
+      ])
+    ).toBe('Educacao; Saude');
+  });
+
+  it('ignores empty and duplicated theme labels', () => {
+    expect(
+      mapCamaraProposicaoTemasToSubject([
+        {
+          codTema: 40,
+          tema: 'Educacao'
+        },
+        {
+          codTema: 40,
+          tema: ' educacao '
+        },
+        {
+          codTema: 90,
+          tema: ''
+        }
+      ])
+    ).toBe('Educacao');
+  });
+
+  it('keeps subject unavailable when no official theme label is present', () => {
+    expect(
+      mapCamaraProposicaoTemasToSubject([
+        {
+          codTema: 90,
+          tema: ''
+        }
+      ])
+    ).toBeUndefined();
   });
 });
