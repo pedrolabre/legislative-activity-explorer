@@ -48,4 +48,59 @@ describe('BillDetail', () => {
     expect(html).toContain('Resumo factual revisado controlado.');
     expect(html).not.toContain('Resumo factual revisado ainda não disponível.');
   });
+
+  it('renders an automatic official source without requiring reviewed external references', () => {
+    const html = renderBillDetail({
+      sources: [
+        {
+          id: 'camara-proposicao-100-fonte-oficial',
+          type: 'official',
+          label: 'Fonte oficial',
+          title: 'Página oficial da proposição',
+          publisher: 'Câmara dos Deputados',
+          url: 'https://www.camara.leg.br/propostas-legislativas/100'
+        }
+      ]
+    });
+
+    expect(html).toContain('Página oficial da proposição');
+    expect(html).toContain('href="https://www.camara.leg.br/propostas-legislativas/100"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain(
+      'Referências externas revisadas ainda não foram adicionadas para esta proposição.'
+    );
+    expect(html).not.toContain(
+      'As três referências revisadas (oficial, imprensa e técnica) ainda não estão completas nesta visualização.'
+    );
+  });
+
+  it('does not show the missing external references message when one reviewed external reference exists', () => {
+    const html = renderBillDetail({
+      sources: [
+        {
+          id: 'camara-proposicao-100-fonte-oficial',
+          type: 'official',
+          label: 'Fonte oficial',
+          title: 'Página oficial da proposição',
+          publisher: 'Câmara dos Deputados',
+          url: 'https://www.camara.leg.br/propostas-legislativas/100'
+        },
+        {
+          id: 'camara-proposicao-100-press',
+          type: 'press',
+          label: 'Cobertura de imprensa',
+          title: 'Cobertura informativa revisada',
+          publisher: 'Veículo de imprensa',
+          url: 'https://example.com/politica/proposicao',
+          checkedAt: '2026-06-29'
+        }
+      ]
+    });
+
+    expect(html).toContain('Cobertura informativa revisada');
+    expect(html).not.toContain(
+      'Referências externas revisadas ainda não foram adicionadas para esta proposição.'
+    );
+  });
 });

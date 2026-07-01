@@ -36,16 +36,16 @@
   } = $props();
 
   const unavailableLabel = 'Não disponível nesta visualização.';
-  const requiredReferenceTypes = ['official', 'press', 'technical'] as const;
-  const incompleteReviewedReferencesMessage =
-    'As três referências revisadas (oficial, imprensa e técnica) ainda não estão completas nesta visualização.';
+  const reviewedExternalReferenceTypes = ['press', 'technical'] as const;
+  const unavailableOfficialSourceMessage =
+    'Fonte oficial não disponível nesta visualização.';
   const noReviewedReferencesMessage =
-    'Referências revisadas ainda não disponíveis nesta visualização.';
+    'Referências externas revisadas ainda não foram adicionadas para esta proposição.';
   const unavailableReviewedFactualSummaryMessage =
     'Resumo factual revisado ainda não disponível.';
 
-  let hasCompleteReviewedReferences = $derived(
-    requiredReferenceTypes.every((type) =>
+  let hasReviewedExternalReferences = $derived(
+    reviewedExternalReferenceTypes.some((type) =>
       bill.sources.some((source) => source.type === type && Boolean(source.checkedAt?.trim()))
     )
   );
@@ -184,14 +184,14 @@
           </li>
         {/each}
       </ul>
-      {#if !hasCompleteReviewedReferences}
-        <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
-          <p class="text-sm leading-6 text-ink-muted">
-            {incompleteReviewedReferencesMessage}
-          </p>
-        </div>
-      {/if}
     {:else}
+      <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
+        <p class="text-sm leading-6 text-ink-muted">
+          {unavailableOfficialSourceMessage}
+        </p>
+      </div>
+    {/if}
+    {#if !hasReviewedExternalReferences}
       <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
           {noReviewedReferencesMessage}

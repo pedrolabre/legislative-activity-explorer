@@ -198,7 +198,16 @@ describe('getOfficialProposalsByParliamentarian', () => {
         id: 'camara-proposicao-100',
         title: 'PL 2/2024',
         relationship: 'Autoria',
-        officialSummary: 'Trata de transparencia de dados publicos.'
+        officialSummary: 'Trata de transparencia de dados publicos.',
+        references: [
+          {
+            id: 'camara-proposicao-100-fonte-oficial',
+            type: 'official',
+            title: 'Página oficial da proposição',
+            publisher: 'Câmara dos Deputados',
+            url: 'https://www.camara.leg.br/propostas-legislativas/100'
+          }
+        ]
       })
     ]);
   });
@@ -320,7 +329,16 @@ describe('getOfficialProposalDetail', () => {
       status: 'fulfilled',
       data: {
         id: 'camara-proposicao-100',
-        officialSummary: 'Detalhe oficial da proposicao.'
+        officialSummary: 'Detalhe oficial da proposicao.',
+        references: [
+          {
+            id: 'camara-proposicao-100-fonte-oficial',
+            type: 'official',
+            title: 'Página oficial da proposição',
+            publisher: 'Câmara dos Deputados',
+            url: 'https://www.camara.leg.br/propostas-legislativas/100'
+          }
+        ]
       },
       errors: []
     });
@@ -534,7 +552,16 @@ describe('getOfficialProposalDetail', () => {
       data: {
         id: 'senado-materia-300',
         title: 'PLS 3/2024',
-        officialSummary: 'Detalhe oficial da materia.'
+        officialSummary: 'Detalhe oficial da materia.',
+        references: [
+          {
+            id: 'senado-materia-300-fonte-oficial',
+            type: 'official',
+            title: 'Página oficial da matéria',
+            publisher: 'Senado Federal',
+            url: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/300'
+          }
+        ]
       },
       errors: []
     });

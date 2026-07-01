@@ -160,7 +160,15 @@ describe('mapCamaraProposicaoToLegislativeProposal', () => {
     expect(proposal.status).toBeUndefined();
     expect(proposal.presentedAt).toBeUndefined();
     expect(proposal.officialSummary).toBeUndefined();
-    expect(proposal.references).toHaveLength(1);
+    expect(proposal.references).toEqual([
+      {
+        id: 'camara-proposicao-300-fonte-oficial',
+        type: 'official',
+        title: 'Página oficial da proposição',
+        publisher: 'Câmara dos Deputados',
+        url: 'https://www.camara.leg.br/propostas-legislativas/300'
+      }
+    ]);
   });
 
   it('normalizes a list of Camara proposition payloads', () => {

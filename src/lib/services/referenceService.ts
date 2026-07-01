@@ -7,6 +7,10 @@ import {
 import { getReferencesByProposalId } from '$lib/data/referenceCatalog';
 
 export const REQUIRED_EDITORIAL_REFERENCE_TYPES = EXTERNAL_REFERENCE_TYPES;
+export const REVIEWED_EXTERNAL_REFERENCE_TYPES = [
+  'press',
+  'technical'
+] as const satisfies readonly ExternalReferenceType[];
 
 function hasReviewDate(reference: ExternalReference) {
   return Boolean(reference.checkedAt?.trim());
@@ -22,7 +26,9 @@ export function getEditorialReferencesForProposal(
   ];
 
   return REQUIRED_EDITORIAL_REFERENCE_TYPES.flatMap((type) => {
-    const reference = referencesByPriority.find((currentReference) => currentReference.type === type);
+    const reference = referencesByPriority.find(
+      (currentReference) => currentReference.type === type
+    );
 
     return reference ? [reference] : [];
   });
@@ -48,10 +54,18 @@ export function getMissingReviewedReferenceTypes(
   references: ExternalReference[]
 ): ExternalReferenceType[] {
   const reviewedTypes = new Set(
-    references.filter(hasReviewDate).map((reference) => reference.type)
+    references
+      .filter((reference) => reference.type !== 'official' && hasReviewDate(reference))
+      .map((reference) => reference.type)
   );
 
-  return REQUIRED_EDITORIAL_REFERENCE_TYPES.filter((type) => !reviewedTypes.has(type));
+  return REVIEWED_EXTERNAL_REFERENCE_TYPES.filter((type) => !reviewedTypes.has(type));
+}
+
+export function hasReviewedExternalReferences(references: ExternalReference[]) {
+  return references.some(
+    (reference) => reference.type !== 'official' && hasReviewDate(reference)
+  );
 }
 
 export function hasCompleteReviewedReferenceSet(references: ExternalReference[]) {

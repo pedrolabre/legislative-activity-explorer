@@ -153,7 +153,15 @@ describe('mapSenadoMateriaToLegislativeProposal', () => {
     expect(proposal.status).toBeUndefined();
     expect(proposal.presentedAt).toBeUndefined();
     expect(proposal.officialSummary).toBeUndefined();
-    expect(proposal.references).toHaveLength(1);
+    expect(proposal.references).toEqual([
+      {
+        id: 'senado-materia-300-fonte-oficial',
+        type: 'official',
+        title: 'Página oficial da matéria',
+        publisher: 'Senado Federal',
+        url: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/300'
+      }
+    ]);
   });
 
   it('normalizes a list of Senado matter payloads', () => {

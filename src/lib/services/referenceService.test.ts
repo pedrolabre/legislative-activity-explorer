@@ -4,7 +4,8 @@ import {
   attachEditorialReferencesToProposal,
   getEditorialReferencesForProposal,
   getMissingReviewedReferenceTypes,
-  hasCompleteReviewedReferenceSet
+  hasCompleteReviewedReferenceSet,
+  hasReviewedExternalReferences
 } from './referenceService';
 
 function createProposal(
@@ -90,7 +91,8 @@ describe('referenceService', () => {
       'official-reference',
       'press-reference'
     ]);
-    expect(getMissingReviewedReferenceTypes(references)).toEqual(['official', 'technical']);
+    expect(getMissingReviewedReferenceTypes(references)).toEqual(['technical']);
+    expect(hasReviewedExternalReferences(references)).toBe(true);
     expect(hasCompleteReviewedReferenceSet(references)).toBe(false);
   });
 
@@ -105,6 +107,7 @@ describe('referenceService', () => {
 
     expect(proposal.references.map((reference) => reference.type)).toEqual(['official']);
     expect(getMissingReviewedReferenceTypes(proposal.references)).toEqual(['press', 'technical']);
+    expect(hasReviewedExternalReferences(proposal.references)).toBe(false);
     expect(hasCompleteReviewedReferenceSet(proposal.references)).toBe(false);
   });
 });
