@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
+import type { RollCallVote } from '$lib/domain';
 import { searchPublicRecords } from '$lib/services/publicSearchService';
 import { searchInitialRecords } from '$lib/services/searchService';
 import {
@@ -27,6 +28,17 @@ function executeFixtureSearch(query: string) {
     delayMs: 0,
     search: searchInitialRecords
   });
+}
+
+function createControlledVote(id = 'controlled-vote'): RollCallVote {
+  return {
+    id,
+    source: 'camara',
+    sourceId: id,
+    proposalId: 'PL 9/2026',
+    description: 'Votacao controlada para teste.',
+    individualVotes: []
+  };
 }
 
 describe('chatStore actions', () => {
@@ -554,11 +566,83 @@ describe('chatStore actions', () => {
       })
     });
 
-    expect(openParliamentarianVotes()).toBe(true);
+    const fixtureVotesLoader = vi.fn(() => [createControlledVote('fixture-vote-for-official')]);
+
+    expect(
+      openParliamentarianVotes({
+        getFixtureVotesByParliamentarianId: fixtureVotesLoader
+      })
+    ).toBe(true);
+    expect(fixtureVotesLoader).not.toHaveBeenCalled();
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_VOTES',
       voteHistory: [],
       errorMessage: 'Dados oficiais de votações não estão disponíveis nesta consulta.'
+    });
+
+    const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('fixture-vote-detail'));
+
+    expect(
+      selectVoteById('fixture-vote-detail', {
+        getFixtureVoteByIdForParliamentarian: fixtureVoteDetailLoader
+      })
+    ).toBe(false);
+    expect(fixtureVoteDetailLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_VOTES',
+      selectedVote: null
+    });
+  });
+
+  it('represents official Senado votes as unavailable without loading fixture votes', async () => {
+    await executeSearch('maria', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [
+          {
+            id: 'senado-20',
+            source: 'senado',
+            sourceId: '20',
+            name: 'Maria Souza',
+            office: 'Senador'
+          }
+        ],
+        proposals: []
+      })
+    });
+    await selectParliamentarianById('senado-20', {
+      getOfficialParliamentarianDetail: async (parliamentarian) => ({
+        status: 'fulfilled',
+        data: parliamentarian,
+        errors: []
+      })
+    });
+
+    const fixtureVotesLoader = vi.fn(() => [createControlledVote('fixture-senado-vote')]);
+
+    expect(
+      openParliamentarianVotes({
+        getFixtureVotesByParliamentarianId: fixtureVotesLoader
+      })
+    ).toBe(true);
+    expect(fixtureVotesLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_VOTES',
+      voteHistory: [],
+      errorMessage: 'Dados oficiais de votações não estão disponíveis nesta consulta.'
+    });
+
+    const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('fixture-senado-detail'));
+
+    expect(
+      selectVoteById('fixture-senado-detail', {
+        getFixtureVoteByIdForParliamentarian: fixtureVoteDetailLoader
+      })
+    ).toBe(false);
+    expect(fixtureVoteDetailLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_VOTES',
+      selectedVote: null
     });
   });
 
@@ -759,5 +843,47 @@ describe('chatStore actions', () => {
     expect(voteDetailContext.currentState).toBe('BILL_VOTES');
     expect(voteDetailContext.selectedVote?.proposalId).toBe('PL 1234/2024');
     expect(voteDetailContext.selectedProposal).toBeNull();
+  });
+
+  it('keeps controlled vote fixtures available for non official parliamentarians', async () => {
+    await executeFixtureSearch('ana');
+
+    await expect(selectParliamentarianById('parliamentarian-ana-costa')).resolves.toBe(true);
+
+    const controlledVote = createControlledVote('controlled-non-official-vote');
+    const fixtureVotesLoader = vi.fn(() => [controlledVote]);
+
+    expect(
+      openParliamentarianVotes({
+        getFixtureVotesByParliamentarianId: fixtureVotesLoader
+      })
+    ).toBe(true);
+    expect(fixtureVotesLoader).toHaveBeenCalledWith('parliamentarian-ana-costa');
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'PARLIAMENTARIAN_VOTES',
+      voteHistory: [
+        {
+          id: 'controlled-non-official-vote',
+          proposalId: 'PL 9/2026'
+        }
+      ],
+      errorMessage: ''
+    });
+
+    const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('unused-controlled-detail'));
+
+    expect(
+      selectVoteById('controlled-non-official-vote', {
+        getFixtureVoteByIdForParliamentarian: fixtureVoteDetailLoader
+      })
+    ).toBe(true);
+    expect(fixtureVoteDetailLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_VOTES',
+      selectedVote: {
+        id: 'controlled-non-official-vote',
+        proposalId: 'PL 9/2026'
+      }
+    });
   });
 });

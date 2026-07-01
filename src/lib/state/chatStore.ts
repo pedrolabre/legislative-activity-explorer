@@ -60,6 +60,10 @@ export interface OpenParliamentarianBillsOptions {
   ) => Promise<OfficialDetailListResult<LegislativeProposal>>;
 }
 
+export interface OpenParliamentarianVotesOptions {
+  getFixtureVotesByParliamentarianId?: (parliamentarianId: string) => RollCallVote[];
+}
+
 export interface SelectProposalByIdOptions {
   getFixtureProposalByIdForParliamentarian?: (
     id: string,
@@ -68,6 +72,13 @@ export interface SelectProposalByIdOptions {
   getOfficialProposalDetail?: (
     proposal: LegislativeProposal
   ) => Promise<OfficialDetailResult<LegislativeProposal>>;
+}
+
+export interface SelectVoteByIdOptions {
+  getFixtureVoteByIdForParliamentarian?: (
+    id: string,
+    parliamentarianId: string
+  ) => RollCallVote | null;
 }
 
 const defaultSearchDelayMs = 450;
@@ -189,6 +200,10 @@ function findParliamentarianInContext(context: ChatContext, id: string) {
 
 function findProposalInContext(context: ChatContext, id: string) {
   return context.parliamentarianProposals.find((proposal) => proposal.id === id) ?? null;
+}
+
+function findVoteInContext(context: ChatContext, id: string) {
+  return context.voteHistory.find((vote) => vote.id === id) ?? null;
 }
 
 function getOfficialDetailNotice(
@@ -421,7 +436,7 @@ export async function openParliamentarianBills(options: OpenParliamentarianBills
   return true;
 }
 
-export function openParliamentarianVotes() {
+export function openParliamentarianVotes(options: OpenParliamentarianVotesOptions = {}) {
   const context = get(chatStore);
 
   if (!context.selectedParliamentarian) {
@@ -429,12 +444,14 @@ export function openParliamentarianVotes() {
   }
 
   const isOfficialSelection = isOfficialParliamentarian(context.selectedParliamentarian);
+  const fixtureLoader =
+    options.getFixtureVotesByParliamentarianId ?? getVotesByParliamentarianId;
 
   navigateTo('PARLIAMENTARIAN_VOTES', {
     updates: {
       voteHistory: isOfficialSelection
         ? []
-        : getVotesByParliamentarianId(context.selectedParliamentarian.id),
+        : fixtureLoader(context.selectedParliamentarian.id),
       selectedProposal: null,
       selectedVote: null,
       errorMessage: isOfficialSelection
@@ -504,15 +521,25 @@ export async function selectProposalById(id: string, options: SelectProposalById
   return true;
 }
 
-export function selectVoteById(id: string) {
+export function selectVoteById(id: string, options: SelectVoteByIdOptions = {}) {
   const context = get(chatStore);
-  const selectedParliamentarianId = context.selectedParliamentarian?.id;
+  const selectedParliamentarian = context.selectedParliamentarian;
+  const selectedParliamentarianId = selectedParliamentarian?.id;
 
-  if (!selectedParliamentarianId) {
+  if (!selectedParliamentarian || !selectedParliamentarianId) {
     return false;
   }
 
-  const vote = getVoteByIdForParliamentarian(id, selectedParliamentarianId);
+  if (isOfficialParliamentarian(selectedParliamentarian)) {
+    return false;
+  }
+
+  const vote =
+    findVoteInContext(context, id) ??
+    (options.getFixtureVoteByIdForParliamentarian ?? getVoteByIdForParliamentarian)(
+      id,
+      selectedParliamentarianId
+    );
 
   if (!vote) {
     return false;
