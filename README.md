@@ -49,7 +49,7 @@ Escolhi SvelteKit porque queria sair da zona de conforto do React e explorar uma
 
 ## Estrutura atual
 
-O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, histórico de votações, detalhe de votação, services internos mockados, clients e mappers isolados da Câmara dos Deputados e do Senado Federal, área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade e um Worker opcional isolado para proxy CORS das APIs oficiais.
+O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, busca pública oficial como comportamento padrão, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, estados de votações indisponíveis no fluxo oficial, services internos de fixtures controladas para testes, clients e mappers isolados da Câmara dos Deputados e do Senado Federal, área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade e um Worker opcional isolado para proxy CORS das APIs oficiais.
 
 * `vite.config.ts`: Configuração do Vite, SvelteKit, Tailwind CSS e Vitest, incluindo testes unitários em `src/` e `workers/`.
 * `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
