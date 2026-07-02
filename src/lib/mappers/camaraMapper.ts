@@ -9,6 +9,7 @@ import type {
 
 const camaraDeputadoOfficialUrl = 'https://www.camara.leg.br/deputados';
 const camaraProposicaoOfficialUrl = 'https://www.camara.leg.br/propostas-legislativas';
+const camaraLegislatureTermLabel = 'Legislatura';
 const camaraPublisher = 'Câmara dos Deputados';
 
 export class CamaraMapperError extends Error {
@@ -153,11 +154,20 @@ function buildProposicaoTitle(payload: CamaraProposicaoPayload, sourceId: string
   return `Proposição ${sourceId}`;
 }
 
+function mapCamaraDeputadoLegislatureTerm(payload: CamaraDeputadoPayload) {
+  const legislatureId =
+    normalizeString(payload.ultimoStatus?.idLegislatura) ??
+    normalizeString(payload.idLegislatura);
+
+  return legislatureId ? `${camaraLegislatureTermLabel} ${legislatureId}` : undefined;
+}
+
 export function mapCamaraDeputadoToParliamentarian(
   payload: CamaraDeputadoPayload
 ): Parliamentarian {
   const sourceId = requireSourceId('deputado', payload.id);
   const status = payload.ultimoStatus;
+  const term = mapCamaraDeputadoLegislatureTerm(payload);
   const name =
     normalizeString(status?.nomeEleitoral) ??
     normalizeString(status?.nome) ??
@@ -175,8 +185,13 @@ export function mapCamaraDeputadoToParliamentarian(
     party: normalizeString(status?.siglaPartido) ?? normalizeString(payload.siglaPartido),
     state: normalizeString(status?.siglaUf) ?? normalizeString(payload.siglaUf),
     status: normalizeString(status?.situacao),
+    term,
+    termLabel: term ? camaraLegislatureTermLabel : undefined,
     photoUrl: normalizeString(status?.urlFoto) ?? normalizeString(payload.urlFoto),
-    email: normalizeString(status?.email) ?? normalizeString(payload.email),
+    email:
+      normalizeString(status?.gabinete?.email) ??
+      normalizeString(status?.email) ??
+      normalizeString(payload.email),
     officialUrl: `${camaraDeputadoOfficialUrl}/${sourceId}`
   };
 }

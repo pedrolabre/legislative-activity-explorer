@@ -36,4 +36,14 @@ describe('ParliamentarianDetail', () => {
     expect(html).toContain('Ainda não conectado nesta versão.');
     expect(html).toContain('Foto não informada pela fonte oficial consultada para Ana Costa');
   });
+  it('uses the provided term label for legislature data', () => {
+    const html = renderParliamentarianDetail({
+      term: 'Legislatura 57',
+      termLabel: 'Legislatura'
+    });
+
+    expect(html).toContain('>Legislatura</dt>');
+    expect(html).toContain('Legislatura 57');
+    expect(html).not.toContain('>Mandato</dt>');
+  });
 });

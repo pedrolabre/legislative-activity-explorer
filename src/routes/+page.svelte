@@ -77,6 +77,7 @@
     state: string;
     status: string;
     term?: string;
+    termLabel?: string;
     email?: string;
     photoUrl?: string;
   }
@@ -183,6 +184,7 @@
       state: parliamentarian.state ?? unavailableOfficialFieldLabel,
       status: parliamentarian.status ?? unavailableOfficialFieldLabel,
       term: parliamentarian.term,
+      termLabel: parliamentarian.termLabel,
       email: parliamentarian.email,
       photoUrl: parliamentarian.photoUrl
     };

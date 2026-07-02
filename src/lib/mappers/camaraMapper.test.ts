@@ -14,12 +14,21 @@ describe('mapCamaraDeputadoToParliamentarian', () => {
     const parliamentarian = mapCamaraDeputadoToParliamentarian({
       id: 204556,
       nomeCivil: 'Pedro Luis Silva',
+      siglaPartido: 'OLD',
+      siglaUf: 'RJ',
+      idLegislatura: 56,
+      urlFoto: 'https://camara.example/foto-antiga.jpg',
+      email: 'dep.antigo@camara.leg.br',
       ultimoStatus: {
         nomeEleitoral: 'Pedro Silva',
         siglaPartido: 'XYZ',
         siglaUf: 'SP',
+        idLegislatura: 57,
         urlFoto: 'https://camara.example/foto.jpg',
         email: 'dep.pedrosilva@camara.leg.br',
+        gabinete: {
+          email: 'gabinete.pedrosilva@camara.leg.br'
+        },
         situacao: 'Exercício'
       }
     });
@@ -33,9 +42,11 @@ describe('mapCamaraDeputadoToParliamentarian', () => {
       office: 'Deputado federal',
       party: 'XYZ',
       state: 'SP',
+      term: 'Legislatura 57',
+      termLabel: 'Legislatura',
       status: 'Exercício',
       photoUrl: 'https://camara.example/foto.jpg',
-      email: 'dep.pedrosilva@camara.leg.br',
+      email: 'gabinete.pedrosilva@camara.leg.br',
       officialUrl: 'https://www.camara.leg.br/deputados/204556'
     });
   });
@@ -68,6 +79,8 @@ describe('mapCamaraDeputadoToParliamentarian', () => {
     expect(parliamentarian.photoUrl).toBeUndefined();
     expect(parliamentarian.email).toBeUndefined();
     expect(parliamentarian.status).toBeUndefined();
+    expect(parliamentarian.term).toBeUndefined();
+    expect(parliamentarian.termLabel).toBeUndefined();
   });
 
   it('normalizes simplified deputy payloads returned by Camara lists', () => {
@@ -76,6 +89,7 @@ describe('mapCamaraDeputadoToParliamentarian', () => {
       nome: 'Ana Costa',
       siglaPartido: 'ABC',
       siglaUf: 'MG',
+      idLegislatura: 57,
       urlFoto: 'https://camara.example/ana.jpg',
       email: 'dep.anacosta@camara.leg.br'
     });
@@ -88,6 +102,8 @@ describe('mapCamaraDeputadoToParliamentarian', () => {
       office: 'Deputado federal',
       party: 'ABC',
       state: 'MG',
+      term: 'Legislatura 57',
+      termLabel: 'Legislatura',
       photoUrl: 'https://camara.example/ana.jpg',
       email: 'dep.anacosta@camara.leg.br',
       officialUrl: 'https://www.camara.leg.br/deputados/30'

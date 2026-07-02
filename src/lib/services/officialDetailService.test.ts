@@ -51,7 +51,11 @@ describe('getOfficialParliamentarianDetail', () => {
           ultimoStatus: {
             nomeEleitoral: 'Ana Costa',
             siglaPartido: 'ABC',
-            siglaUf: 'MG'
+            siglaUf: 'MG',
+            idLegislatura: 57,
+            gabinete: {
+              email: 'gabinete.ana@camara.leg.br'
+            }
           }
         };
       }
@@ -78,7 +82,10 @@ describe('getOfficialParliamentarianDetail', () => {
         id: 'camara-10',
         fullName: 'Ana Costa Pereira',
         party: 'ABC',
-        state: 'MG'
+        state: 'MG',
+        term: 'Legislatura 57',
+        termLabel: 'Legislatura',
+        email: 'gabinete.ana@camara.leg.br'
       },
       errors: []
     });

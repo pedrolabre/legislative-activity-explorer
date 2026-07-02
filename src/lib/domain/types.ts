@@ -13,6 +13,7 @@ export interface Parliamentarian {
   state?: string;
   status?: string;
   term?: string;
+  termLabel?: string;
   photoUrl?: string;
   email?: string;
   officialUrl?: string;

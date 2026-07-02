@@ -9,6 +9,7 @@
     state: string;
     status: string;
     term?: string;
+    termLabel?: string;
     email?: string;
     photoUrl?: string;
   }
@@ -45,6 +46,7 @@
   }
 
   let initials = $derived(getInitials(parliamentarian.name));
+  let termLabel = $derived(parliamentarian.termLabel ?? 'Mandato');
 </script>
 
 <div class="space-y-6">
@@ -113,7 +115,7 @@
         <dd>{parliamentarian.chamber}</dd>
       </div>
       <div>
-        <dt class="font-bold text-ink">Mandato</dt>
+        <dt class="font-bold text-ink">{termLabel}</dt>
         <dd class:text-ink-muted={!parliamentarian.term}>
           {formatOptional(parliamentarian.term, unavailableVersionFieldLabel)}
         </dd>

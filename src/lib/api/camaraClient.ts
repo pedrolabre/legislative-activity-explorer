@@ -52,6 +52,7 @@ export interface CamaraDeputadoPayload {
   nomeCivil?: string | null;
   siglaPartido?: string | null;
   siglaUf?: string | null;
+  idLegislatura?: number | string | null;
   urlFoto?: string | null;
   email?: string | null;
   ultimoStatus?: {
@@ -61,9 +62,13 @@ export interface CamaraDeputadoPayload {
     nomeEleitoral?: string | null;
     siglaPartido?: string | null;
     siglaUf?: string | null;
+    idLegislatura?: number | string | null;
     urlFoto?: string | null;
     email?: string | null;
     situacao?: string | null;
+    gabinete?: {
+      email?: string | null;
+    } | null;
   } | null;
 }
 
