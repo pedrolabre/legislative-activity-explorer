@@ -58,6 +58,16 @@ function normalizeDate(value: string | null | undefined): string | undefined {
   return dateMatch ? dateMatch[0] : normalized;
 }
 
+function normalizeOfficialUrl(value: string | null | undefined): string | undefined {
+  const normalized = normalizeString(value);
+
+  if (!normalized || !/^https?:\/\//i.test(normalized)) {
+    return undefined;
+  }
+
+  return normalized;
+}
+
 function requireSourceId(
   entity: 'deputado' | 'proposicao',
   value: string | number | null | undefined
@@ -154,6 +164,13 @@ function buildProposicaoTitle(payload: CamaraProposicaoPayload, sourceId: string
   return `Proposição ${sourceId}`;
 }
 
+function mapCamaraProposicaoCurrentStage(payload: CamaraProposicaoPayload) {
+  return (
+    normalizeString(payload.statusProposicao?.descricaoTramitacao) ??
+    normalizeString(payload.statusProposicao?.despacho)
+  );
+}
+
 function mapCamaraDeputadoLegislatureTerm(payload: CamaraDeputadoPayload) {
   const legislatureId =
     normalizeString(payload.ultimoStatus?.idLegislatura) ??
@@ -202,6 +219,8 @@ export function mapCamaraProposicaoToLegislativeProposal(
   const sourceId = requireSourceId('proposicao', payload.id);
   const title = buildProposicaoTitle(payload, sourceId);
   const officialUrl = `${camaraProposicaoOfficialUrl}/${sourceId}`;
+  const currentStage = mapCamaraProposicaoCurrentStage(payload);
+  const officialFullTextUrl = normalizeOfficialUrl(payload.urlInteiroTeor);
 
   return {
     id: `camara-proposicao-${sourceId}`,
@@ -214,12 +233,12 @@ export function mapCamaraProposicaoToLegislativeProposal(
       'Proposição',
     number: normalizeString(payload.numero),
     year: normalizeNumber(payload.ano),
-    status:
-      normalizeString(payload.statusProposicao?.descricaoSituacao) ??
-      normalizeString(payload.statusProposicao?.regime),
+    status: normalizeString(payload.statusProposicao?.descricaoSituacao),
+    ...(currentStage ? { currentStage } : {}),
     presentedAt: normalizeDate(payload.dataApresentacao),
     officialSummary: normalizeString(payload.ementa),
     officialUrl,
+    ...(officialFullTextUrl ? { officialFullTextUrl } : {}),
     references: [
       {
         id: `camara-proposicao-${sourceId}-fonte-oficial`,

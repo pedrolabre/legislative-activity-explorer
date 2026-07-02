@@ -8,13 +8,19 @@
     parliamentarianId: string;
     identification: string;
     chamber: string;
+    type: string;
+    number?: string;
+    year?: number;
     subjectLabel?: string;
     subject?: string;
     status: string;
+    currentStageLabel?: string;
+    currentStage?: string;
     relationship: string;
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
+    officialFullTextUrl?: string;
     sources: {
       id: string;
       type: 'official' | 'press' | 'technical';
@@ -133,10 +139,26 @@
         <dt class="font-bold text-ink">Casa legislativa</dt>
         <dd>{bill.chamber}</dd>
       </div>
-      {#if bill.subject}
+      <div>
+        <dt class="font-bold text-ink">Tipo</dt>
+        <dd>{bill.type}</dd>
+      </div>
+      <div>
+        <dt class="font-bold text-ink">Número</dt>
+        <dd class:text-ink-muted={!bill.number}>{bill.number ?? unavailableLabel}</dd>
+      </div>
+      <div>
+        <dt class="font-bold text-ink">Ano</dt>
+        <dd class:text-ink-muted={!bill.year}>{bill.year ?? unavailableLabel}</dd>
+      </div>
+      <div>
+        <dt class="font-bold text-ink">{bill.subjectLabel ?? 'Tema'}</dt>
+        <dd class:text-ink-muted={!bill.subject}>{bill.subject ?? unavailableLabel}</dd>
+      </div>
+      {#if bill.currentStageLabel}
         <div>
-          <dt class="font-bold text-ink">{bill.subjectLabel ?? 'Tema'}</dt>
-          <dd>{bill.subject}</dd>
+          <dt class="font-bold text-ink">{bill.currentStageLabel}</dt>
+          <dd class:text-ink-muted={!bill.currentStage}>{bill.currentStage ?? unavailableLabel}</dd>
         </div>
       {/if}
       <div>
@@ -151,6 +173,21 @@
         <dt class="font-bold text-ink">Apresentação</dt>
         <dd class:text-ink-muted={!bill.presentedAt}>{formatPresentedAt(bill.presentedAt)}</dd>
       </div>
+      {#if bill.officialFullTextUrl}
+        <div class="sm:col-span-2">
+          <dt class="font-bold text-ink">Inteiro teor oficial</dt>
+          <dd>
+            <a
+              class="break-words font-bold text-accent underline-offset-4 hover:underline"
+              href={bill.officialFullTextUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Abrir inteiro teor<span class="sr-only"> abre em nova aba</span>
+            </a>
+          </dd>
+        </div>
+      {/if}
     </dl>
   </section>
 

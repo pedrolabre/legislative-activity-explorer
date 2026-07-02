@@ -87,13 +87,19 @@
     parliamentarianId: string;
     identification: string;
     chamber: string;
+    type: string;
+    number?: string;
+    year?: number;
     subjectLabel?: string;
     subject?: string;
     status: string;
+    currentStageLabel?: string;
+    currentStage?: string;
     relationship: string;
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
+    officialFullTextUrl?: string;
     sources: {
       id: string;
       type: 'official' | 'press' | 'technical';
@@ -213,13 +219,19 @@
       parliamentarianId,
       identification: proposal.title,
       chamber: getChamberLabel(proposal.source),
-      subjectLabel: proposal.subject ? getSubjectLabel(proposal) : undefined,
+      type: proposal.type,
+      number: proposal.number,
+      year: proposal.year,
+      subjectLabel: getSubjectLabel(proposal),
       subject: proposal.subject,
       status: proposal.status ?? unavailableOfficialFieldLabel,
+      currentStageLabel: proposal.source === 'camara' ? 'Tramitação atual' : undefined,
+      currentStage: proposal.currentStage,
       relationship: proposal.relationship ?? unavailableVersionFieldLabel,
       presentedAt: proposal.presentedAt,
       officialSummary: proposal.officialSummary ?? unavailableOfficialFieldLabel,
       factualSummary: hasReviewedFactualSummary ? proposal.simplifiedSummary : undefined,
+      officialFullTextUrl: proposal.officialFullTextUrl,
       sources: proposal.references.map((reference) => ({
         id: reference.id,
         type: reference.type,

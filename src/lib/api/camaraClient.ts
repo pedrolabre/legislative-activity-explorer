@@ -81,9 +81,14 @@ export interface CamaraProposicaoPayload {
   ano?: number | string | null;
   ementa?: string | null;
   dataApresentacao?: string | null;
+  urlInteiroTeor?: string | null;
   statusProposicao?: {
+    dataHora?: string | null;
     descricaoSituacao?: string | null;
+    descricaoTramitacao?: string | null;
+    despacho?: string | null;
     regime?: string | null;
+    url?: string | null;
   } | null;
 }
 

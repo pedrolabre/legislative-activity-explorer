@@ -127,8 +127,11 @@ describe('mapCamaraProposicaoToLegislativeProposal', () => {
       ano: 2024,
       ementa: 'Altera a legislação federal sobre transparência de dados públicos.',
       dataApresentacao: '2024-03-15T10:30:00',
+      urlInteiroTeor: 'https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=9876',
       statusProposicao: {
-        descricaoSituacao: 'Aguardando parecer'
+        descricaoSituacao: 'Aguardando parecer',
+        descricaoTramitacao: 'Aguardando designação de relator',
+        regime: 'Ordinária'
       }
     });
 
@@ -141,9 +144,12 @@ describe('mapCamaraProposicaoToLegislativeProposal', () => {
       number: '1234',
       year: 2024,
       status: 'Aguardando parecer',
+      currentStage: 'Aguardando designação de relator',
       presentedAt: '2024-03-15',
       officialSummary: 'Altera a legislação federal sobre transparência de dados públicos.',
       officialUrl: 'https://www.camara.leg.br/propostas-legislativas/9876',
+      officialFullTextUrl:
+        'https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=9876',
       references: [
         {
           id: 'camara-proposicao-9876-fonte-oficial',
@@ -176,8 +182,10 @@ describe('mapCamaraProposicaoToLegislativeProposal', () => {
     expect(proposal.number).toBeUndefined();
     expect(proposal.year).toBeUndefined();
     expect(proposal.status).toBeUndefined();
+    expect(proposal.currentStage).toBeUndefined();
     expect(proposal.presentedAt).toBeUndefined();
     expect(proposal.officialSummary).toBeUndefined();
+    expect(proposal.officialFullTextUrl).toBeUndefined();
     expect(proposal.references).toEqual([
       {
         id: 'camara-proposicao-300-fonte-oficial',
@@ -187,6 +195,24 @@ describe('mapCamaraProposicaoToLegislativeProposal', () => {
         url: 'https://www.camara.leg.br/propostas-legislativas/300'
       }
     ]);
+  });
+
+  it('does not use procedural regime as official situation', () => {
+    const proposal = mapCamaraProposicaoToLegislativeProposal({
+      id: 301,
+      siglaTipo: 'PL',
+      numero: 3,
+      ano: 2024,
+      urlInteiroTeor: 'javascript:alert(1)',
+      statusProposicao: {
+        regime: 'Urgência',
+        despacho: 'Aguardando despacho do Presidente da Câmara.'
+      }
+    });
+
+    expect(proposal.status).toBeUndefined();
+    expect(proposal.currentStage).toBe('Aguardando despacho do Presidente da Câmara.');
+    expect(proposal.officialFullTextUrl).toBeUndefined();
   });
 
   it('normalizes a list of Camara proposition payloads', () => {

@@ -29,11 +29,13 @@ export interface LegislativeProposal {
   year?: number;
   subject?: string;
   status?: string;
+  currentStage?: string;
   relationship?: string;
   presentedAt?: string;
   officialSummary?: string;
   simplifiedSummary?: string;
   officialUrl?: string;
+  officialFullTextUrl?: string;
   references: ExternalReference[];
 }
 

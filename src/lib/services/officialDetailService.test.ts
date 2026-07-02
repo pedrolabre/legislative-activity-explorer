@@ -397,7 +397,13 @@ describe('getOfficialProposalDetail', () => {
             siglaTipo: 'PL',
             numero: 2,
             ano: 2024,
-            ementa: 'Detalhe oficial da proposicao.'
+            ementa: 'Detalhe oficial da proposicao.',
+            urlInteiroTeor:
+              'https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=100',
+            statusProposicao: {
+              descricaoSituacao: 'Aguardando parecer',
+              descricaoTramitacao: 'Aguardando designação de relator'
+            }
           })
         },
         senadoClient: createEmptySenadoClient()
@@ -408,7 +414,14 @@ describe('getOfficialProposalDetail', () => {
       status: 'fulfilled',
       data: {
         id: 'camara-proposicao-100',
+        type: 'PL',
+        number: '2',
+        year: 2024,
+        status: 'Aguardando parecer',
+        currentStage: 'Aguardando designação de relator',
         officialSummary: 'Detalhe oficial da proposicao.',
+        officialFullTextUrl:
+          'https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=100',
         references: [
           {
             id: 'camara-proposicao-100-fonte-oficial',

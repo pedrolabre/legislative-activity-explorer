@@ -7,6 +7,10 @@ function createBill(overrides = {}) {
     id: 'camara-proposicao-100',
     parliamentarianId: 'camara-10',
     identification: 'PL 2/2024',
+    type: 'PL',
+    number: '2',
+    year: 2024,
+    subjectLabel: 'Tema',
     chamber: 'Câmara dos Deputados',
     status: 'Em tramitação',
     relationship: 'Autoria',
@@ -39,6 +43,32 @@ describe('BillDetail', () => {
     expect(html).toContain('Fonte oficial ainda não conectada nesta versão.');
     expect(html).not.toContain('A ementa oficial é exibida nesta seção.');
     expect(html).not.toContain('<h4 id="factual-summary-title"');
+  });
+
+  it('renders separated official Camara proposition detail fields', () => {
+    const html = renderBillDetail({
+      subject: 'Educacao',
+      currentStageLabel: 'Tramitação atual',
+      currentStage: 'Aguardando designação de relator',
+      officialFullTextUrl:
+        'https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=100'
+    });
+
+    expect(html).toContain('Tipo');
+    expect(html).toContain('PL');
+    expect(html).toContain('Número');
+    expect(html).toContain('2');
+    expect(html).toContain('Ano');
+    expect(html).toContain('2024');
+    expect(html).toContain('Tema');
+    expect(html).toContain('Educacao');
+    expect(html).toContain('Tramitação atual');
+    expect(html).toContain('Aguardando designação de relator');
+    expect(html).toContain('Inteiro teor oficial');
+    expect(html).toContain(
+      'href="https://www.camara.leg.br/proposicoesWeb/prop_mostrarintegra?codteor=100"'
+    );
+    expect(html).toContain('rel="noopener noreferrer"');
   });
 
   it('renders reviewed factual summary only when one is provided', () => {
