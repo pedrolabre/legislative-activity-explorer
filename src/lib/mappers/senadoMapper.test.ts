@@ -93,7 +93,10 @@ describe('mapSenadoMateriaToLegislativeProposal', () => {
       },
       DadosBasicosMateria: {
         EmentaMateria: 'Encaminha ao Senado Federal cópia de decisão do Tribunal de Contas da União.',
-        DataApresentacao: '1999-02-11'
+        DataApresentacao: '1999-02-11',
+        NaturezaMateria: {
+          DescricaoNatureza: 'Comunicação'
+        }
       },
       DecisaoEDestino: {
         Decisao: {
@@ -111,6 +114,7 @@ describe('mapSenadoMateriaToLegislativeProposal', () => {
       number: '7',
       year: 1999,
       status: 'Conhecida',
+      subject: 'Comunicação',
       presentedAt: '1999-02-11',
       officialSummary: 'Encaminha ao Senado Federal cópia de decisão do Tribunal de Contas da União.',
       officialUrl: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/45',
@@ -151,6 +155,7 @@ describe('mapSenadoMateriaToLegislativeProposal', () => {
     expect(proposal.number).toBeUndefined();
     expect(proposal.year).toBeUndefined();
     expect(proposal.status).toBeUndefined();
+    expect(proposal.subject).toBeUndefined();
     expect(proposal.presentedAt).toBeUndefined();
     expect(proposal.officialSummary).toBeUndefined();
     expect(proposal.references).toEqual([

@@ -2,6 +2,7 @@ import { get, writable } from 'svelte/store';
 import type { LegislativeProposal, Parliamentarian, RollCallVote, UIState } from '$lib/domain';
 import {
   getOfficialParliamentarianDetail as loadOfficialParliamentarianDetail,
+  officialSenadoAssociatedMattersUnavailableMessage,
   getOfficialProposalDetail as loadOfficialProposalDetail,
   getOfficialProposalsByParliamentarian as loadOfficialProposalsByParliamentarian,
   type OfficialDetailRecoverableError,
@@ -10,6 +11,7 @@ import {
 } from '$lib/services/officialDetailService';
 import {
   getOfficialVotesByProposal as loadOfficialVotesByProposal,
+  officialSenadoProposalVotesUnavailableMessage,
   type OfficialVoteListResult,
   type OfficialVoteRecoverableError
 } from '$lib/services/officialVoteService';
@@ -95,6 +97,15 @@ export const officialParliamentarianVoteHistoryUnavailableMessage =
   'Histórico completo de votações por parlamentar ainda não está disponível nesta versão.';
 export const officialParliamentarianSessionVotesCoverageMessage =
   'Esta visualização mostra somente votações oficiais carregadas a partir de proposições abertas nesta sessão.';
+export const officialSenadoStaticCoverageDescription =
+  'Esta versão estática não usa scraping nem varre matérias, votações ou arquivos grandes para montar esse dado.';
+export const officialSenadoAssociatedMattersUnavailableDescription =
+  'Esta versão mantém a consulta ao Senado restrita a busca e detalhe de matérias quando não há endpoint leve confirmado para associação por senador.';
+
+export {
+  officialSenadoAssociatedMattersUnavailableMessage,
+  officialSenadoProposalVotesUnavailableMessage
+};
 
 let searchSequence = 0;
 let pendingSearch:
@@ -496,13 +507,23 @@ export function openParliamentarianVotes(options: OpenParliamentarianVotesOption
     voteHistory = context.voteHistory.filter(
       (vote) => vote.source === context.selectedParliamentarian?.source
     );
-    errorMessage =
-      voteHistory.length > 0
-        ? joinRecoverableNotices(
-            officialParliamentarianVoteHistoryUnavailableMessage,
-            officialParliamentarianSessionVotesCoverageMessage
-          )
-        : officialParliamentarianVoteHistoryUnavailableMessage;
+    if (context.selectedParliamentarian.source === 'senado') {
+      errorMessage =
+        voteHistory.length > 0
+          ? joinRecoverableNotices(
+              officialSenadoProposalVotesUnavailableMessage,
+              officialParliamentarianSessionVotesCoverageMessage
+            )
+          : officialSenadoProposalVotesUnavailableMessage;
+    } else {
+      errorMessage =
+        voteHistory.length > 0
+          ? joinRecoverableNotices(
+              officialParliamentarianVoteHistoryUnavailableMessage,
+              officialParliamentarianSessionVotesCoverageMessage
+            )
+          : officialParliamentarianVoteHistoryUnavailableMessage;
+    }
   } else {
     const fixtureLoader =
       options.getFixtureVotesByParliamentarianId ?? getVotesByParliamentarianId;

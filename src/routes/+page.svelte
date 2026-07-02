@@ -24,6 +24,10 @@
     navigateTo,
     officialParliamentarianSessionVotesCoverageMessage,
     officialParliamentarianVoteHistoryUnavailableMessage,
+    officialSenadoAssociatedMattersUnavailableDescription,
+    officialSenadoAssociatedMattersUnavailableMessage,
+    officialSenadoProposalVotesUnavailableMessage,
+    officialSenadoStaticCoverageDescription,
     openParliamentarianBills,
     openParliamentarianVotes,
     reset,
@@ -54,6 +58,7 @@
       id: string;
       title: string;
       chamber: string;
+      subjectLabel?: string;
       subject?: string;
       status: string;
       searchTerms: string[];
@@ -79,6 +84,7 @@
     parliamentarianId: string;
     identification: string;
     chamber: string;
+    subjectLabel?: string;
     subject?: string;
     status: string;
     relationship: string;
@@ -132,6 +138,10 @@
     return source === 'senado' ? 'Senado Federal' : 'Câmara dos Deputados';
   }
 
+  function getSubjectLabel(proposal: LegislativeProposal) {
+    return isOfficialSenadoProposal(proposal) ? 'Natureza' : 'Tema';
+  }
+
   function toSearchParliamentarianResult(parliamentarian: Parliamentarian) {
     return {
       kind: 'parliamentarian' as const,
@@ -151,6 +161,7 @@
       id: proposal.id,
       title: proposal.title,
       chamber: getChamberLabel(proposal.source),
+      subjectLabel: proposal.subject ? getSubjectLabel(proposal) : undefined,
       subject: proposal.subject,
       status: proposal.status ?? unavailableSearchFieldLabel,
       searchTerms: []
@@ -198,6 +209,7 @@
       parliamentarianId,
       identification: proposal.title,
       chamber: getChamberLabel(proposal.source),
+      subjectLabel: proposal.subject ? getSubjectLabel(proposal) : undefined,
       subject: proposal.subject,
       status: proposal.status ?? unavailableDetailFieldLabel,
       relationship: proposal.relationship ?? unavailableDetailFieldLabel,
@@ -237,6 +249,10 @@
 
   function isOfficialCamaraProposal(proposal: LegislativeProposal) {
     return proposal.source === 'camara' && proposal.id === `camara-proposicao-${proposal.sourceId}`;
+  }
+
+  function isOfficialSenadoProposal(proposal: LegislativeProposal) {
+    return proposal.source === 'senado' && proposal.id === `senado-materia-${proposal.sourceId}`;
   }
 
   function isOfficialParliamentarian(parliamentarian: Parliamentarian) {
@@ -352,18 +368,35 @@
       ? isOfficialParliamentarian(chatContext.selectedParliamentarian)
       : false
   );
+  let selectedParliamentarianIsOfficialSenado = $derived(
+    selectedParliamentarianIsOfficial && chatContext.selectedParliamentarian?.source === 'senado'
+  );
+  let selectedParliamentarianBillsEmptyTitle = $derived(
+    selectedParliamentarianIsOfficialSenado
+      ? officialSenadoAssociatedMattersUnavailableMessage
+      : undefined
+  );
+  let selectedParliamentarianBillsEmptyDescription = $derived(
+    selectedParliamentarianIsOfficialSenado
+      ? officialSenadoAssociatedMattersUnavailableDescription
+      : undefined
+  );
   let selectedParliamentarianVotesCoverageDescription = $derived(
     selectedParliamentarianIsOfficial && selectedParliamentarianVotes.length > 0
       ? officialParliamentarianSessionVotesCoverageMessage
       : undefined
   );
   let selectedParliamentarianVotesEmptyTitle = $derived(
-    selectedParliamentarianIsOfficial
+    selectedParliamentarianIsOfficialSenado
+      ? officialSenadoProposalVotesUnavailableMessage
+      : selectedParliamentarianIsOfficial
       ? officialParliamentarianVoteHistoryUnavailableMessage
       : undefined
   );
   let selectedParliamentarianVotesEmptyDescription = $derived(
-    selectedParliamentarianIsOfficial
+    selectedParliamentarianIsOfficialSenado
+      ? officialSenadoStaticCoverageDescription
+      : selectedParliamentarianIsOfficial
       ? 'Esta versão estática não varre anos, proposições, votações ou arquivos grandes para montar esse histórico.'
       : undefined
   );
@@ -376,6 +409,16 @@
   );
   let selectedBillShowsOfficialVotes = $derived(
     chatContext.selectedProposal ? isOfficialCamaraProposal(chatContext.selectedProposal) : false
+  );
+  let selectedBillUnavailableVotesTitle = $derived(
+    chatContext.selectedProposal && isOfficialSenadoProposal(chatContext.selectedProposal)
+      ? officialSenadoProposalVotesUnavailableMessage
+      : undefined
+  );
+  let selectedBillUnavailableVotesDescription = $derived(
+    chatContext.selectedProposal && isOfficialSenadoProposal(chatContext.selectedProposal)
+      ? officialSenadoStaticCoverageDescription
+      : undefined
   );
   let recoverableNotice = $derived(chatContext.errorMessage.trim());
 
@@ -666,6 +709,8 @@
               <ParliamentarianBills
                 parliamentarianName={selectedParliamentarian.name}
                 bills={selectedParliamentarianBills}
+                emptyTitle={selectedParliamentarianBillsEmptyTitle}
+                emptyDescription={selectedParliamentarianBillsEmptyDescription}
                 onSelectBill={handleSelectBill}
                 onBackToParliamentarian={handleBackToParliamentarian}
                 onStartOver={handleStartOver}
@@ -721,6 +766,8 @@
                 parliamentarianName={selectedParliamentarian.name}
                 associatedVotes={selectedBillVotes}
                 showOfficialVotes={selectedBillShowsOfficialVotes}
+                unavailableVotesTitle={selectedBillUnavailableVotesTitle}
+                unavailableVotesDescription={selectedBillUnavailableVotesDescription}
                 onSelectVote={handleSelectVote}
                 onBackToBills={handleBackToBills}
                 onBackToParliamentarian={handleBackToParliamentarian}

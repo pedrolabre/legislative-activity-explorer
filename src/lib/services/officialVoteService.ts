@@ -4,7 +4,7 @@ import {
   type CamaraApiLink,
   type CamaraVotacaoPayload
 } from '$lib/api/camaraClient';
-import type { LegislativeProposal, RollCallVote } from '$lib/domain';
+import type { LegislativeProposal, LegislativeSource, RollCallVote } from '$lib/domain';
 import {
   CamaraMapperError,
   mapCamaraVotacaoToRollCallVote,
@@ -26,7 +26,7 @@ export type OfficialVoteErrorKind =
   | 'unknown';
 
 export interface OfficialVoteRecoverableError {
-  source: 'camara';
+  source: LegislativeSource;
   entity: OfficialVoteEntity;
   kind: OfficialVoteErrorKind;
   message: string;
@@ -49,6 +49,9 @@ export interface OfficialVoteServiceOptions extends OfficialApiClientFactoryOpti
 }
 
 const defaultMaxVotesPerProposal = 50;
+
+export const officialSenadoProposalVotesUnavailableMessage =
+  'Votações nominais do Senado ainda não estão conectadas nesta versão.';
 
 function getConfiguredCamaraVoteClient(options: OfficialVoteServiceOptions) {
   return options.camaraClient ?? createOfficialApiClients(options).camaraClient;
@@ -127,6 +130,18 @@ function createPaginationLimitError(): OfficialVoteRecoverableError {
     kind: 'pagination-limit',
     message:
       'A fonte oficial indicou mais votacoes para esta proposicao; esta versao consulta apenas a primeira pagina retornada.'
+  };
+}
+
+function createUnsupportedSourceError(source: LegislativeSource): OfficialVoteRecoverableError {
+  return {
+    source,
+    entity: 'proposal-votes',
+    kind: 'unsupported-source',
+    message:
+      source === 'senado'
+        ? officialSenadoProposalVotesUnavailableMessage
+        : 'Votações oficiais desta fonte ainda não estão conectadas nesta versão.'
   };
 }
 
@@ -218,7 +233,7 @@ export async function getOfficialVotesByProposal(
     return {
       status: 'unavailable',
       data: [],
-      errors: []
+      errors: [createUnsupportedSourceError(proposal.source)]
     };
   }
 

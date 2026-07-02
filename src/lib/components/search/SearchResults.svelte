@@ -16,6 +16,7 @@
       id: string;
       title: string;
       chamber: string;
+      subjectLabel?: string;
       subject?: string;
       status: string;
     }[];

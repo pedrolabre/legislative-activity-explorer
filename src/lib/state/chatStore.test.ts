@@ -11,6 +11,8 @@ import {
   navigateTo,
   officialParliamentarianSessionVotesCoverageMessage,
   officialParliamentarianVoteHistoryUnavailableMessage,
+  officialSenadoAssociatedMattersUnavailableMessage,
+  officialSenadoProposalVotesUnavailableMessage,
   openParliamentarianBills,
   openParliamentarianVotes,
   reset,
@@ -811,7 +813,7 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_VOTES',
       voteHistory: [],
-      errorMessage: officialParliamentarianVoteHistoryUnavailableMessage
+      errorMessage: officialSenadoProposalVotesUnavailableMessage
     });
 
     const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('fixture-senado-detail'));
@@ -985,8 +987,7 @@ describe('chatStore actions', () => {
               source: 'senado',
               entity: 'parliamentarian-proposals',
               kind: 'unsupported-source',
-              message:
-                'Dados oficiais de proposições associadas do Senado Federal não estão disponíveis nesta consulta.'
+              message: officialSenadoAssociatedMattersUnavailableMessage
             }
           ]
         })
@@ -997,8 +998,7 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_BILLS',
       parliamentarianProposals: [],
-      errorMessage:
-        'Dados oficiais de proposições associadas do Senado Federal não estão disponíveis nesta consulta.'
+      errorMessage: officialSenadoAssociatedMattersUnavailableMessage
     });
   });
 

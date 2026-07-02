@@ -5,6 +5,7 @@ import {
   getOfficialParliamentarianDetail,
   getOfficialProposalDetail,
   getOfficialProposalsByParliamentarian,
+  officialSenadoAssociatedMattersUnavailableMessage,
   type OfficialCamaraDetailClient,
   type OfficialSenadoDetailClient
 } from './officialDetailService';
@@ -291,8 +292,7 @@ describe('getOfficialProposalsByParliamentarian', () => {
           source: 'senado',
           entity: 'parliamentarian-proposals',
           kind: 'unsupported-source',
-          message:
-            'Dados oficiais de proposições associadas do Senado Federal não estão disponíveis nesta consulta.'
+          message: officialSenadoAssociatedMattersUnavailableMessage
         }
       ]
     });

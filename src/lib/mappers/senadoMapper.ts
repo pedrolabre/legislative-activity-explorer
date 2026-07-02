@@ -204,6 +204,7 @@ export function mapSenadoMateriaToLegislativeProposal(
     number: normalizeMatterNumber(identification?.NumeroMateria),
     year: normalizeNumber(identification?.AnoMateria),
     status: mapMateriaStatus(payload),
+    subject: normalizeString(payload.DadosBasicosMateria?.NaturezaMateria?.DescricaoNatureza),
     presentedAt: normalizeDate(payload.DadosBasicosMateria?.DataApresentacao),
     officialSummary: normalizeString(payload.DadosBasicosMateria?.EmentaMateria),
     officialUrl,

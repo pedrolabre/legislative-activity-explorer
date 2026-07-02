@@ -8,6 +8,7 @@
     parliamentarianId: string;
     identification: string;
     chamber: string;
+    subjectLabel?: string;
     subject?: string;
     status: string;
     relationship: string;
@@ -41,6 +42,8 @@
     parliamentarianName,
     associatedVotes = [],
     showOfficialVotes = false,
+    unavailableVotesTitle,
+    unavailableVotesDescription,
     onSelectVote = () => undefined,
     onBackToBills,
     onBackToParliamentarian,
@@ -50,6 +53,8 @@
     parliamentarianName: string;
     associatedVotes?: ParliamentarianVoteView[];
     showOfficialVotes?: boolean;
+    unavailableVotesTitle?: string;
+    unavailableVotesDescription?: string;
     onSelectVote?: (id: string) => void;
     onBackToBills: () => void;
     onBackToParliamentarian: () => void;
@@ -130,7 +135,7 @@
       </div>
       {#if bill.subject}
         <div>
-          <dt class="font-bold text-ink">Tema</dt>
+          <dt class="font-bold text-ink">{bill.subjectLabel ?? 'Tema'}</dt>
           <dd>{bill.subject}</dd>
         </div>
       {/if}
@@ -291,6 +296,22 @@
           </p>
         </div>
       {/if}
+    </section>
+  {:else if unavailableVotesTitle}
+    <section class="border-t border-border pt-5" aria-labelledby="bill-unavailable-votes-title">
+      <h4 id="bill-unavailable-votes-title" class="text-sm font-bold leading-6 text-ink">
+        Votações do Senado
+      </h4>
+      <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
+        <p class="text-sm font-semibold leading-6 text-ink">
+          {unavailableVotesTitle}
+        </p>
+        {#if unavailableVotesDescription}
+          <p class="mt-2 text-sm leading-6 text-ink-muted">
+            {unavailableVotesDescription}
+          </p>
+        {/if}
+      </div>
     </section>
   {/if}
 

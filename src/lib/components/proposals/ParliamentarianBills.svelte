@@ -4,6 +4,7 @@
     parliamentarianId: string;
     identification: string;
     chamber: string;
+    subjectLabel?: string;
     subject?: string;
     status: string;
     relationship: string;
@@ -24,12 +25,16 @@
   let {
     parliamentarianName,
     bills,
+    emptyTitle = 'Não há proposições associadas nesta visualização.',
+    emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
     onSelectBill,
     onBackToParliamentarian,
     onStartOver
   }: {
     parliamentarianName: string;
     bills: ParliamentarianBillView[];
+    emptyTitle?: string;
+    emptyDescription?: string;
     onSelectBill: (id: string) => void;
     onBackToParliamentarian: () => void;
     onStartOver: () => void;
@@ -73,10 +78,10 @@
   {#if bills.length === 0}
     <div class="rounded-ui border border-border bg-surface-raised p-4" role="status">
       <p class="text-sm font-semibold leading-6 text-ink">
-        Não há proposições associadas nesta visualização.
+        {emptyTitle}
       </p>
       <p class="mt-2 text-sm leading-6 text-ink-muted">
-        Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.
+        {emptyDescription}
       </p>
     </div>
   {:else}
@@ -106,7 +111,7 @@
                 </div>
                 {#if bill.subject}
                   <div>
-                    <dt class="font-bold text-ink">Tema</dt>
+                    <dt class="font-bold text-ink">{bill.subjectLabel ?? 'Tema'}</dt>
                     <dd>{bill.subject}</dd>
                   </div>
                 {/if}

@@ -66,6 +66,9 @@ export interface OfficialDetailServiceOptions extends OfficialApiClientFactoryOp
   senadoClient?: OfficialSenadoDetailClient;
 }
 
+export const officialSenadoAssociatedMattersUnavailableMessage =
+  'Matérias associadas a senador ainda não estão conectadas nesta versão.';
+
 function isOfficialClientError(
   error: unknown
 ): error is CamaraApiClientError | SenadoApiClientError {
@@ -287,7 +290,7 @@ export async function getOfficialProposalsByParliamentarian(
         toUnavailableError(
           'senado',
           'parliamentarian-proposals',
-          'Dados oficiais de proposições associadas do Senado Federal não estão disponíveis nesta consulta.'
+          officialSenadoAssociatedMattersUnavailableMessage
         )
       ]
     };

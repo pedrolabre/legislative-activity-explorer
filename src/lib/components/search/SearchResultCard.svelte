@@ -14,6 +14,7 @@
         id: string;
         title: string;
         chamber: string;
+        subjectLabel?: string;
         subject?: string;
         status: string;
       };
@@ -76,7 +77,7 @@
       </div>
       {#if result.subject}
         <div>
-          <dt class="font-bold text-ink">Tema</dt>
+          <dt class="font-bold text-ink">{result.subjectLabel ?? 'Tema'}</dt>
           <dd>{result.subject}</dd>
         </div>
       {/if}

@@ -3,6 +3,7 @@ import { CamaraApiClientError } from '$lib/api/camaraClient';
 import type { LegislativeProposal } from '$lib/domain';
 import {
   getOfficialVotesByProposal,
+  officialSenadoProposalVotesUnavailableMessage,
   type OfficialCamaraVoteClient
 } from './officialVoteService';
 
@@ -266,7 +267,14 @@ describe('getOfficialVotesByProposal', () => {
     ).resolves.toEqual({
       status: 'unavailable',
       data: [],
-      errors: []
+      errors: [
+        {
+          source: 'senado',
+          entity: 'proposal-votes',
+          kind: 'unsupported-source',
+          message: officialSenadoProposalVotesUnavailableMessage
+        }
+      ]
     });
     expect(client.getProposicaoVotacoesByIdPage).not.toHaveBeenCalled();
   });
