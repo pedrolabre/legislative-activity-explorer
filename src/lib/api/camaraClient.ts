@@ -133,11 +133,6 @@ export interface GetCamaraProposicoesByDeputadoAutorOptions {
   itens?: number;
 }
 
-export interface GetCamaraProposicaoVotacoesOptions {
-  pagina?: number;
-  itens?: number;
-}
-
 export interface GetCamaraDeputadosOptions {
   nome?: string;
   pagina?: number;
@@ -232,23 +227,16 @@ export class CamaraApiClient {
     return this.requestListPage<CamaraProposicaoTemaPayload>(`proposicoes/${id}/temas`);
   }
 
-  async getProposicaoVotacoesById(
-    id: number | string,
-    options: GetCamaraProposicaoVotacoesOptions = {}
-  ): Promise<CamaraVotacaoPayload[]> {
-    const page = await this.getProposicaoVotacoesByIdPage(id, options);
+  async getProposicaoVotacoesById(id: number | string): Promise<CamaraVotacaoPayload[]> {
+    const page = await this.getProposicaoVotacoesByIdPage(id);
 
     return page.data;
   }
 
   async getProposicaoVotacoesByIdPage(
-    id: number | string,
-    options: GetCamaraProposicaoVotacoesOptions = {}
+    id: number | string
   ): Promise<CamaraApiPage<CamaraVotacaoPayload>> {
-    return this.requestListPage<CamaraVotacaoPayload>(`proposicoes/${id}/votacoes`, {
-      pagina: options.pagina,
-      itens: options.itens
-    });
+    return this.requestListPage<CamaraVotacaoPayload>(`proposicoes/${id}/votacoes`);
   }
 
   async getVotacaoById(id: number | string): Promise<CamaraVotacaoPayload> {

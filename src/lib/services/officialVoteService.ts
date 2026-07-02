@@ -129,7 +129,7 @@ function createPaginationLimitError(): OfficialVoteRecoverableError {
     entity: 'proposal-votes',
     kind: 'pagination-limit',
     message:
-      'Há mais votações disponíveis na fonte oficial; esta versão consulta apenas a primeira página retornada.'
+      'Há mais votações disponíveis na fonte oficial; esta versão processa apenas as primeiras votações retornadas pela consulta oficial.'
   };
 }
 
@@ -245,10 +245,7 @@ export async function getOfficialVotesByProposal(
   let page;
 
   try {
-    page = await client.getProposicaoVotacoesByIdPage(proposal.sourceId, {
-      pagina: 1,
-      itens: maxVotesPerProposal
-    });
+    page = await client.getProposicaoVotacoesByIdPage(proposal.sourceId);
   } catch (error) {
     return {
       status: 'failed',
@@ -257,11 +254,13 @@ export async function getOfficialVotesByProposal(
     };
   }
 
-  if (hasNextPageLink(page.links)) {
+  const selectedPayloads = page.data.slice(0, maxVotesPerProposal);
+
+  if (hasNextPageLink(page.links) || selectedPayloads.length < page.data.length) {
     errors.push(createPaginationLimitError());
   }
 
-  for (const payload of page.data) {
+  for (const payload of selectedPayloads) {
     try {
       const voteResult = await loadOfficialCamaraVote(payload, proposal.title, client);
 

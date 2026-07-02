@@ -162,6 +162,22 @@ describe('BillDetail', () => {
     expect(html).toContain('Aprovado');
   });
 
+  it('renders the specific empty message when the official source returns no Camara votes', () => {
+    const html = renderBillDetail(
+      {},
+      {
+        showOfficialVotes: true,
+        associatedVotes: []
+      }
+    );
+
+    expect(html).toContain('Votações da Câmara');
+    expect(html).toContain('Nenhuma votação foi retornada pela fonte oficial consultada.');
+    expect(html).not.toContain(
+      'Nenhuma votação oficial da Câmara foi retornada para esta proposição nesta consulta.'
+    );
+  });
+
   it('keeps official Camara votes section hidden when coverage is not requested', () => {
     const html = renderBillDetail(
       {},

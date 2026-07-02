@@ -37,13 +37,8 @@ describe('getOfficialVotesByProposal', () => {
     const requestedVoteDetails: Array<string | number> = [];
     const requestedNominalVotes: Array<string | number> = [];
     const client: OfficialCamaraVoteClient = {
-      getProposicaoVotacoesByIdPage: async (id, options) => {
+      getProposicaoVotacoesByIdPage: async (id) => {
         requestedProposalIds.push(id);
-
-        expect(options).toEqual({
-          pagina: 1,
-          itens: 50
-        });
 
         return {
           data: [
@@ -172,22 +167,22 @@ describe('getOfficialVotesByProposal', () => {
     ]);
   });
 
-  it('reports pagination as partial without following broad result pages', async () => {
+  it('applies the proposal vote limit locally without sending unsupported query parameters', async () => {
+    const requestedVoteDetails: Array<string | number> = [];
     const result = await getOfficialVotesByProposal(createCamaraProposal(), {
       maxVotesPerProposal: 1,
       camaraClient: {
         ...createEmptyCamaraVoteClient(),
-        getProposicaoVotacoesByIdPage: async (_id, options) => {
-          expect(options).toEqual({
-            pagina: 1,
-            itens: 1
-          });
-
+        getProposicaoVotacoesByIdPage: async () => {
           return {
             data: [
               {
                 id: '100-1',
                 descricao: 'Votacao nominal.'
+              },
+              {
+                id: '100-2',
+                descricao: 'Segunda votacao nominal.'
               }
             ],
             links: [
@@ -197,19 +192,27 @@ describe('getOfficialVotesByProposal', () => {
               }
             ]
           };
+        },
+        getVotacaoById: async (id) => {
+          requestedVoteDetails.push(id);
+
+          return {
+            id
+          };
         }
       }
     });
 
     expect(result.status).toBe('partial');
     expect(result.data.map((vote) => vote.id)).toEqual(['camara-votacao-100-1']);
+    expect(requestedVoteDetails).toEqual(['100-1']);
     expect(result.errors).toEqual([
       {
         source: 'camara',
         entity: 'proposal-votes',
         kind: 'pagination-limit',
         message:
-          'Há mais votações disponíveis na fonte oficial; esta versão consulta apenas a primeira página retornada.'
+          'Há mais votações disponíveis na fonte oficial; esta versão processa apenas as primeiras votações retornadas pela consulta oficial.'
       }
     ]);
   });

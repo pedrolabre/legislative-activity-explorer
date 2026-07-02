@@ -347,6 +347,21 @@ describe('mapCamaraVotacaoToRollCallVote', () => {
     expect(vote.result).toBeUndefined();
   });
 
+  it('does not infer an official result from free text descriptions', () => {
+    const vote = mapCamaraVotacaoToRollCallVote(
+      {
+        id: '9876-2',
+        descricao: 'Aprovado o texto-base em votação nominal.'
+      },
+      {
+        proposalIdentification: 'PL 2/2024'
+      }
+    );
+
+    expect(vote.description).toBe('Aprovado o texto-base em votação nominal.');
+    expect(vote.result).toBeUndefined();
+  });
+
   it('represents a missing vote id as a mapper error', () => {
     expect(() =>
       mapCamaraVotacaoToRollCallVote(
@@ -438,6 +453,13 @@ describe('mapCamaraVotosToIndividualVotes', () => {
           deputado_: {
             id: 10,
             nome: 'Ana Costa'
+          }
+        },
+        {
+          tipoVoto: 'Artigo 17',
+          deputado_: {
+            id: 14,
+            nome: 'Diego Souza'
           }
         },
         {

@@ -329,7 +329,7 @@
       {:else}
         <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
           <p class="text-sm leading-6 text-ink-muted">
-            Nenhuma votação oficial da Câmara foi retornada para esta proposição nesta consulta.
+            Nenhuma votação foi retornada pela fonte oficial consultada.
           </p>
         </div>
       {/if}

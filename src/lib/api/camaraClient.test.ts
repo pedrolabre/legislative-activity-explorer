@@ -242,7 +242,7 @@ describe('CamaraApiClient', () => {
     expect(calls[0]).toBe('https://dados.example/api/v2/proposicoes/9876/temas');
   });
 
-  it('fetches official proposition votes by proposition id with pagination parameters', async () => {
+  it('fetches official proposition votes by proposition id without unsupported item parameters', async () => {
     const calls: string[] = [];
     const client = new CamaraApiClient({
       baseUrl: 'https://dados.example/api/v2',
@@ -265,12 +265,7 @@ describe('CamaraApiClient', () => {
       }
     });
 
-    await expect(
-      client.getProposicaoVotacoesByIdPage(9876, {
-        pagina: 1,
-        itens: 50
-      })
-    ).resolves.toEqual({
+    await expect(client.getProposicaoVotacoesByIdPage(9876)).resolves.toEqual({
       data: [
         {
           id: '9876-1',
@@ -290,8 +285,8 @@ describe('CamaraApiClient', () => {
     expect(url.origin + url.pathname).toBe(
       'https://dados.example/api/v2/proposicoes/9876/votacoes'
     );
-    expect(url.searchParams.get('pagina')).toBe('1');
-    expect(url.searchParams.get('itens')).toBe('50');
+    expect(url.searchParams.has('pagina')).toBe(false);
+    expect(url.searchParams.has('itens')).toBe(false);
   });
 
   it('fetches an official vote detail by vote id', async () => {
