@@ -19,6 +19,23 @@ describe('mapSenadoSenadorToParliamentarian', () => {
         UrlFotoParlamentar: 'http://www.senado.leg.br/senadores/img/fotos-oficiais/senador5672.jpg',
         UrlPaginaParlamentar: 'http://www25.senado.leg.br/web/senadores/senador/-/perfil/5672',
         EmailParlamentar: 'sen.alanrick@senado.leg.br'
+      },
+      Mandato: {
+        UfParlamentar: 'AC',
+        DescricaoParticipacao: 'Titular',
+        PrimeiraLegislaturaDoMandato: {
+          DataInicio: '2023-02-01',
+          DataFim: '2027-01-31'
+        },
+        SegundaLegislaturaDoMandato: {
+          DataInicio: '2027-02-01',
+          DataFim: '2031-01-31'
+        },
+        Exercicios: {
+          Exercicio: {
+            DataInicio: '2023-02-01'
+          }
+        }
       }
     });
 
@@ -31,7 +48,9 @@ describe('mapSenadoSenadorToParliamentarian', () => {
       office: 'Senador',
       party: 'REPUBLICANOS',
       state: 'AC',
-      status: 'Exercício',
+      status: 'Exercício - Titular',
+      term: '2023-02-01 a 2031-01-31',
+      termLabel: 'Mandato',
       photoUrl: 'http://www.senado.leg.br/senadores/img/fotos-oficiais/senador5672.jpg',
       email: 'sen.alanrick@senado.leg.br',
       officialUrl: 'http://www25.senado.leg.br/web/senadores/senador/-/perfil/5672'
@@ -63,8 +82,89 @@ describe('mapSenadoSenadorToParliamentarian', () => {
     expect(parliamentarian.fullName).toBeUndefined();
     expect(parliamentarian.party).toBeUndefined();
     expect(parliamentarian.state).toBeUndefined();
+    expect(parliamentarian.term).toBeUndefined();
+    expect(parliamentarian.termLabel).toBeUndefined();
     expect(parliamentarian.photoUrl).toBeUndefined();
     expect(parliamentarian.email).toBeUndefined();
+  });
+
+  it('uses official mandate records supplied by the senator detail service', () => {
+    const parliamentarian = mapSenadoSenadorToParliamentarian(
+      {
+        IdentificacaoParlamentar: {
+          CodigoParlamentar: '6000',
+          NomeParlamentar: 'Joana Lima',
+          SiglaPartidoParlamentar: 'XYZ'
+        }
+      },
+      {
+        mandates: [
+          {
+            DescricaoParticipacao: 'Titular',
+            PrimeiraLegislaturaDoMandato: {
+              DataInicio: '2015-02-01'
+            },
+            SegundaLegislaturaDoMandato: {
+              DataFim: '2023-01-31'
+            },
+            Exercicios: {
+              Exercicio: {
+                DataInicio: '2015-02-01',
+                DataFim: '2023-01-31'
+              }
+            }
+          },
+          {
+            UfParlamentar: 'RJ',
+            DescricaoParticipacao: 'Titular',
+            PrimeiraLegislaturaDoMandato: {
+              DataInicio: '2023-02-01'
+            },
+            SegundaLegislaturaDoMandato: {
+              DataFim: '2031-01-31'
+            },
+            Exercicios: {
+              Exercicio: {
+                DataInicio: '2023-02-01'
+              }
+            }
+          }
+        ]
+      }
+    );
+
+    expect(parliamentarian).toMatchObject({
+      id: 'senado-6000',
+      state: 'RJ',
+      status: 'Exercício - Titular',
+      term: '2023-02-01 a 2031-01-31',
+      termLabel: 'Mandato'
+    });
+  });
+
+  it('does not invent a mandate when official dates are incomplete', () => {
+    const parliamentarian = mapSenadoSenadorToParliamentarian(
+      {
+        IdentificacaoParlamentar: {
+          CodigoParlamentar: '6001',
+          NomeParlamentar: 'Paulo Nunes'
+        }
+      },
+      {
+        mandates: [
+          {
+            CodigoMandato: '1000',
+            PrimeiraLegislaturaDoMandato: {
+              NumeroLegislatura: '57'
+            }
+          }
+        ]
+      }
+    );
+
+    expect(parliamentarian.term).toBeUndefined();
+    expect(parliamentarian.termLabel).toBeUndefined();
+    expect(parliamentarian.status).toBeUndefined();
   });
 
   it('represents a missing senator id as a mapper error', () => {

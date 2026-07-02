@@ -30,6 +30,7 @@ function createEmptySenadoClient(): OfficialSenadoDetailClient {
         CodigoParlamentar: '20'
       }
     }),
+    getSenadorMandatosById: async () => [],
     getMateriaById: async () => ({
       IdentificacaoMateria: {
         CodigoMateria: '300'
@@ -108,11 +109,28 @@ describe('getOfficialParliamentarianDetail', () => {
             IdentificacaoParlamentar: {
               CodigoParlamentar: '20',
               NomeParlamentar: 'Maria Souza',
+              NomeCompletoParlamentar: 'Maria Souza Almeida',
               CodigoPublicoNaLegAtual: '700',
               SiglaPartidoParlamentar: 'DEF',
               UfParlamentar: 'SP'
             }
-          })
+          }),
+          getSenadorMandatosById: async () => [
+            {
+              DescricaoParticipacao: 'Titular',
+              PrimeiraLegislaturaDoMandato: {
+                DataInicio: '2023-02-01'
+              },
+              SegundaLegislaturaDoMandato: {
+                DataFim: '2031-01-31'
+              },
+              Exercicios: {
+                Exercicio: {
+                  DataInicio: '2023-02-01'
+                }
+              }
+            }
+          ]
         }
       }
     );
@@ -121,11 +139,65 @@ describe('getOfficialParliamentarianDetail', () => {
       status: 'fulfilled',
       data: {
         id: 'senado-20',
+        fullName: 'Maria Souza Almeida',
         party: 'DEF',
-        state: 'SP'
+        state: 'SP',
+        status: 'Exercício - Titular',
+        term: '2023-02-01 a 2031-01-31',
+        termLabel: 'Mandato'
       },
       errors: []
     });
+  });
+
+  it('keeps Senado senator detail available when official mandates fail', async () => {
+    const result = await getOfficialParliamentarianDetail(
+      {
+        id: 'senado-20',
+        source: 'senado',
+        sourceId: '20',
+        name: 'Maria Souza',
+        office: 'Senador'
+      },
+      {
+        camaraClient: createEmptyCamaraClient(),
+        senadoClient: {
+          ...createEmptySenadoClient(),
+          getSenadorById: async () => ({
+            IdentificacaoParlamentar: {
+              CodigoParlamentar: '20',
+              NomeParlamentar: 'Maria Souza',
+              SiglaPartidoParlamentar: 'DEF'
+            }
+          }),
+          getSenadorMandatosById: async () => {
+            throw new SenadoApiClientError('A API do Senado retornou uma falha HTTP.', {
+              kind: 'http',
+              status: 503
+            });
+          }
+        }
+      }
+    );
+
+    expect(result).toMatchObject({
+      status: 'partial',
+      data: {
+        id: 'senado-20',
+        name: 'Maria Souza',
+        party: 'DEF'
+      },
+      errors: [
+        {
+          source: 'senado',
+          entity: 'parliamentarian',
+          kind: 'client',
+          message:
+            'Dados oficiais de parlamentar do Senado Federal não puderam ser carregados neste momento.'
+        }
+      ]
+    });
+    expect(result.data?.term).toBeUndefined();
   });
 
   it('represents client failures as recoverable detail failures', async () => {

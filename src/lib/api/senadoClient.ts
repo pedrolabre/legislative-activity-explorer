@@ -49,8 +49,39 @@ export interface SenadoIdentificacaoParlamentarPayload {
   MembroAtual?: string | null;
 }
 
+export interface SenadoLegislaturaMandatoPayload {
+  NumeroLegislatura?: number | string | null;
+  DataInicio?: string | null;
+  DataFim?: string | null;
+}
+
+export interface SenadoExercicioMandatoPayload {
+  CodigoExercicio?: number | string | null;
+  DataInicio?: string | null;
+  DataFim?: string | null;
+  SiglaCausaAfastamento?: string | null;
+  DescricaoCausaAfastamento?: string | null;
+}
+
+export interface SenadoExerciciosMandatoPayload {
+  Exercicio?: SenadoExercicioMandatoPayload | SenadoExercicioMandatoPayload[] | null;
+}
+
+export interface SenadoMandatoPayload {
+  CodigoMandato?: number | string | null;
+  UfParlamentar?: string | null;
+  PrimeiraLegislaturaDoMandato?: SenadoLegislaturaMandatoPayload | null;
+  SegundaLegislaturaDoMandato?: SenadoLegislaturaMandatoPayload | null;
+  DescricaoParticipacao?: string | null;
+  Exercicios?: SenadoExerciciosMandatoPayload | null;
+}
+
 export interface SenadoSenadorPayload {
   IdentificacaoParlamentar?: SenadoIdentificacaoParlamentarPayload | null;
+  Mandato?: SenadoMandatoPayload | null;
+  Mandatos?: {
+    Mandato?: SenadoMandatoPayload | SenadoMandatoPayload[] | null;
+  } | null;
 }
 
 export interface SenadoIdentificacaoMateriaPayload {
@@ -169,6 +200,19 @@ export class SenadoApiClient {
     return this.requestNestedArray<SenadoSenadorPayload>('senador/lista/atual', [
       ['ListaParlamentarEmExercicio', 'Parlamentares', 'Parlamentar'],
       ['ListaParlamentarEmExercicio', 'Parlamentar']
+    ]);
+  }
+
+  async getSenadorMandatosById(id: number | string): Promise<SenadoMandatoPayload[]> {
+    return this.requestNestedArray<SenadoMandatoPayload>(`senador/${id}/mandatos`, [
+      ['MandatosParlamentar', 'Parlamentar', 'Mandatos', 'Mandato'],
+      ['MandatosParlamentar', 'Mandatos', 'Mandato'],
+      ['ListaMandatos', 'Mandatos', 'Mandato'],
+      ['ListaMandatoParlamentar', 'Mandatos', 'Mandato'],
+      ['DetalheParlamentar', 'Parlamentar', 'Mandatos', 'Mandato'],
+      ['Parlamentar', 'Mandatos', 'Mandato'],
+      ['Mandatos', 'Mandato'],
+      ['Mandato']
     ]);
   }
 

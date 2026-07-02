@@ -3,7 +3,12 @@ import {
   CamaraApiClientError,
   type CamaraProposicaoPayload
 } from '$lib/api/camaraClient';
-import { SenadoApiClient, SenadoApiClientError } from '$lib/api/senadoClient';
+import {
+  SenadoApiClient,
+  SenadoApiClientError,
+  type SenadoMandatoPayload,
+  type SenadoSenadorPayload
+} from '$lib/api/senadoClient';
 import type { LegislativeProposal, LegislativeSource, Parliamentarian } from '$lib/domain';
 import {
   CamaraMapperError,
@@ -59,7 +64,10 @@ export type OfficialCamaraDetailClient = Pick<
   | 'getProposicaoTemasById'
 >;
 
-export type OfficialSenadoDetailClient = Pick<SenadoApiClient, 'getSenadorById' | 'getMateriaById'>;
+export type OfficialSenadoDetailClient = Pick<
+  SenadoApiClient,
+  'getSenadorById' | 'getSenadorMandatosById' | 'getMateriaById'
+>;
 
 export interface OfficialDetailServiceOptions extends OfficialApiClientFactoryOptions {
   camaraClient?: OfficialCamaraDetailClient;
@@ -248,6 +256,48 @@ async function getOfficialCamaraProposalDetail(
   };
 }
 
+async function getOfficialSenadoParliamentarianDetail(
+  parliamentarian: Parliamentarian,
+  client: OfficialSenadoDetailClient
+): Promise<OfficialDetailResult<Parliamentarian>> {
+  const errors: OfficialDetailRecoverableError[] = [];
+  let senatorPayload: SenadoSenadorPayload;
+
+  try {
+    senatorPayload = await client.getSenadorById(parliamentarian.sourceId);
+  } catch (error) {
+    return {
+      status: 'failed',
+      data: null,
+      errors: [toRecoverableError('senado', 'parliamentarian', error)]
+    };
+  }
+
+  let mandates: SenadoMandatoPayload[] = [];
+
+  try {
+    mandates = await client.getSenadorMandatosById(parliamentarian.sourceId);
+  } catch (error) {
+    errors.push(toRecoverableError('senado', 'parliamentarian', error));
+  }
+
+  try {
+    return {
+      status: errors.length > 0 ? 'partial' : 'fulfilled',
+      data: mapSenadoSenadorToParliamentarian(senatorPayload, {
+        mandates
+      }),
+      errors
+    };
+  } catch (error) {
+    return {
+      status: 'failed',
+      data: null,
+      errors: [toRecoverableError('senado', 'parliamentarian', error)]
+    };
+  }
+}
+
 export async function getOfficialParliamentarianDetail(
   parliamentarian: Parliamentarian,
   options: OfficialDetailServiceOptions = {}
@@ -260,9 +310,14 @@ export async function getOfficialParliamentarianDetail(
         ? mapCamaraDeputadoToParliamentarian(
             await getConfiguredCamaraDetailClient(options).getDeputadoById(sourceId)
           )
-        : mapSenadoSenadorToParliamentarian(
-            await getConfiguredSenadoDetailClient(options).getSenadorById(sourceId)
-          );
+        : undefined;
+
+    if (!data) {
+      return getOfficialSenadoParliamentarianDetail(
+        parliamentarian,
+        getConfiguredSenadoDetailClient(options)
+      );
+    }
 
     return {
       status: 'fulfilled',

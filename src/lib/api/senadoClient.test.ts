@@ -140,6 +140,52 @@ describe('SenadoApiClient', () => {
     expect(calls[0]).toBe('https://senado.example/dadosabertos/senador/lista/atual.json');
   });
 
+  it('fetches senator mandates from the official nested envelope', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          MandatosParlamentar: {
+            Parlamentar: {
+              Mandatos: {
+                Mandato: [
+                  {
+                    CodigoMandato: '100',
+                    DescricaoParticipacao: 'Titular',
+                    PrimeiraLegislaturaDoMandato: {
+                      DataInicio: '2023-02-01'
+                    },
+                    SegundaLegislaturaDoMandato: {
+                      DataFim: '2031-01-31'
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        });
+      }
+    });
+
+    const mandates = await client.getSenadorMandatosById(5672);
+
+    expect(mandates).toEqual([
+      {
+        CodigoMandato: '100',
+        DescricaoParticipacao: 'Titular',
+        PrimeiraLegislaturaDoMandato: {
+          DataInicio: '2023-02-01'
+        },
+        SegundaLegislaturaDoMandato: {
+          DataFim: '2031-01-31'
+        }
+      }
+    ]);
+    expect(calls[0]).toBe('https://senado.example/dadosabertos/senador/5672/mandatos.json');
+  });
+
   it('fetches a matter detail from the Senado envelope', async () => {
     const client = new SenadoApiClient({
       baseUrl: 'https://senado.example/dadosabertos',

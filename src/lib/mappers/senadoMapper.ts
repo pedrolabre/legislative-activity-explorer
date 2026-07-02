@@ -1,8 +1,14 @@
 import type { LegislativeProposal, Parliamentarian } from '$lib/domain';
-import type { SenadoMateriaPayload, SenadoSenadorPayload } from '$lib/api/senadoClient';
+import type {
+  SenadoExercicioMandatoPayload,
+  SenadoMandatoPayload,
+  SenadoMateriaPayload,
+  SenadoSenadorPayload
+} from '$lib/api/senadoClient';
 
 const senadoSenadorOfficialUrl = 'https://www25.senado.leg.br/web/senadores/senador/-/perfil';
 const senadoMateriaOfficialUrl = 'https://www25.senado.leg.br/web/atividade/materias/-/materia';
+const senadoMandateTermLabel = 'Mandato';
 const senadoPublisher = 'Senado Federal';
 
 export class SenadoMapperError extends Error {
@@ -85,23 +91,97 @@ function requireSourceId(
   return sourceId;
 }
 
-function mapSenadorStatus(payload: SenadoSenadorPayload) {
+function toArray<T>(value: T | T[] | null | undefined): T[] {
+  if (value === null || value === undefined) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
+
+function getMandateExercises(mandate: SenadoMandatoPayload | undefined) {
+  return toArray<SenadoExercicioMandatoPayload>(mandate?.Exercicios?.Exercicio);
+}
+
+function hasOpenExercise(mandate: SenadoMandatoPayload | undefined) {
+  return getMandateExercises(mandate).some(
+    (exercise) => normalizeDate(exercise.DataInicio) && !normalizeDate(exercise.DataFim)
+  );
+}
+
+function getMandateStartDate(mandate: SenadoMandatoPayload | undefined) {
+  return (
+    normalizeDate(mandate?.PrimeiraLegislaturaDoMandato?.DataInicio) ??
+    normalizeDate(mandate?.SegundaLegislaturaDoMandato?.DataInicio)
+  );
+}
+
+function getMandateEndDate(mandate: SenadoMandatoPayload | undefined) {
+  return (
+    normalizeDate(mandate?.SegundaLegislaturaDoMandato?.DataFim) ??
+    normalizeDate(mandate?.PrimeiraLegislaturaDoMandato?.DataFim)
+  );
+}
+
+function getMandateSortDate(mandate: SenadoMandatoPayload) {
+  return getMandateEndDate(mandate) ?? getMandateStartDate(mandate) ?? '';
+}
+
+function selectBestMandate(mandates: SenadoMandatoPayload[]) {
+  const openExerciseMandate = mandates.find(hasOpenExercise);
+
+  if (openExerciseMandate) {
+    return openExerciseMandate;
+  }
+
+  return [...mandates].sort((left, right) =>
+    getMandateSortDate(right).localeCompare(getMandateSortDate(left))
+  )[0];
+}
+
+function getSenatorMandates(
+  payload: SenadoSenadorPayload,
+  extraMandates: SenadoMandatoPayload[] = []
+) {
+  const mandates: SenadoMandatoPayload[] = [];
+
+  mandates.push(...toArray(payload.Mandato));
+  mandates.push(...toArray(payload.Mandatos?.Mandato));
+  mandates.push(...extraMandates);
+
+  return mandates;
+}
+
+function mapSenatorMandateTerm(mandate: SenadoMandatoPayload | undefined) {
+  const startDate = getMandateStartDate(mandate);
+  const endDate = getMandateEndDate(mandate);
+
+  if (!startDate || !endDate) {
+    return undefined;
+  }
+
+  return `${startDate} a ${endDate}`;
+}
+
+function mapSenadorStatus(payload: SenadoSenadorPayload, mandate?: SenadoMandatoPayload) {
   const identification = payload.IdentificacaoParlamentar;
   const currentFlag = normalizeComparisonToken(identification?.MembroAtual);
+  const participation = normalizeString(mandate?.DescricaoParticipacao);
+  let status: string | undefined;
 
   if (currentFlag === 'sim') {
-    return 'Exercício';
+    status = 'Exercício';
+  } else if (currentFlag === 'nao') {
+    status = 'Fim de Mandato';
+  } else if (hasOpenExercise(mandate) || normalizeString(identification?.CodigoPublicoNaLegAtual)) {
+    status = 'Exercício';
   }
 
-  if (currentFlag === 'nao') {
-    return 'Fim de Mandato';
+  if (status && participation) {
+    return `${status} - ${participation}`;
   }
 
-  if (normalizeString(identification?.CodigoPublicoNaLegAtual)) {
-    return 'Exercício';
-  }
-
-  return undefined;
+  return status;
 }
 
 function buildMateriaTitle(payload: SenadoMateriaPayload, sourceId: string) {
@@ -158,9 +238,16 @@ function mapMateriaStatus(payload: SenadoMateriaPayload) {
   return undefined;
 }
 
-export function mapSenadoSenadorToParliamentarian(payload: SenadoSenadorPayload): Parliamentarian {
+export function mapSenadoSenadorToParliamentarian(
+  payload: SenadoSenadorPayload,
+  options: {
+    mandates?: SenadoMandatoPayload[];
+  } = {}
+): Parliamentarian {
   const identification = payload.IdentificacaoParlamentar;
   const sourceId = requireSourceId('senador', identification?.CodigoParlamentar);
+  const mandate = selectBestMandate(getSenatorMandates(payload, options.mandates));
+  const term = mapSenatorMandateTerm(mandate);
   const name =
     normalizeString(identification?.NomeParlamentar) ??
     normalizeString(identification?.NomeCompletoParlamentar) ??
@@ -174,8 +261,10 @@ export function mapSenadoSenadorToParliamentarian(payload: SenadoSenadorPayload)
     fullName: normalizeString(identification?.NomeCompletoParlamentar),
     office: 'Senador',
     party: normalizeString(identification?.SiglaPartidoParlamentar),
-    state: normalizeString(identification?.UfParlamentar),
-    status: mapSenadorStatus(payload),
+    state: normalizeString(identification?.UfParlamentar) ?? normalizeString(mandate?.UfParlamentar),
+    status: mapSenadorStatus(payload, mandate),
+    term,
+    termLabel: term ? senadoMandateTermLabel : undefined,
     photoUrl: normalizeString(identification?.UrlFotoParlamentar),
     email: normalizeString(identification?.EmailParlamentar),
     officialUrl:
