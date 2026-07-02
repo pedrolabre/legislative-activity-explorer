@@ -567,20 +567,20 @@
   <title>O que o parlamentar fez</title>
 </svelte:head>
 
-<main id="conteudo" tabindex="-1" class="min-h-dvh px-page py-section">
+<main id="conteudo" tabindex="-1" class="min-h-dvh px-page py-6 sm:py-8 lg:py-10">
   <section
-    class="mx-auto grid min-h-[calc(100dvh-var(--spacing-section)-var(--spacing-section))] w-full max-w-shell content-center gap-10 border-t-4 border-civic pt-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(22rem,1.1fr)] lg:items-center"
+    class="mx-auto grid w-full max-w-shell gap-6 border-t-4 border-civic pt-5 sm:gap-8 sm:pt-6 lg:min-h-[calc(100dvh-5rem)] lg:grid-cols-[minmax(0,0.86fr)_minmax(22rem,1.14fr)] lg:items-start"
     aria-labelledby="home-title"
   >
     <div class="max-w-readable">
       <p class="text-kicker font-bold uppercase tracking-normal text-accent">Consulta pública</p>
       <h1
         id="home-title"
-        class="mt-4 max-w-[12ch] text-4xl font-semibold leading-none tracking-normal text-ink sm:text-6xl md:text-7xl"
+        class="mt-3 max-w-[18ch] text-4xl font-semibold leading-none tracking-normal text-ink sm:text-5xl lg:text-5xl"
       >
         O que o parlamentar fez
       </h1>
-      <div class="mt-8 space-y-4 text-base leading-7 text-ink-muted sm:text-lg sm:leading-8">
+      <div class="mt-5 space-y-2 text-base leading-7 text-ink-muted">
         <p class="text-lead font-medium text-ink">
           Consulta pública sobre projetos e votações do Congresso Nacional.
         </p>
@@ -589,14 +589,14 @@
         </p>
       </div>
 
-      <div class="mt-10">
+      <div class="mt-6">
         <InitialSearchForm onSearch={handleSearch} resetToken={searchFormResetToken} />
       </div>
 
-      <div class="mt-4">
+      <div class="mt-3">
         <button
           type="button"
-          class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+          class="min-h-11 rounded-ui border border-border bg-surface-raised px-4 py-2 text-sm font-bold text-ink transition hover:border-accent"
           onclick={handleOpenAbout}
         >
           Sobre e privacidade
