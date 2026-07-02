@@ -2,12 +2,11 @@ import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
 import {
   officialParliamentarianSessionVotesCoverageMessage,
+  officialParliamentarianSessionVotesEmptyMessage,
+  officialParliamentarianStaticCoverageDescription,
   officialParliamentarianVoteHistoryUnavailableMessage
 } from '$lib/state/chatStore';
 import ParliamentarianVotes from './ParliamentarianVotes.svelte';
-
-const officialStaticCoverageDescription =
-  'Histórico completo exige integração futura. Esta versão estática não varre anos, proposições, votações ou arquivos grandes.';
 
 function renderParliamentarianVotes(propOverrides = {}) {
   return render(ParliamentarianVotes, {
@@ -25,13 +24,15 @@ function renderParliamentarianVotes(propOverrides = {}) {
 describe('ParliamentarianVotes', () => {
   it('renders a specific empty state for official parliamentarian vote coverage', () => {
     const html = renderParliamentarianVotes({
-      emptyTitle: officialParliamentarianVoteHistoryUnavailableMessage,
-      emptyDescription: officialStaticCoverageDescription
+      emptyTitle: officialParliamentarianSessionVotesEmptyMessage,
+      emptyDescription: officialParliamentarianStaticCoverageDescription
     });
 
+    expect(html).toContain(officialParliamentarianSessionVotesEmptyMessage);
     expect(html).toContain(officialParliamentarianVoteHistoryUnavailableMessage);
-    expect(html).toContain(officialStaticCoverageDescription);
+    expect(html).toContain(officialParliamentarianStaticCoverageDescription);
     expect(html).not.toContain('Não há votações associadas nesta visualização.');
+    expect(html).not.toContain('Nenhuma votação associada foi retornada pela fonte consultada.');
   });
 
   it('renders session partial coverage when official proposal votes are available', () => {
@@ -52,7 +53,7 @@ describe('ParliamentarianVotes', () => {
     });
 
     expect(html).toContain(officialParliamentarianSessionVotesCoverageMessage);
-    expect(html).toContain('1 votação associada');
+    expect(html).toContain('1 votação disponível');
     expect(html).toContain('Votação nominal oficial.');
     expect(html).toContain('SIM');
   });

@@ -94,9 +94,13 @@ export interface SelectVoteByIdOptions {
 const defaultSearchDelayMs = 450;
 const genericSearchErrorMessage = 'Não foi possível concluir a busca nesta página.';
 export const officialParliamentarianVoteHistoryUnavailableMessage =
-  'Histórico completo exige integração futura.';
+  'Histórico completo por parlamentar exige backend/cache futuro.';
 export const officialParliamentarianSessionVotesCoverageMessage =
-  'Votações exibidas aqui vieram de proposições abertas nesta sessão.';
+  'Cobertura parcial: votações exibidas aqui vieram de proposições abertas nesta sessão.';
+export const officialParliamentarianSessionVotesEmptyMessage =
+  'Nenhuma votação de proposição aberta foi carregada nesta sessão.';
+export const officialParliamentarianStaticCoverageDescription =
+  `Abra uma proposição com votações oficiais para ver votos disponíveis nesta sessão. ${officialParliamentarianVoteHistoryUnavailableMessage}`;
 export const officialSenadoStaticCoverageDescription =
   'Esta versão estática não usa scraping nem varre matérias, votações ou arquivos grandes para montar esse dado.';
 export const officialSenadoAssociatedMattersUnavailableDescription =
@@ -516,13 +520,7 @@ export function openParliamentarianVotes(options: OpenParliamentarianVotesOption
             )
           : officialSenadoProposalVotesUnavailableMessage;
     } else {
-      errorMessage =
-        voteHistory.length > 0
-          ? joinRecoverableNotices(
-              officialParliamentarianVoteHistoryUnavailableMessage,
-              officialParliamentarianSessionVotesCoverageMessage
-            )
-          : officialParliamentarianVoteHistoryUnavailableMessage;
+      errorMessage = officialParliamentarianVoteHistoryUnavailableMessage;
     }
   } else {
     const fixtureLoader =

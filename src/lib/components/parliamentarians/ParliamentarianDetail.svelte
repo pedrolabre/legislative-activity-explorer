@@ -151,13 +151,13 @@
         <button
           type="button"
           class="min-h-12 w-full rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
-          aria-label={`Abrir votações associadas de ${parliamentarian.name}`}
+          aria-label={`Abrir votações disponíveis de ${parliamentarian.name}`}
           onclick={onOpenVotes}
         >
-          Votações
+          Votações disponíveis
         </button>
         <p class="mt-2 text-sm leading-6 text-ink-muted">
-          Abrir cobertura de votações desta versão.
+          Abrir votos oficiais já disponíveis nesta consulta.
         </p>
       </div>
     </div>

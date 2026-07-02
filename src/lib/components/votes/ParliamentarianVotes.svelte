@@ -30,8 +30,8 @@
   let {
     parliamentarianName,
     votes,
-    coverageDescription = 'Registros retornados pela fonte consultada.',
-    emptyTitle = 'Nenhuma votação associada foi retornada pela fonte consultada.',
+    coverageDescription = 'Registros disponíveis pela fonte consultada.',
+    emptyTitle = 'Nenhuma votação disponível nesta consulta.',
     emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
     onSelectVote,
     onBackToParliamentarian,
@@ -50,7 +50,7 @@
   const unavailableLabel = 'Não informado pela fonte oficial consultada.';
 
   let voteCountLabel = $derived(
-    votes.length === 1 ? '1 votação associada' : `${votes.length} votações associadas`
+    votes.length === 1 ? '1 votação disponível' : `${votes.length} votações disponíveis`
   );
 
   function formatVotedAt(value?: string) {
@@ -71,7 +71,7 @@
 <div class="space-y-6">
   <header>
     <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">
-      Votações associadas
+      Votações disponíveis
     </p>
     <h3 class="mt-2 break-words text-2xl font-semibold leading-8 text-ink">
       {parliamentarianName}

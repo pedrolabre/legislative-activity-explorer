@@ -22,7 +22,9 @@
     goBack,
     initialChatContext,
     navigateTo,
+    officialParliamentarianSessionVotesEmptyMessage,
     officialParliamentarianSessionVotesCoverageMessage,
+    officialParliamentarianStaticCoverageDescription,
     officialParliamentarianVoteHistoryUnavailableMessage,
     officialSenadoAssociatedMattersUnavailableDescription,
     officialSenadoAssociatedMattersUnavailableMessage,
@@ -406,14 +408,14 @@
     selectedParliamentarianIsOfficialSenado
       ? officialSenadoProposalVotesUnavailableMessage
       : selectedParliamentarianIsOfficial
-      ? officialParliamentarianVoteHistoryUnavailableMessage
+      ? officialParliamentarianSessionVotesEmptyMessage
       : undefined
   );
   let selectedParliamentarianVotesEmptyDescription = $derived(
     selectedParliamentarianIsOfficialSenado
       ? officialSenadoStaticCoverageDescription
       : selectedParliamentarianIsOfficial
-      ? 'Histórico completo exige integração futura. Esta versão estática não varre anos, proposições, votações ou arquivos grandes.'
+      ? officialParliamentarianStaticCoverageDescription
       : undefined
   );
   let selectedBillVotes: ParliamentarianVoteView[] = $derived(
@@ -737,7 +739,7 @@
               <p class="text-xs font-bold uppercase tracking-normal opacity-80">
                 Consulta selecionada
               </p>
-              <p class="mt-1 break-words">Votações de {selectedParliamentarian.name}</p>
+              <p class="mt-1 break-words">Votações disponíveis de {selectedParliamentarian.name}</p>
             </ConversationBubble>
 
             <ConversationBubble tone="status">

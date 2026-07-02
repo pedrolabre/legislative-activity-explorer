@@ -9,7 +9,6 @@ import {
   goBack,
   initialChatContext,
   navigateTo,
-  officialParliamentarianSessionVotesCoverageMessage,
   officialParliamentarianVoteHistoryUnavailableMessage,
   officialSenadoAssociatedMattersUnavailableMessage,
   officialSenadoProposalVotesUnavailableMessage,
@@ -759,7 +758,7 @@ describe('chatStore actions', () => {
           proposalId: 'PL 2/2024'
         }
       ],
-      errorMessage: `${officialParliamentarianVoteHistoryUnavailableMessage} ${officialParliamentarianSessionVotesCoverageMessage}`
+      errorMessage: officialParliamentarianVoteHistoryUnavailableMessage
     });
 
     const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('unused-fixture-detail'));
