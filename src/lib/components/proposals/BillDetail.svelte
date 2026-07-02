@@ -61,10 +61,10 @@
     onStartOver: () => void;
   } = $props();
 
-  const unavailableLabel = 'Não disponível nesta visualização.';
+  const unavailableLabel = 'Não informado pela fonte oficial consultada.';
   const reviewedExternalReferenceTypes = ['press', 'technical'] as const;
   const unavailableOfficialSourceMessage =
-    'Fonte oficial não disponível nesta visualização.';
+    'Fonte oficial ainda não conectada nesta versão.';
   const noReviewedReferencesMessage =
     'Referências externas revisadas ainda não foram adicionadas para esta proposição.';
   const unavailableReviewedFactualSummaryMessage =

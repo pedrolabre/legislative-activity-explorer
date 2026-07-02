@@ -30,8 +30,8 @@
   let {
     parliamentarianName,
     votes,
-    coverageDescription = 'Dados apresentados nesta página conforme a fonte disponível.',
-    emptyTitle = 'Não há votações associadas nesta visualização.',
+    coverageDescription = 'Registros retornados pela fonte consultada.',
+    emptyTitle = 'Nenhuma votação associada foi retornada pela fonte consultada.',
     emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
     onSelectVote,
     onBackToParliamentarian,
@@ -47,7 +47,7 @@
     onStartOver: () => void;
   } = $props();
 
-  const unavailableLabel = 'Não disponível nesta visualização.';
+  const unavailableLabel = 'Não informado pela fonte oficial consultada.';
 
   let voteCountLabel = $derived(
     votes.length === 1 ? '1 votação associada' : `${votes.length} votações associadas`

@@ -7,7 +7,7 @@ import {
 import ParliamentarianVotes from './ParliamentarianVotes.svelte';
 
 const officialStaticCoverageDescription =
-  'Esta versão estática não varre anos, proposições, votações ou arquivos grandes para montar esse histórico.';
+  'Histórico completo exige integração futura. Esta versão estática não varre anos, proposições, votações ou arquivos grandes.';
 
 function renderParliamentarianVotes(propOverrides = {}) {
   return render(ParliamentarianVotes, {

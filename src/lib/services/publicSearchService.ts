@@ -42,7 +42,7 @@ export function getOfficialSearchRecoverableMessage(result: OfficialSearchResult
   const partialReports = reportsWithErrors.filter((report) => report.status === 'partial');
   const hasResults = hasSearchResults(result);
   const suffix = hasResults
-    ? 'Os resultados disponíveis foram exibidos.'
+    ? 'Os resultados retornados foram exibidos.'
     : 'A busca pode ser repetida mais tarde.';
 
   if (failedReports.length === result.sources.length && !hasResults) {
@@ -60,7 +60,7 @@ export function getOfficialSearchRecoverableMessage(result: OfficialSearchResult
   if (partialReports.length > 0) {
     const partialReferences = formatReferenceList(getSourceReferences(partialReports));
 
-    return `Parte dos dados oficiais ${partialReferences} não pôde ser exibida nesta consulta. ${suffix}`;
+    return `Parte dos dados oficiais ${partialReferences} não foi exibida nesta consulta. ${suffix}`;
   }
 
   return reportsWithErrors[0]?.errors[0]?.message ?? '';

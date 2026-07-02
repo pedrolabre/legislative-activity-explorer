@@ -36,6 +36,7 @@ describe('BillDetail', () => {
     expect(html).toContain('Ementa oficial');
     expect(html.match(/Ementa oficial controlada\./g)).toHaveLength(1);
     expect(html).toContain('Resumo factual revisado ainda não disponível.');
+    expect(html).toContain('Fonte oficial ainda não conectada nesta versão.');
     expect(html).not.toContain('A ementa oficial é exibida nesta seção.');
     expect(html).not.toContain('<h4 id="factual-summary-title"');
   });

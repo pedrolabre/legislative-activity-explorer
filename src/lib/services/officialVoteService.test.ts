@@ -209,7 +209,7 @@ describe('getOfficialVotesByProposal', () => {
         entity: 'proposal-votes',
         kind: 'pagination-limit',
         message:
-          'A fonte oficial indicou mais votacoes para esta proposicao; esta versao consulta apenas a primeira pagina retornada.'
+          'Há mais votações disponíveis na fonte oficial; esta versão consulta apenas a primeira página retornada.'
       }
     ]);
   });
@@ -240,7 +240,7 @@ describe('getOfficialVotesByProposal', () => {
           entity: 'proposal-votes',
           kind: 'timeout',
           message:
-            'A consulta oficial de votacoes associadas da Camara dos Deputados excedeu o tempo limite.'
+            'A consulta oficial de votações associadas da Câmara dos Deputados excedeu o tempo limite.'
         }
       ]
     });

@@ -893,7 +893,7 @@ describe('chatStore actions', () => {
         }
       ],
       errorMessage:
-        'Parte dos dados oficiais de proposições associadas não pode ser exibida nesta consulta.'
+        'Parte dos dados oficiais de proposições associadas não foi exibida nesta consulta.'
     });
   });
 

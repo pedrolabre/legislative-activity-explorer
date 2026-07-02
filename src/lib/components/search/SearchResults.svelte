@@ -46,7 +46,7 @@
         {resultCountLabel} para <span class="font-medium text-ink">{query}</span>.
       </p>
       <p class="mt-2 text-sm leading-6 text-ink-muted">
-        Registros exibidos conforme retorno das fontes oficiais disponíveis.
+        Registros exibidos conforme retorno das fontes oficiais consultadas.
       </p>
     {:else}
       <p class="mt-1 break-words text-sm leading-6 text-ink-muted">

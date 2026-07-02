@@ -37,8 +37,10 @@
     type ChatContext
   } from '$lib/state/chatStore';
 
-  const unavailableSearchFieldLabel = 'Não disponível';
-  const unavailableDetailFieldLabel = 'Não disponível nesta visualização.';
+  const unavailableOfficialFieldLabel = 'Não informado pela fonte oficial consultada.';
+  const unavailableVersionFieldLabel = 'Ainda não conectado nesta versão.';
+  const unavailableNominalVoteListLabel =
+    'Lista nominal não informada pela fonte oficial consultada.';
 
   type DisplayVotePosition = 'SIM' | 'NÃO' | 'ABSTENÇÃO' | 'AUSENTE';
 
@@ -148,9 +150,9 @@
       id: parliamentarian.id,
       name: parliamentarian.name,
       office: parliamentarian.office,
-      party: parliamentarian.party ?? unavailableSearchFieldLabel,
-      state: parliamentarian.state ?? unavailableSearchFieldLabel,
-      status: parliamentarian.status ?? unavailableSearchFieldLabel,
+      party: parliamentarian.party ?? unavailableOfficialFieldLabel,
+      state: parliamentarian.state ?? unavailableOfficialFieldLabel,
+      status: parliamentarian.status ?? unavailableOfficialFieldLabel,
       searchTerms: []
     };
   }
@@ -163,7 +165,7 @@
       chamber: getChamberLabel(proposal.source),
       subjectLabel: proposal.subject ? getSubjectLabel(proposal) : undefined,
       subject: proposal.subject,
-      status: proposal.status ?? unavailableSearchFieldLabel,
+      status: proposal.status ?? unavailableOfficialFieldLabel,
       searchTerms: []
     };
   }
@@ -177,9 +179,9 @@
       fullName: parliamentarian.fullName,
       office: parliamentarian.office,
       chamber: getChamberLabel(parliamentarian.source),
-      party: parliamentarian.party ?? unavailableDetailFieldLabel,
-      state: parliamentarian.state ?? unavailableDetailFieldLabel,
-      status: parliamentarian.status ?? unavailableDetailFieldLabel,
+      party: parliamentarian.party ?? unavailableOfficialFieldLabel,
+      state: parliamentarian.state ?? unavailableOfficialFieldLabel,
+      status: parliamentarian.status ?? unavailableOfficialFieldLabel,
       term: parliamentarian.term,
       email: parliamentarian.email,
       photoUrl: parliamentarian.photoUrl
@@ -211,10 +213,10 @@
       chamber: getChamberLabel(proposal.source),
       subjectLabel: proposal.subject ? getSubjectLabel(proposal) : undefined,
       subject: proposal.subject,
-      status: proposal.status ?? unavailableDetailFieldLabel,
-      relationship: proposal.relationship ?? unavailableDetailFieldLabel,
+      status: proposal.status ?? unavailableOfficialFieldLabel,
+      relationship: proposal.relationship ?? unavailableVersionFieldLabel,
       presentedAt: proposal.presentedAt,
-      officialSummary: proposal.officialSummary ?? unavailableDetailFieldLabel,
+      officialSummary: proposal.officialSummary ?? unavailableOfficialFieldLabel,
       factualSummary: hasReviewedFactualSummary ? proposal.simplifiedSummary : undefined,
       sources: proposal.references.map((reference) => ({
         id: reference.id,
@@ -290,7 +292,7 @@
       return 'Voto individual do parlamentar não localizado na lista nominal consultada.';
     }
 
-    return 'Lista nominal não disponível nesta votação.';
+    return unavailableNominalVoteListLabel;
   }
 
   function toParliamentarianVoteView(
@@ -312,8 +314,8 @@
       counts: vote.counts,
       individualVotes: vote.individualVotes.map((individualVote) => ({
         parliamentarianName: individualVote.parliamentarianName,
-        party: individualVote.party ?? unavailableDetailFieldLabel,
-        state: individualVote.state ?? unavailableDetailFieldLabel,
+        party: individualVote.party ?? unavailableOfficialFieldLabel,
+        state: individualVote.state ?? unavailableOfficialFieldLabel,
         vote: toDisplayVotePosition(individualVote.vote),
         isSelectedParliamentarian: isIndividualVoteForParliamentarian(
           individualVote,
@@ -397,7 +399,7 @@
     selectedParliamentarianIsOfficialSenado
       ? officialSenadoStaticCoverageDescription
       : selectedParliamentarianIsOfficial
-      ? 'Esta versão estática não varre anos, proposições, votações ou arquivos grandes para montar esse histórico.'
+      ? 'Histórico completo exige integração futura. Esta versão estática não varre anos, proposições, votações ou arquivos grandes.'
       : undefined
   );
   let selectedBillVotes: ParliamentarianVoteView[] = $derived(

@@ -42,7 +42,7 @@
     onStartOver: () => void;
   } = $props();
 
-  const unavailableLabel = 'Não disponível nesta visualização.';
+  const unavailableLabel = 'Não informado pela fonte oficial consultada.';
 
   let countItems = $derived(
     vote.counts
@@ -151,7 +151,7 @@
     {:else}
       <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
-          Contagens agregadas não disponíveis nesta visualização.
+          Contagens agregadas não informadas pela fonte oficial consultada.
         </p>
         <p class="mt-2 text-sm leading-6 text-ink-muted">
           Você pode voltar às votações ou iniciar uma nova consulta.
@@ -195,7 +195,7 @@
     {:else}
       <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
-          Lista nominal não disponível nesta visualização.
+          Lista nominal não informada pela fonte oficial consultada.
         </p>
         <p class="mt-2 text-sm leading-6 text-ink-muted">
           Você pode voltar às votações ou iniciar uma nova consulta.

@@ -94,9 +94,9 @@ export interface SelectVoteByIdOptions {
 const defaultSearchDelayMs = 450;
 const genericSearchErrorMessage = 'Não foi possível concluir a busca nesta página.';
 export const officialParliamentarianVoteHistoryUnavailableMessage =
-  'Histórico completo de votações por parlamentar ainda não está disponível nesta versão.';
+  'Histórico completo exige integração futura.';
 export const officialParliamentarianSessionVotesCoverageMessage =
-  'Esta visualização mostra somente votações oficiais carregadas a partir de proposições abertas nesta sessão.';
+  'Votações exibidas aqui vieram de proposições abertas nesta sessão.';
 export const officialSenadoStaticCoverageDescription =
   'Esta versão estática não usa scraping nem varre matérias, votações ou arquivos grandes para montar esse dado.';
 export const officialSenadoAssociatedMattersUnavailableDescription =
@@ -243,13 +243,13 @@ function getOfficialDetailNotice(
   }
 
   if (status === 'partial') {
-    return `Parte dos dados oficiais de ${label} não pode ser exibida nesta consulta.`;
+    return `Parte dos dados oficiais de ${label} não foi exibida nesta consulta.`;
   }
 
   if (status === 'unavailable') {
     const unavailableMessage = errors.find((error) => error.message.trim())?.message.trim();
 
-    return unavailableMessage ?? `Dados oficiais de ${label} não estão disponíveis nesta consulta.`;
+    return unavailableMessage ?? `Consulta oficial de ${label} ainda não conectada nesta versão.`;
   }
 
   return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;
@@ -265,13 +265,13 @@ function getOfficialVoteNotice(
   }
 
   if (status === 'partial') {
-    return `Parte dos dados oficiais de ${label} não pode ser exibida nesta consulta.`;
+    return `Parte dos dados oficiais de ${label} não foi exibida nesta consulta.`;
   }
 
   if (status === 'unavailable') {
     const unavailableMessage = errors.find((error) => error.message.trim())?.message.trim();
 
-    return unavailableMessage ?? `Dados oficiais de ${label} não estão disponíveis nesta consulta.`;
+    return unavailableMessage ?? `Consulta oficial de ${label} ainda não conectada nesta versão.`;
   }
 
   return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;

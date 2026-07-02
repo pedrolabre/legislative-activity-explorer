@@ -247,7 +247,7 @@ function getErrorMessage(
     }
 
     if (error.kind === 'invalid-payload') {
-      return `A fonte oficial ${sourceReference} retornou dados incompletos nesta consulta.`;
+      return `Parte dos dados oficiais de ${groupLabel} ${sourceReference} veio incompleta nesta consulta.`;
     }
 
     return `A fonte oficial ${sourceReference} não pode ser consultada neste momento.`;

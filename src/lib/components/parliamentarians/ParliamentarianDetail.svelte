@@ -27,10 +27,11 @@
     onStartOver: () => void;
   } = $props();
 
-  const unavailableLabel = 'Não disponível nesta visualização.';
+  const unavailableOfficialFieldLabel = 'Não informado pela fonte oficial consultada.';
+  const unavailableVersionFieldLabel = 'Ainda não conectado nesta versão.';
 
-  function formatOptional(value?: string) {
-    return value?.trim() ? value : unavailableLabel;
+  function formatOptional(value?: string, fallback = unavailableOfficialFieldLabel) {
+    return value?.trim() ? value : fallback;
   }
 
   function getInitials(name: string) {
@@ -62,7 +63,7 @@
       <div
         class="flex h-28 w-28 items-center justify-center rounded-ui border border-border bg-surface text-2xl font-bold text-accent"
         role="img"
-        aria-label={`Foto não disponível para ${parliamentarian.name}`}
+        aria-label={`Foto não informada pela fonte oficial consultada para ${parliamentarian.name}`}
       >
         <span aria-hidden="true">{initials}</span>
       </div>
@@ -113,7 +114,9 @@
       </div>
       <div>
         <dt class="font-bold text-ink">Mandato</dt>
-        <dd class:text-ink-muted={!parliamentarian.term}>{formatOptional(parliamentarian.term)}</dd>
+        <dd class:text-ink-muted={!parliamentarian.term}>
+          {formatOptional(parliamentarian.term, unavailableVersionFieldLabel)}
+        </dd>
       </div>
       <div class="sm:col-span-2">
         <dt class="font-bold text-ink">E-mail institucional</dt>
@@ -152,7 +155,7 @@
           Votações
         </button>
         <p class="mt-2 text-sm leading-6 text-ink-muted">
-          Abrir cobertura disponível de votações.
+          Abrir cobertura de votações desta versão.
         </p>
       </div>
     </div>

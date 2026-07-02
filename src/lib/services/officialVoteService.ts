@@ -75,14 +75,14 @@ function getErrorKind(error: unknown): OfficialVoteErrorKind {
 
 function getEntityLabel(entity: OfficialVoteEntity) {
   if (entity === 'proposal-votes') {
-    return 'votacoes associadas';
+    return 'votações associadas';
   }
 
   if (entity === 'vote-detail') {
-    return 'detalhe de votacao';
+    return 'detalhe de votação';
   }
 
-  return 'lista nominal de votacao';
+  return 'lista nominal de votação';
 }
 
 function getErrorMessage(entity: OfficialVoteEntity, error: unknown) {
@@ -90,21 +90,21 @@ function getErrorMessage(entity: OfficialVoteEntity, error: unknown) {
 
   if (isOfficialClientError(error)) {
     if (error.kind === 'timeout') {
-      return `A consulta oficial de ${entityLabel} da Camara dos Deputados excedeu o tempo limite.`;
+      return `A consulta oficial de ${entityLabel} da Câmara dos Deputados excedeu o tempo limite.`;
     }
 
     if (error.kind === 'invalid-payload') {
-      return `Dados oficiais de ${entityLabel} da Camara dos Deputados vieram incompletos nesta consulta.`;
+      return `Dados oficiais de ${entityLabel} da Câmara dos Deputados vieram incompletos nesta consulta.`;
     }
 
-    return `Dados oficiais de ${entityLabel} da Camara dos Deputados nao puderam ser carregados neste momento.`;
+    return `Dados oficiais de ${entityLabel} da Câmara dos Deputados não puderam ser carregados neste momento.`;
   }
 
   if (error instanceof CamaraMapperError) {
-    return `Dados oficiais de ${entityLabel} da Camara dos Deputados vieram incompletos nesta consulta.`;
+    return `Dados oficiais de ${entityLabel} da Câmara dos Deputados vieram incompletos nesta consulta.`;
   }
 
-  return `Falha temporaria ao processar dados oficiais de ${entityLabel}.`;
+  return `Falha temporária ao processar dados oficiais de ${entityLabel}.`;
 }
 
 function toRecoverableError(
@@ -129,7 +129,7 @@ function createPaginationLimitError(): OfficialVoteRecoverableError {
     entity: 'proposal-votes',
     kind: 'pagination-limit',
     message:
-      'A fonte oficial indicou mais votacoes para esta proposicao; esta versao consulta apenas a primeira pagina retornada.'
+      'Há mais votações disponíveis na fonte oficial; esta versão consulta apenas a primeira página retornada.'
   };
 }
 

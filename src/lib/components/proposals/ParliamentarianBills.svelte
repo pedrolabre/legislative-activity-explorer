@@ -25,7 +25,7 @@
   let {
     parliamentarianName,
     bills,
-    emptyTitle = 'Não há proposições associadas nesta visualização.',
+    emptyTitle = 'Nenhuma proposição associada foi retornada pela fonte consultada.',
     emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
     onSelectBill,
     onBackToParliamentarian,
@@ -40,7 +40,7 @@
     onStartOver: () => void;
   } = $props();
 
-  const unavailableLabel = 'Não disponível nesta visualização.';
+  const unavailableLabel = 'Não informado pela fonte oficial consultada.';
 
   let billCountLabel = $derived(
     bills.length === 1 ? '1 proposição associada' : `${bills.length} proposições associadas`
@@ -71,7 +71,7 @@
     </h3>
     <p class="mt-3 text-sm leading-6 text-ink-muted">{billCountLabel} nesta página.</p>
     <p class="mt-2 text-sm leading-6 text-ink-muted">
-      Dados apresentados nesta página conforme a fonte disponível.
+      Registros retornados pela fonte consultada.
     </p>
   </header>
 
