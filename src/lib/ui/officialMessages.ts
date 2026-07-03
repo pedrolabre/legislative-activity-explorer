@@ -31,4 +31,7 @@ export const officialParliamentarianSessionVotesEmptyMessage =
   'Nenhuma votação de proposição aberta foi carregada nesta sessão.';
 
 export const officialParliamentarianStaticCoverageDescription =
-  `Abra uma proposição com votações oficiais para ver votos disponíveis nesta sessão. ${officialParliamentarianVoteHistoryUnavailableMessage}`;
+  `Ao abrir uma proposição da Câmara com votações oficiais, os votos ficam disponíveis nesta sessão. ${officialParliamentarianVoteHistoryUnavailableMessage}`;
+
+export const officialCamaraProposalVotesEmptyMessage =
+  'Nenhuma votação oficial da Câmara foi retornada para esta proposição nesta consulta.';

@@ -3,7 +3,10 @@
   import type { ParliamentarianVoteView } from '$lib/domain';
   import { hasCompleteReviewedReferenceSet } from '$lib/services/referenceService';
   import { formatCheckedAt, formatPresentedAt, formatVotedAt } from '$lib/ui/dateFormatters';
-  import { unavailableOfficialFieldLabel as unavailableLabel } from '$lib/ui/officialMessages';
+  import {
+    officialCamaraProposalVotesEmptyMessage,
+    unavailableOfficialFieldLabel as unavailableLabel
+  } from '$lib/ui/officialMessages';
 
   interface ParliamentarianBillView {
     id: string;
@@ -59,7 +62,7 @@
   } = $props();
 
   const unavailableOfficialSourceMessage =
-    'Fonte oficial ainda não conectada nesta versão.';
+    'Fonte oficial da proposição não foi retornada no dado disponível nesta consulta.';
   const noReviewedReferencesMessage =
     'Conjunto completo de referências externas revisadas ainda não foi adicionado para esta proposição.';
   const unavailableReviewedFactualSummaryMessage =
@@ -282,7 +285,7 @@
       {:else}
         <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
           <p class="text-sm leading-6 text-ink-muted">
-            Nenhuma votação foi retornada pela fonte oficial consultada.
+            {officialCamaraProposalVotesEmptyMessage}
           </p>
         </div>
       {/if}

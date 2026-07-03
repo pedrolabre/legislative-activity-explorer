@@ -15,7 +15,7 @@
 </script>
 
 <section
-  class="flex min-h-[18rem] w-full min-w-0 flex-col sm:min-h-[19rem]"
+  class="flex min-h-[16rem] w-full min-w-0 flex-col sm:min-h-[17rem] lg:min-h-[22rem]"
   aria-labelledby={headingId}
 >
   <h2 id={headingId} class="sr-only">{title}</h2>
@@ -26,7 +26,7 @@
     aria-atomic="false"
     aria-busy={busy ? 'true' : undefined}
     aria-labelledby={headingId}
-    class="flex min-w-0 flex-1 flex-col gap-3 rounded-ui border border-border bg-surface-muted p-4 sm:gap-4 sm:p-5"
+    class="flex min-w-0 flex-1 flex-col gap-3 rounded-ui border border-border bg-surface-muted p-3 sm:p-4"
   >
     {@render children()}
   </div>

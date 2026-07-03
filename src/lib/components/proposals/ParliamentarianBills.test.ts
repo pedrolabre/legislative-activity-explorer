@@ -20,9 +20,11 @@ describe('ParliamentarianBills', () => {
     const html = renderParliamentarianBills();
 
     expect(html).toContain(
-      'Nenhuma proposição associada foi retornada pela fonte oficial consultada.'
+      'Nenhuma proposição associada a este parlamentar foi retornada pela fonte oficial consultada.'
     );
-    expect(html).toContain('Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.');
+    expect(html).toContain(
+      'A fonte consultada não retornou registros para esta seleção nesta consulta.'
+    );
   });
 
   it('uses a specific message when presentation date is not informed', () => {

@@ -12,7 +12,8 @@ export function attachReviewedFactualSummaryToProposal(
   proposal: LegislativeProposal,
   catalogProposalId = proposal.id
 ): LegislativeProposal {
-  const { simplifiedSummary: _existingSummary, ...proposalWithoutSummary } = proposal;
+  const proposalWithoutSummary = { ...proposal };
+  delete proposalWithoutSummary.simplifiedSummary;
   const reviewedSummary = getReviewedFactualSummaryForProposal(proposal, catalogProposalId);
 
   return reviewedSummary

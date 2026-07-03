@@ -8,8 +8,8 @@
     parliamentarianName,
     votes,
     coverageDescription = 'Registros disponíveis pela fonte oficial consultada.',
-    emptyTitle = 'Nenhuma votação foi retornada pela fonte oficial consultada.',
-    emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
+    emptyTitle = 'Nenhuma votação foi carregada para este parlamentar nesta consulta.',
+    emptyDescription = 'A fonte consultada não retornou votações para esta seleção nesta sessão.',
     onSelectVote,
     onBackToParliamentarian,
     onStartOver
@@ -37,7 +37,7 @@
     <h3 class="mt-2 break-words text-2xl font-semibold leading-8 text-ink">
       {parliamentarianName}
     </h3>
-    <p class="mt-3 text-sm leading-6 text-ink-muted">{voteCountLabel} nesta página.</p>
+    <p class="mt-3 text-sm leading-6 text-ink-muted">{voteCountLabel} nesta sessão.</p>
     <p class="mt-2 text-sm leading-6 text-ink-muted">
       {coverageDescription}
     </p>

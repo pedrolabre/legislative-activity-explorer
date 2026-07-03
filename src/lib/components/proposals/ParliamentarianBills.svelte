@@ -1,6 +1,5 @@
 <script lang="ts">
   import { formatPresentedAt } from '$lib/ui/dateFormatters';
-  import { unavailableOfficialFieldLabel as unavailableLabel } from '$lib/ui/officialMessages';
 
   interface ParliamentarianBillView {
     id: string;
@@ -28,8 +27,8 @@
   let {
     parliamentarianName,
     bills,
-    emptyTitle = 'Nenhuma proposição associada foi retornada pela fonte oficial consultada.',
-    emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
+    emptyTitle = 'Nenhuma proposição associada a este parlamentar foi retornada pela fonte oficial consultada.',
+    emptyDescription = 'A fonte consultada não retornou registros para esta seleção nesta consulta.',
     onSelectBill,
     onBackToParliamentarian,
     onStartOver
@@ -56,7 +55,7 @@
     <h3 class="mt-2 break-words text-2xl font-semibold leading-8 text-ink">
       {parliamentarianName}
     </h3>
-    <p class="mt-3 text-sm leading-6 text-ink-muted">{billCountLabel} nesta página.</p>
+    <p class="mt-3 text-sm leading-6 text-ink-muted">{billCountLabel} na consulta atual.</p>
     <p class="mt-2 text-sm leading-6 text-ink-muted">
       Registros retornados pela fonte oficial consultada.
     </p>

@@ -40,7 +40,9 @@ describe('BillDetail', () => {
     expect(html).toContain('Ementa oficial');
     expect(html.match(/Ementa oficial controlada\./g)).toHaveLength(1);
     expect(html).toContain('Resumo factual revisado ainda não foi adicionado para esta proposição.');
-    expect(html).toContain('Fonte oficial ainda não conectada nesta versão.');
+    expect(html).toContain(
+      'Fonte oficial da proposição não foi retornada no dado disponível nesta consulta.'
+    );
     expect(html).not.toContain('A ementa oficial é exibida nesta seção.');
     expect(html).not.toContain('<h4 id="factual-summary-title"');
   });
@@ -179,10 +181,10 @@ describe('BillDetail', () => {
     );
 
     expect(html).toContain('Votações da Câmara');
-    expect(html).toContain('Nenhuma votação foi retornada pela fonte oficial consultada.');
-    expect(html).not.toContain(
+    expect(html).toContain(
       'Nenhuma votação oficial da Câmara foi retornada para esta proposição nesta consulta.'
     );
+    expect(html).not.toContain('Nenhuma votação foi retornada pela fonte oficial consultada.');
   });
 
   it('keeps official Camara votes section hidden when coverage is not requested', () => {

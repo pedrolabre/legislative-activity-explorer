@@ -24,6 +24,14 @@ export default [
       parserOptions: {
         parser: tseslint.parser
       }
+    },
+    rules: {
+      'svelte/no-navigation-without-resolve': [
+        'error',
+        {
+          ignoreLinks: true
+        }
+      ]
     }
   },
   {

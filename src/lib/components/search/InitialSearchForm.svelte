@@ -29,7 +29,7 @@
     const trimmedQuery = query.trim();
 
     if (!trimmedQuery) {
-      errorMessage = 'Informe um nome ou uma proposição para continuar.';
+      errorMessage = 'Informe um nome de parlamentar ou termo de proposição para continuar.';
       return;
     }
 
@@ -48,16 +48,16 @@
 </script>
 
 <form
-  class="border-t border-border pt-6"
+  class="border-t border-border pt-4"
   aria-labelledby="initial-search-title"
   onsubmit={handleSubmit}
 >
   <div>
-    <h2 id="initial-search-title" class="text-lg font-semibold leading-7 text-ink">
-      Pesquisa inicial
+    <h2 id="initial-search-title" class="text-base font-semibold leading-6 text-ink">
+      Consulta oficial
     </h2>
-    <label for="initial-search" class="mt-4 block text-sm font-bold leading-6 text-ink">
-      Buscar parlamentar ou proposição
+    <label for="initial-search" class="mt-3 block text-sm font-bold leading-6 text-ink">
+      Nome de parlamentar ou termo de proposição
     </label>
   </div>
 
@@ -82,8 +82,8 @@
     </button>
   </div>
 
-  <p id="initial-search-help" class="mt-3 text-sm leading-6 text-ink-muted">
-    A consulta permanece somente nesta página aberta.
+  <p id="initial-search-help" class="mt-2 text-sm leading-6 text-ink-muted">
+    A consulta fica somente nesta página aberta; os resultados vêm de fontes oficiais disponíveis.
   </p>
 
   {#if errorMessage}
