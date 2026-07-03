@@ -1,67 +1,33 @@
 import type { LegislativeProposal, Parliamentarian } from '$lib/domain';
+import {
+  normalizeComparisonToken,
+  normalizeDate,
+  normalizeNumber,
+  normalizeString
+} from '$lib/utils/normalization';
 import type {
   SenadoExercicioMandatoPayload,
   SenadoMandatoPayload,
   SenadoMateriaPayload,
   SenadoSenadorPayload
 } from '$lib/api/senadoClient';
+import { OfficialMapperError } from './officialMapperError';
 
 const senadoSenadorOfficialUrl = 'https://www25.senado.leg.br/web/senadores/senador/-/perfil';
 const senadoMateriaOfficialUrl = 'https://www25.senado.leg.br/web/atividade/materias/-/materia';
 const senadoMandateTermLabel = 'Mandato';
 const senadoPublisher = 'Senado Federal';
 
-export class SenadoMapperError extends Error {
-  entity: string;
-  field: string;
-
+export class SenadoMapperError extends OfficialMapperError {
   constructor(entity: string, field: string) {
-    super(`Payload do Senado sem campo obrigatorio: ${entity}.${field}.`);
-    this.name = 'SenadoMapperError';
-    this.entity = entity;
-    this.field = field;
+    super({
+      source: 'senado',
+      sourceLabel: 'do Senado',
+      entity,
+      field,
+      name: 'SenadoMapperError'
+    });
   }
-}
-
-function normalizeString(value: string | number | null | undefined): string | undefined {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-
-  const normalized = String(value).trim();
-
-  return normalized ? normalized : undefined;
-}
-
-function normalizeNumber(value: string | number | null | undefined): number | undefined {
-  const normalized = normalizeString(value);
-
-  if (!normalized) {
-    return undefined;
-  }
-
-  const parsed = Number(normalized);
-
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function normalizeDate(value: string | null | undefined): string | undefined {
-  const normalized = normalizeString(value);
-
-  if (!normalized) {
-    return undefined;
-  }
-
-  const dateMatch = normalized.match(/^\d{4}-\d{2}-\d{2}/);
-
-  return dateMatch ? dateMatch[0] : normalized;
-}
-
-function normalizeComparisonToken(value: string | number | null | undefined): string | undefined {
-  return normalizeString(value)
-    ?.normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('pt-BR');
 }
 
 function normalizeMatterNumber(value: string | number | null | undefined): string | undefined {
@@ -173,8 +139,6 @@ function mapSenadorStatus(payload: SenadoSenadorPayload, mandate?: SenadoMandato
     status = 'Exercício';
   } else if (currentFlag === 'nao') {
     status = 'Fim de Mandato';
-  } else if (hasOpenExercise(mandate) || normalizeString(identification?.CodigoPublicoNaLegAtual)) {
-    status = 'Exercício';
   }
 
   if (status && participation) {

@@ -1,30 +1,33 @@
 import {
   CamaraApiClient,
-  CamaraApiClientError,
   type CamaraDeputadoPayload,
   type CamaraProposicaoPayload
 } from '$lib/api/camaraClient';
 import {
   SenadoApiClient,
-  SenadoApiClientError,
   type SenadoMateriaPayload,
   type SenadoSenadorPayload
 } from '$lib/api/senadoClient';
 import type { LegislativeProposal, LegislativeSource, Parliamentarian } from '$lib/domain';
 import {
-  CamaraMapperError,
   mapCamaraDeputadoToParliamentarian,
   mapCamaraProposicaoToLegislativeProposal
 } from '$lib/mappers/camaraMapper';
 import {
   mapSenadoMateriaToLegislativeProposal,
-  mapSenadoSenadorToParliamentarian,
-  SenadoMapperError
+  mapSenadoSenadorToParliamentarian
 } from '$lib/mappers/senadoMapper';
 import {
   createOfficialApiClients,
   type OfficialApiClientFactoryOptions
 } from './officialApiClientFactory';
+import {
+  getOfficialErrorKind,
+  getSourceReference,
+  isOfficialClientError,
+  isOfficialMapperError,
+  type OfficialRecoverableErrorKind
+} from './officialNotices';
 
 export type OfficialSearchGroup = 'parliamentarians' | 'proposals';
 export type OfficialSearchSourceStatus = 'fulfilled' | 'partial' | 'failed';
@@ -203,30 +206,11 @@ function deduplicateById<T extends { id: string }>(items: T[]) {
   return deduplicatedItems;
 }
 
-function isOfficialClientError(
-  error: unknown
-): error is CamaraApiClientError | SenadoApiClientError {
-  return error instanceof CamaraApiClientError || error instanceof SenadoApiClientError;
-}
-
 function getErrorKind(error: unknown): OfficialSearchErrorKind {
-  if (isOfficialClientError(error)) {
-    if (error.kind === 'timeout') {
-      return 'timeout';
-    }
-
-    return 'client';
-  }
-
-  if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
-    return 'mapper';
-  }
-
-  return 'unknown';
-}
-
-function getSourceReference(source: LegislativeSource) {
-  return source === 'camara' ? 'da Câmara dos Deputados' : 'do Senado Federal';
+  return getOfficialErrorKind(error) as Exclude<
+    OfficialRecoverableErrorKind,
+    'unsupported-source' | 'pagination-limit'
+  >;
 }
 
 function getGroupLabel(group: OfficialSearchGroup) {
@@ -247,14 +231,14 @@ function getErrorMessage(
     }
 
     if (error.kind === 'invalid-payload') {
-      return `Parte dos dados oficiais de ${groupLabel} ${sourceReference} veio incompleta nesta consulta.`;
+      return `Dados oficiais de ${groupLabel} ${sourceReference} vieram incompletos nesta consulta.`;
     }
 
     return `A fonte oficial ${sourceReference} não pode ser consultada neste momento.`;
   }
 
-  if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
-    return `Parte dos dados oficiais de ${groupLabel} ${sourceReference} veio incompleta nesta consulta.`;
+  if (isOfficialMapperError(error)) {
+    return `Dados oficiais de ${groupLabel} ${sourceReference} vieram incompletos nesta consulta.`;
   }
 
   return `Falha temporária ao processar dados oficiais de ${groupLabel}.`;

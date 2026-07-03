@@ -211,7 +211,8 @@ describe('getOfficialVotesByProposal', () => {
         source: 'camara',
         entity: 'proposal-votes',
         kind: 'pagination-limit',
-        message: 'Há mais votações na fonte oficial. Exige backend futuro para consulta completa.'
+        message:
+          'Há mais votações na fonte oficial. Limite máximo desta consulta: 1 votação por proposição. Exige backend futuro para consulta completa.'
       }
     ]);
   });

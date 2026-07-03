@@ -1,6 +1,5 @@
-export const DISPLAY_VOTE_POSITIONS = ['SIM', 'NÃO', 'ABSTENÇÃO', 'AUSENTE'] as const;
-
-export type DisplayVotePosition = (typeof DISPLAY_VOTE_POSITIONS)[number];
+import type { DisplayVotePosition } from '$lib/domain';
+export { DISPLAY_VOTE_POSITIONS, type DisplayVotePosition } from '$lib/domain';
 
 export const votePresentationClassByPosition: Record<DisplayVotePosition, string> = {
   SIM: 'border-[#2f5d7c] bg-[#e9f1f6] text-[#203f55]',

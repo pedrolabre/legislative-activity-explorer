@@ -35,9 +35,13 @@ describe('handleLegislativeProxyRequest', () => {
     let fetchCalls = 0;
     const response = await handleLegislativeProxyRequest(
       new Request('https://proxy.example/legislative', {
-        method: 'OPTIONS'
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://app.example'
+        }
       }),
       {
+        allowedOrigins: ['https://app.example'],
         fetcher: async () => {
           fetchCalls += 1;
           return new Response('{}');
@@ -47,8 +51,28 @@ describe('handleLegislativeProxyRequest', () => {
 
     expect(response.status).toBe(204);
     expect(fetchCalls).toBe(0);
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://app.example');
     expect(response.headers.get('Access-Control-Allow-Methods')).toBe('GET, OPTIONS');
+  });
+
+  it('rejects CORS preflight from origins outside the allowlist', async () => {
+    const response = await handleLegislativeProxyRequest(
+      new Request('https://proxy.example/legislative', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://untrusted.example'
+        }
+      }),
+      {
+        allowedOrigins: ['https://app.example']
+      }
+    );
+
+    expect(response.status).toBe(403);
+    expect(await readJson(response)).toEqual({
+      error: 'Origem nao autorizada para consultar o proxy legislativo.',
+      kind: 'cors-origin-not-allowed'
+    });
   });
 
   it('rejects non-GET methods with a neutral error', async () => {
@@ -60,7 +84,8 @@ describe('handleLegislativeProxyRequest', () => {
 
     expect(response.status).toBe(405);
     expect(await readJson(response)).toEqual({
-      error: 'Metodo nao aceito para consulta oficial.'
+      error: 'Metodo nao aceito para consulta oficial.',
+      kind: 'method-not-allowed'
     });
   });
 
@@ -71,7 +96,8 @@ describe('handleLegislativeProxyRequest', () => {
 
     expect(response.status).toBe(400);
     expect(await readJson(response)).toEqual({
-      error: 'URL oficial nao informada para consulta.'
+      error: 'URL oficial nao informada para consulta.',
+      kind: 'missing-target-url'
     });
   });
 
@@ -82,7 +108,8 @@ describe('handleLegislativeProxyRequest', () => {
 
     expect(response.status).toBe(400);
     expect(await readJson(response)).toEqual({
-      error: 'Protocolo nao aceito para consulta oficial.'
+      error: 'Protocolo nao aceito para consulta oficial.',
+      kind: 'unsupported-target-protocol'
     });
   });
 
@@ -93,7 +120,8 @@ describe('handleLegislativeProxyRequest', () => {
 
     expect(response.status).toBe(400);
     expect(await readJson(response)).toEqual({
-      error: 'Protocolo nao aceito para consulta oficial.'
+      error: 'Protocolo nao aceito para consulta oficial.',
+      kind: 'unsupported-target-protocol'
     });
   });
 
@@ -104,7 +132,8 @@ describe('handleLegislativeProxyRequest', () => {
 
     expect(response.status).toBe(403);
     expect(await readJson(response)).toEqual({
-      error: 'Destino oficial nao autorizado para consulta.'
+      error: 'Destino oficial nao autorizado para consulta.',
+      kind: 'disallowed-target-host'
     });
   });
 
@@ -128,8 +157,13 @@ describe('handleLegislativeProxyRequest', () => {
       });
     };
     const response = await handleLegislativeProxyRequest(
-      createProxyRequest('https://dadosabertos.camara.leg.br/api/v2/deputados?nome=ana'),
+      createProxyRequest('https://dadosabertos.camara.leg.br/api/v2/deputados?nome=ana', {
+        headers: {
+          Origin: 'https://app.example'
+        }
+      }),
       {
+        allowedOrigins: ['https://app.example'],
         fetcher
       }
     );
@@ -146,7 +180,7 @@ describe('handleLegislativeProxyRequest', () => {
       }
     ]);
     expect(response.status).toBe(200);
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://app.example');
     expect(response.headers.get('Cache-Control')).toBe(
       `public, max-age=0, s-maxage=${LEGISLATIVE_PROXY_CACHE_TTL_SECONDS}`
     );
@@ -190,15 +224,23 @@ describe('handleLegislativeProxyRequest', () => {
       })
     );
 
-    const response = await handleLegislativeProxyRequest(createProxyRequest(targetUrl.toString()), {
-      cache,
-      fetcher: async () => {
-        throw new Error('fetch should not be called on cache hit');
+    const response = await handleLegislativeProxyRequest(
+      createProxyRequest(targetUrl.toString(), {
+        headers: {
+          Origin: 'https://app.example'
+        }
+      }),
+      {
+        allowedOrigins: ['https://app.example'],
+        cache,
+        fetcher: async () => {
+          throw new Error('fetch should not be called on cache hit');
+        }
       }
-    });
+    );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://app.example');
     expect(await response.text()).toBe('cached body');
   });
 
@@ -234,6 +276,24 @@ describe('handleLegislativeProxyRequest', () => {
 
     expect(response.status).toBe(503);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
+    await expect(cache.match(buildLegislativeProxyCacheKey(targetUrl))).resolves.toBeUndefined();
+  });
+
+  it('does not cache successful upstream responses with non-JSON content types', async () => {
+    const targetUrl = new URL('https://dadosabertos.camara.leg.br/api/v2/deputados/10');
+    const cache = new MemoryCache();
+
+    const response = await handleLegislativeProxyRequest(createProxyRequest(targetUrl.toString()), {
+      cache,
+      fetcher: async () =>
+        new Response('plain text', {
+          headers: {
+            'Content-Type': 'text/plain'
+          }
+        })
+    });
+
+    expect(response.status).toBe(200);
     await expect(cache.match(buildLegislativeProxyCacheKey(targetUrl))).resolves.toBeUndefined();
   });
 });

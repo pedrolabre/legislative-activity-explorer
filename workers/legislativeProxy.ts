@@ -1,9 +1,12 @@
+import {
+  LEGISLATIVE_OFFICIAL_ALLOWED_HOSTS,
+  validateOfficialApiTargetUrl
+} from '../src/lib/api/officialApiConfig';
+
 export const LEGISLATIVE_PROXY_QUERY_PARAM = 'url';
 export const LEGISLATIVE_PROXY_CACHE_TTL_SECONDS = 300;
-export const LEGISLATIVE_PROXY_ALLOWED_HOSTS = [
-  'dadosabertos.camara.leg.br',
-  'legis.senado.leg.br'
-] as const;
+export const LEGISLATIVE_PROXY_ALLOWED_HOSTS = LEGISLATIVE_OFFICIAL_ALLOWED_HOSTS;
+export const LEGISLATIVE_PROXY_ALLOWED_ORIGINS_ENV = 'LEGISLATIVE_PROXY_ALLOWED_ORIGINS';
 
 export type LegislativeProxyAllowedHost = (typeof LEGISLATIVE_PROXY_ALLOWED_HOSTS)[number];
 export type LegislativeProxyFetch = (input: string, init?: RequestInit) => Promise<Response>;
@@ -17,7 +20,12 @@ export interface LegislativeProxyExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
 }
 
+export interface LegislativeProxyEnv {
+  LEGISLATIVE_PROXY_ALLOWED_ORIGINS?: string;
+}
+
 export interface LegislativeProxyHandlerOptions {
+  allowedOrigins?: string[];
   cache?: LegislativeProxyCache;
   fetcher?: LegislativeProxyFetch;
   waitUntil?: (promise: Promise<unknown>) => void;
@@ -31,53 +39,86 @@ type TargetValidationResult =
   | {
       ok: false;
       status: number;
+      kind: string;
       message: string;
     };
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Accept, Content-Type',
+  'Access-Control-Allow-Headers': 'Accept, Content-Type, Origin',
   'Access-Control-Max-Age': '86400'
 } as const;
 
-function appendCorsHeaders(headers: Headers) {
+function getRequestOrigin(request: Request) {
+  return request.headers.get('Origin')?.trim() ?? '';
+}
+
+function isAllowedCorsOrigin(request: Request, allowedOrigins: string[] = []) {
+  const origin = getRequestOrigin(request);
+
+  if (!origin) {
+    return true;
+  }
+
+  if (origin === new URL(request.url).origin) {
+    return true;
+  }
+
+  return allowedOrigins.includes(origin);
+}
+
+function appendCorsHeaders(headers: Headers, request: Request, allowedOrigins: string[] = []) {
   for (const [key, value] of Object.entries(corsHeaders)) {
     headers.set(key, value);
+  }
+
+  const origin = getRequestOrigin(request);
+
+  if (origin && isAllowedCorsOrigin(request, allowedOrigins)) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.append('Vary', 'Origin');
   }
 
   return headers;
 }
 
-function createJsonResponse(status: number, message: string) {
+function createJsonResponse(
+  status: number,
+  kind: string,
+  message: string,
+  request: Request,
+  allowedOrigins: string[] = []
+) {
   const headers = appendCorsHeaders(
     new Headers({
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store'
-    })
+    }),
+    request,
+    allowedOrigins
   );
 
-  return new Response(JSON.stringify({ error: message }), {
+  return new Response(JSON.stringify({ error: message, kind }), {
     status,
     headers
   });
 }
 
-function createOptionsResponse() {
+function createOptionsResponse(request: Request, allowedOrigins: string[] = []) {
+  if (!isAllowedCorsOrigin(request, allowedOrigins)) {
+    return createJsonResponse(
+      403,
+      'cors-origin-not-allowed',
+      'Origem nao autorizada para consultar o proxy legislativo.',
+      request,
+      allowedOrigins
+    );
+  }
+
   return new Response(null, {
     status: 204,
-    headers: appendCorsHeaders(new Headers())
+    headers: appendCorsHeaders(new Headers(), request, allowedOrigins)
   });
-}
-
-function isHttpsProtocol(protocol: string) {
-  return protocol === 'https:';
-}
-
-function isAllowedHost(hostname: string): hostname is LegislativeProxyAllowedHost {
-  const normalizedHostname = hostname.toLowerCase();
-
-  return LEGISLATIVE_PROXY_ALLOWED_HOSTS.some((allowedHost) => allowedHost === normalizedHostname);
 }
 
 export function validateLegislativeProxyTarget(request: Request): TargetValidationResult {
@@ -88,49 +129,61 @@ export function validateLegislativeProxyTarget(request: Request): TargetValidati
     return {
       ok: false,
       status: 400,
+      kind: 'missing-target-url',
       message: 'URL oficial nao informada para consulta.'
     };
   }
 
-  let targetUrl: URL;
+  const validation = validateOfficialApiTargetUrl(rawTargetUrl);
 
-  try {
-    targetUrl = new URL(rawTargetUrl);
-  } catch {
+  if (!validation.ok && validation.issue === 'invalid-url') {
     return {
       ok: false,
       status: 400,
+      kind: 'invalid-target-url',
       message: 'URL oficial invalida para consulta.'
     };
   }
 
-  if (!isHttpsProtocol(targetUrl.protocol)) {
+  if (!validation.ok && validation.issue === 'unsupported-protocol') {
     return {
       ok: false,
       status: 400,
+      kind: 'unsupported-target-protocol',
       message: 'Protocolo nao aceito para consulta oficial.'
     };
   }
 
-  if (targetUrl.username || targetUrl.password) {
+  if (!validation.ok && validation.issue === 'url-with-credentials') {
     return {
       ok: false,
       status: 400,
+      kind: 'target-url-with-credentials',
       message: 'URL oficial invalida para consulta.'
     };
   }
 
-  if (!isAllowedHost(targetUrl.hostname)) {
+  if (!validation.ok && validation.issue === 'disallowed-host') {
     return {
       ok: false,
       status: 403,
+      kind: 'disallowed-target-host',
       message: 'Destino oficial nao autorizado para consulta.'
+    };
+  }
+
+  if (!validation.ok) {
+    return {
+      ok: false,
+      status: 400,
+      kind: 'invalid-target-url',
+      message: 'URL oficial invalida para consulta.'
     };
   }
 
   return {
     ok: true,
-    targetUrl
+    targetUrl: validation.targetUrl
   };
 }
 
@@ -167,7 +220,6 @@ function buildProxiedResponse(upstreamResponse: Response) {
   }
 
   headers.set('Vary', 'Accept');
-  appendCorsHeaders(headers);
 
   return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,
@@ -176,10 +228,10 @@ function buildProxiedResponse(upstreamResponse: Response) {
   });
 }
 
-function withCorsHeaders(response: Response) {
+function withCorsHeaders(response: Response, request: Request, allowedOrigins: string[] = []) {
   const headers = new Headers(response.headers);
 
-  appendCorsHeaders(headers);
+  appendCorsHeaders(headers, request, allowedOrigins);
 
   return new Response(response.body, {
     status: response.status,
@@ -194,6 +246,23 @@ function getDefaultCloudflareCache(): LegislativeProxyCache | undefined {
   }
 
   return (caches as unknown as { default?: LegislativeProxyCache }).default;
+}
+
+function isCacheableOfficialContentType(response: Response) {
+  const contentType = response.headers.get('Content-Type')?.toLocaleLowerCase('en-US') ?? '';
+
+  return (
+    contentType.includes('application/json') ||
+    contentType.includes('+json') ||
+    contentType.includes('text/json')
+  );
+}
+
+function parseAllowedOrigins(rawOrigins: string | undefined) {
+  return (rawOrigins ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 }
 
 async function storeTemporaryCache(
@@ -216,18 +285,42 @@ export async function handleLegislativeProxyRequest(
   request: Request,
   options: LegislativeProxyHandlerOptions = {}
 ): Promise<Response> {
+  const allowedOrigins = options.allowedOrigins ?? [];
+
   if (request.method === 'OPTIONS') {
-    return createOptionsResponse();
+    return createOptionsResponse(request, allowedOrigins);
   }
 
   if (request.method !== 'GET') {
-    return createJsonResponse(405, 'Metodo nao aceito para consulta oficial.');
+    return createJsonResponse(
+      405,
+      'method-not-allowed',
+      'Metodo nao aceito para consulta oficial.',
+      request,
+      allowedOrigins
+    );
+  }
+
+  if (!isAllowedCorsOrigin(request, allowedOrigins)) {
+    return createJsonResponse(
+      403,
+      'cors-origin-not-allowed',
+      'Origem nao autorizada para consultar o proxy legislativo.',
+      request,
+      allowedOrigins
+    );
   }
 
   const targetValidation = validateLegislativeProxyTarget(request);
 
   if (!targetValidation.ok) {
-    return createJsonResponse(targetValidation.status, targetValidation.message);
+    return createJsonResponse(
+      targetValidation.status,
+      targetValidation.kind,
+      targetValidation.message,
+      request,
+      allowedOrigins
+    );
   }
 
   const fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
@@ -238,30 +331,44 @@ export async function handleLegislativeProxyRequest(
     const cachedResponse = await cache.match(cacheKey);
 
     if (cachedResponse) {
-      return withCorsHeaders(cachedResponse);
+      return withCorsHeaders(cachedResponse, request, allowedOrigins);
     }
   }
 
-  const upstreamResponse = await fetcher(
-    targetValidation.targetUrl.toString(),
-    buildUpstreamRequestInit()
-  );
+  let upstreamResponse: Response;
+
+  try {
+    upstreamResponse = await fetcher(
+      targetValidation.targetUrl.toString(),
+      buildUpstreamRequestInit()
+    );
+  } catch {
+    return createJsonResponse(
+      502,
+      'upstream-network-error',
+      'A fonte oficial nao pode ser consultada neste momento.',
+      request,
+      allowedOrigins
+    );
+  }
+
   const response = buildProxiedResponse(upstreamResponse);
 
-  if (cache && response.ok) {
+  if (cache && response.ok && isCacheableOfficialContentType(response)) {
     await storeTemporaryCache(cache, cacheKey, response, options.waitUntil);
   }
 
-  return response;
+  return withCorsHeaders(response, request, allowedOrigins);
 }
 
 export default {
   async fetch(
     request: Request,
-    _env: unknown,
+    env: LegislativeProxyEnv,
     context?: LegislativeProxyExecutionContext
   ): Promise<Response> {
     return handleLegislativeProxyRequest(request, {
+      allowedOrigins: parseAllowedOrigins(env?.LEGISLATIVE_PROXY_ALLOWED_ORIGINS),
       waitUntil: context?.waitUntil.bind(context)
     });
   }

@@ -1,32 +1,8 @@
 <script lang="ts">
   import VoteBadge from '$lib/components/votes/VoteBadge.svelte';
-
-  type DisplayVotePosition = 'SIM' | 'NÃO' | 'ABSTENÇÃO' | 'AUSENTE';
-
-  interface ParliamentarianVoteView {
-    id: string;
-    parliamentarianId: string;
-    billIdentification: string;
-    chamber: string;
-    description: string;
-    parliamentarianVote?: DisplayVotePosition;
-    parliamentarianVoteNotice?: string;
-    votedAt?: string;
-    officialResult?: string;
-    counts?: {
-      yes: number;
-      no: number;
-      abstention: number;
-      absent: number;
-    };
-    individualVotes: {
-      parliamentarianName: string;
-      party: string;
-      state: string;
-      vote: DisplayVotePosition;
-      isSelectedParliamentarian?: boolean;
-    }[];
-  }
+  import type { ParliamentarianVoteView } from '$lib/domain';
+  import { formatVotedAt } from '$lib/ui/dateFormatters';
+  import { unavailableOfficialFieldLabel as unavailableLabel } from '$lib/ui/officialMessages';
 
   let {
     vote,
@@ -41,8 +17,6 @@
     onBackToParliamentarian: () => void;
     onStartOver: () => void;
   } = $props();
-
-  const unavailableLabel = 'Não informado pela fonte oficial consultada.';
 
   let countItems = $derived(
     vote.counts
@@ -60,20 +34,6 @@
       ? vote.counts.yes + vote.counts.no + vote.counts.abstention + vote.counts.absent
       : null
   );
-
-  function formatVotedAt(value?: string) {
-    if (!value) {
-      return unavailableLabel;
-    }
-
-    const [year, month, day] = value.split('-');
-
-    if (!year || !month || !day) {
-      return value;
-    }
-
-    return `${day}/${month}/${year}`;
-  }
 </script>
 
 <div class="space-y-6">

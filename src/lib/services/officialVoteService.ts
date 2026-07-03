@@ -1,10 +1,13 @@
 import {
   CamaraApiClient,
-  CamaraApiClientError,
   type CamaraApiLink,
   type CamaraVotacaoPayload
 } from '$lib/api/camaraClient';
 import type { LegislativeProposal, LegislativeSource, RollCallVote } from '$lib/domain';
+import {
+  backendFutureRequiredMessage,
+  officialSenadoProposalVotesUnavailableMessage
+} from '$lib/ui/officialMessages';
 import {
   CamaraMapperError,
   mapCamaraVotacaoToRollCallVote,
@@ -14,6 +17,11 @@ import {
   createOfficialApiClients,
   type OfficialApiClientFactoryOptions
 } from './officialApiClientFactory';
+import {
+  getOfficialErrorKind,
+  isOfficialClientError,
+  isOfficialMapperError
+} from './officialNotices';
 
 export type OfficialVoteEntity = 'proposal-votes' | 'vote-detail' | 'individual-votes';
 export type OfficialVoteStatus = 'fulfilled' | 'partial' | 'unavailable' | 'failed';
@@ -50,27 +58,12 @@ export interface OfficialVoteServiceOptions extends OfficialApiClientFactoryOpti
 
 const defaultMaxVotesPerProposal = 50;
 
-export const officialSenadoProposalVotesUnavailableMessage =
-  'Votações nominais do Senado ainda não conectadas nesta versão.';
-
 function getConfiguredCamaraVoteClient(options: OfficialVoteServiceOptions) {
   return options.camaraClient ?? createOfficialApiClients(options).camaraClient;
 }
 
-function isOfficialClientError(error: unknown): error is CamaraApiClientError {
-  return error instanceof CamaraApiClientError;
-}
-
 function getErrorKind(error: unknown): OfficialVoteErrorKind {
-  if (isOfficialClientError(error)) {
-    return error.kind === 'timeout' ? 'timeout' : 'client';
-  }
-
-  if (error instanceof CamaraMapperError) {
-    return 'mapper';
-  }
-
-  return 'unknown';
+  return getOfficialErrorKind(error) as OfficialVoteErrorKind;
 }
 
 function getEntityLabel(entity: OfficialVoteEntity) {
@@ -100,7 +93,7 @@ function getErrorMessage(entity: OfficialVoteEntity, error: unknown) {
     return `Dados oficiais de ${entityLabel} da Câmara dos Deputados não puderam ser carregados neste momento.`;
   }
 
-  if (error instanceof CamaraMapperError) {
+  if (isOfficialMapperError(error)) {
     return `Dados oficiais de ${entityLabel} da Câmara dos Deputados vieram incompletos nesta consulta.`;
   }
 
@@ -123,12 +116,15 @@ function hasNextPageLink(links: CamaraApiLink[]) {
   return links.some((link) => link.rel === 'next' && Boolean(link.href?.trim()));
 }
 
-function createPaginationLimitError(): OfficialVoteRecoverableError {
+function createPaginationLimitError(maxVotesPerProposal: number): OfficialVoteRecoverableError {
+  const voteLimitLabel =
+    maxVotesPerProposal === 1 ? '1 votação' : `${maxVotesPerProposal} votações`;
+
   return {
     source: 'camara',
     entity: 'proposal-votes',
     kind: 'pagination-limit',
-    message: 'Há mais votações na fonte oficial. Exige backend futuro para consulta completa.'
+    message: `Há mais votações na fonte oficial. Limite máximo desta consulta: ${voteLimitLabel} por proposição. ${backendFutureRequiredMessage}`
   };
 }
 
@@ -185,6 +181,16 @@ function sortVotesByDateDesc(votes: RollCallVote[]) {
   });
 }
 
+function requireRollCallVoteSourceId(vote: RollCallVote) {
+  const sourceId = vote.sourceId?.trim();
+
+  if (!sourceId) {
+    throw new CamaraMapperError('votacao', 'id');
+  }
+
+  return sourceId;
+}
+
 async function loadOfficialCamaraVote(
   payload: CamaraVotacaoPayload,
   proposalIdentification: string,
@@ -197,7 +203,9 @@ async function loadOfficialCamaraVote(
   let votePayload = payload;
 
   try {
-    votePayload = mergeDefinedVotePayload(votePayload, await client.getVotacaoById(vote.sourceId!));
+    const sourceId = requireRollCallVoteSourceId(vote);
+
+    votePayload = mergeDefinedVotePayload(votePayload, await client.getVotacaoById(sourceId));
     vote = mapCamaraVotacaoToRollCallVote(votePayload, {
       proposalIdentification
     });
@@ -206,8 +214,9 @@ async function loadOfficialCamaraVote(
   }
 
   try {
+    const sourceId = requireRollCallVoteSourceId(vote);
     const individualVotes = mapCamaraVotosToIndividualVotes(
-      await client.getVotacaoVotosById(vote.sourceId!)
+      await client.getVotacaoVotosById(sourceId)
     );
 
     vote = mapCamaraVotacaoToRollCallVote(votePayload, {
@@ -256,7 +265,7 @@ export async function getOfficialVotesByProposal(
   const selectedPayloads = page.data.slice(0, maxVotesPerProposal);
 
   if (hasNextPageLink(page.links) || selectedPayloads.length < page.data.length) {
-    errors.push(createPaginationLimitError());
+    errors.push(createPaginationLimitError(maxVotesPerProposal));
   }
 
   for (const payload of selectedPayloads) {
@@ -276,3 +285,5 @@ export async function getOfficialVotesByProposal(
     errors
   };
 }
+
+export { officialSenadoProposalVotesUnavailableMessage };

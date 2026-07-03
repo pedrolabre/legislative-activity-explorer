@@ -1,13 +1,12 @@
+import { OFFICIAL_API_DEFAULT_TIMEOUT_MS } from './officialApiConfig';
+import { OfficialApiClientError, type OfficialApiErrorKind } from './officialApiErrors';
+
 export const CAMARA_API_BASE_URL = 'https://dadosabertos.camara.leg.br/api/v2';
-export const CAMARA_API_DEFAULT_TIMEOUT_MS = 10000;
+export const CAMARA_API_DEFAULT_TIMEOUT_MS = OFFICIAL_API_DEFAULT_TIMEOUT_MS;
 
-export type CamaraApiErrorKind = 'http' | 'network' | 'invalid-payload' | 'timeout';
+export type CamaraApiErrorKind = OfficialApiErrorKind;
 
-export class CamaraApiClientError extends Error {
-  kind: CamaraApiErrorKind;
-  status?: number;
-  url?: string;
-
+export class CamaraApiClientError extends OfficialApiClientError {
   constructor(
     message: string,
     options: {
@@ -17,11 +16,11 @@ export class CamaraApiClientError extends Error {
       cause?: unknown;
     }
   ) {
-    super(message, { cause: options.cause });
-    this.name = 'CamaraApiClientError';
-    this.kind = options.kind;
-    this.status = options.status;
-    this.url = options.url;
+    super(message, {
+      ...options,
+      source: 'camara',
+      name: 'CamaraApiClientError'
+    });
   }
 }
 

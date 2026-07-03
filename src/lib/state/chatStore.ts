@@ -2,7 +2,6 @@ import { get, writable } from 'svelte/store';
 import type { LegislativeProposal, Parliamentarian, RollCallVote, UIState } from '$lib/domain';
 import {
   getOfficialParliamentarianDetail as loadOfficialParliamentarianDetail,
-  officialSenadoAssociatedMattersUnavailableMessage,
   getOfficialProposalDetail as loadOfficialProposalDetail,
   getOfficialProposalsByParliamentarian as loadOfficialProposalsByParliamentarian,
   type OfficialDetailRecoverableError,
@@ -11,10 +10,20 @@ import {
 } from '$lib/services/officialDetailService';
 import {
   getOfficialVotesByProposal as loadOfficialVotesByProposal,
-  officialSenadoProposalVotesUnavailableMessage,
   type OfficialVoteListResult,
   type OfficialVoteRecoverableError
 } from '$lib/services/officialVoteService';
+import {
+  officialParliamentarianSessionVotesCoverageMessage,
+  officialParliamentarianSessionVotesEmptyMessage,
+  officialParliamentarianStaticCoverageDescription,
+  officialParliamentarianVoteHistoryUnavailableMessage,
+  officialSenadoAssociatedMattersUnavailableDescription,
+  officialSenadoAssociatedMattersUnavailableMessage,
+  officialSenadoProposalVotesUnavailableMessage,
+  officialSenadoStaticCoverageDescription
+} from '$lib/ui/officialMessages';
+import { getRecoverableStatusNotice, joinRecoverableNotices } from '$lib/services/officialNotices';
 import { getParliamentarianById } from '$lib/services/parliamentarianService';
 import {
   getProposalByIdForParliamentarian,
@@ -93,22 +102,16 @@ export interface SelectVoteByIdOptions {
 
 const defaultSearchDelayMs = 450;
 const genericSearchErrorMessage = 'Não foi possível concluir a busca nesta página.';
-export const officialParliamentarianVoteHistoryUnavailableMessage =
-  'Histórico completo por parlamentar exige backend futuro para consulta completa.';
-export const officialParliamentarianSessionVotesCoverageMessage =
-  'Cobertura parcial: votos exibidos vieram de proposições abertas nesta sessão.';
-export const officialParliamentarianSessionVotesEmptyMessage =
-  'Nenhuma votação de proposição aberta foi carregada nesta sessão.';
-export const officialParliamentarianStaticCoverageDescription =
-  `Abra uma proposição com votações oficiais para ver votos disponíveis nesta sessão. ${officialParliamentarianVoteHistoryUnavailableMessage}`;
-export const officialSenadoStaticCoverageDescription =
-  'Ainda não conectado nesta versão. Exige backend futuro para consulta completa.';
-export const officialSenadoAssociatedMattersUnavailableDescription =
-  'Ainda não conectado nesta versão. A consulta completa por senador exige backend futuro.';
 
 export {
+  officialParliamentarianSessionVotesCoverageMessage,
+  officialParliamentarianSessionVotesEmptyMessage,
+  officialParliamentarianStaticCoverageDescription,
+  officialParliamentarianVoteHistoryUnavailableMessage,
+  officialSenadoAssociatedMattersUnavailableDescription,
   officialSenadoAssociatedMattersUnavailableMessage,
-  officialSenadoProposalVotesUnavailableMessage
+  officialSenadoProposalVotesUnavailableMessage,
+  officialSenadoStaticCoverageDescription
 };
 
 let searchSequence = 0;
@@ -242,21 +245,7 @@ function getOfficialDetailNotice(
   label: string,
   errors: OfficialDetailRecoverableError[] = []
 ) {
-  const recoverableMessage = errors.find((error) => error.message.trim())?.message.trim();
-
-  if (status === 'fulfilled') {
-    return '';
-  }
-
-  if (status === 'partial') {
-    return recoverableMessage ?? `Dados oficiais de ${label} vieram incompletos nesta consulta.`;
-  }
-
-  if (status === 'unavailable') {
-    return recoverableMessage ?? `Consulta oficial de ${label} ainda não conectada nesta versão.`;
-  }
-
-  return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;
+  return getRecoverableStatusNotice(status, label, errors);
 }
 
 function getOfficialVoteNotice(
@@ -264,28 +253,7 @@ function getOfficialVoteNotice(
   label: string,
   errors: OfficialVoteRecoverableError[] = []
 ) {
-  const recoverableMessage = errors.find((error) => error.message.trim())?.message.trim();
-
-  if (status === 'fulfilled') {
-    return '';
-  }
-
-  if (status === 'partial') {
-    return recoverableMessage ?? `Dados oficiais de ${label} vieram incompletos nesta consulta.`;
-  }
-
-  if (status === 'unavailable') {
-    return recoverableMessage ?? `Consulta oficial de ${label} ainda não conectada nesta versão.`;
-  }
-
-  return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;
-}
-
-function joinRecoverableNotices(...notices: string[]) {
-  return notices
-    .map((notice) => notice.trim())
-    .filter(Boolean)
-    .join(' ');
+  return getRecoverableStatusNotice(status, label, errors);
 }
 
 export function navigateTo(nextState: UIState, options: NavigateToOptions = {}) {

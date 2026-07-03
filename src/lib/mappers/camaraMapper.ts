@@ -1,4 +1,5 @@
 import type { IndividualVote, LegislativeProposal, Parliamentarian, RollCallVote } from '$lib/domain';
+import { normalizeDate, normalizeNumber, normalizeString } from '$lib/utils/normalization';
 import type {
   CamaraDeputadoPayload,
   CamaraProposicaoPayload,
@@ -6,56 +7,23 @@ import type {
   CamaraVotacaoPayload,
   CamaraVotoPayload
 } from '$lib/api/camaraClient';
+import { OfficialMapperError } from './officialMapperError';
 
 const camaraDeputadoOfficialUrl = 'https://www.camara.leg.br/deputados';
 const camaraProposicaoOfficialUrl = 'https://www.camara.leg.br/propostas-legislativas';
 const camaraLegislatureTermLabel = 'Legislatura';
 const camaraPublisher = 'Câmara dos Deputados';
 
-export class CamaraMapperError extends Error {
-  entity: string;
-  field: string;
-
+export class CamaraMapperError extends OfficialMapperError {
   constructor(entity: string, field: string) {
-    super(`Payload da Camara sem campo obrigatorio: ${entity}.${field}.`);
-    this.name = 'CamaraMapperError';
-    this.entity = entity;
-    this.field = field;
+    super({
+      source: 'camara',
+      sourceLabel: 'da Camara',
+      entity,
+      field,
+      name: 'CamaraMapperError'
+    });
   }
-}
-
-function normalizeString(value: string | number | null | undefined): string | undefined {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-
-  const normalized = String(value).trim();
-
-  return normalized ? normalized : undefined;
-}
-
-function normalizeNumber(value: string | number | null | undefined): number | undefined {
-  const normalized = normalizeString(value);
-
-  if (!normalized) {
-    return undefined;
-  }
-
-  const parsed = Number(normalized);
-
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function normalizeDate(value: string | null | undefined): string | undefined {
-  const normalized = normalizeString(value);
-
-  if (!normalized) {
-    return undefined;
-  }
-
-  const dateMatch = normalized.match(/^\d{4}-\d{2}-\d{2}/);
-
-  return dateMatch ? dateMatch[0] : normalized;
 }
 
 function normalizeOfficialUrl(value: string | null | undefined): string | undefined {

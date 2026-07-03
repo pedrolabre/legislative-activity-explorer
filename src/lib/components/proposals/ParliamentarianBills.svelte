@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { formatPresentedAt } from '$lib/ui/dateFormatters';
+  import { unavailableOfficialFieldLabel as unavailableLabel } from '$lib/ui/officialMessages';
+
   interface ParliamentarianBillView {
     id: string;
     parliamentarianId: string;
@@ -13,7 +16,7 @@
     factualSummary?: string;
     sources: {
       id: string;
-      type: 'official' | 'press' | 'technical';
+      type: 'official' | 'press' | 'technical' | 'institutional';
       label: string;
       title: string;
       publisher: string;
@@ -40,25 +43,9 @@
     onStartOver: () => void;
   } = $props();
 
-  const unavailableLabel = 'Não informado pela fonte oficial consultada.';
-
   let billCountLabel = $derived(
     bills.length === 1 ? '1 proposição associada' : `${bills.length} proposições associadas`
   );
-
-  function formatPresentedAt(value?: string) {
-    if (!value) {
-      return unavailableLabel;
-    }
-
-    const [year, month, day] = value.split('-');
-
-    if (!year || !month || !day) {
-      return value;
-    }
-
-    return `${day}/${month}/${year}`;
-  }
 </script>
 
 <div class="space-y-6">

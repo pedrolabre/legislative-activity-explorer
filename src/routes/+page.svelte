@@ -10,12 +10,19 @@
   import InitialSearchForm from '$lib/components/search/InitialSearchForm.svelte';
   import BillVotes from '$lib/components/votes/BillVotes.svelte';
   import ParliamentarianVotes from '$lib/components/votes/ParliamentarianVotes.svelte';
-  import type {
-    LegislativeProposal,
-    Parliamentarian,
-    RollCallVote,
-    VotePosition
+  import {
+    toDisplayVotePosition,
+    type DisplayVotePosition,
+    type LegislativeProposal,
+    type Parliamentarian,
+    type ParliamentarianVoteView,
+    type RollCallVote
   } from '$lib/domain';
+  import {
+    unavailableNominalVoteListLabel,
+    unavailableOfficialFieldLabel,
+    unavailableVersionFieldLabel
+  } from '$lib/ui/officialMessages';
   import {
     chatStore,
     executeSearch,
@@ -38,13 +45,6 @@
     selectVoteById,
     type ChatContext
   } from '$lib/state/chatStore';
-
-  const unavailableOfficialFieldLabel = 'Não informado pela fonte oficial consultada.';
-  const unavailableVersionFieldLabel = 'Ainda não conectado nesta versão.';
-  const unavailableNominalVoteListLabel =
-    'Lista nominal não informada pela fonte oficial consultada.';
-
-  type DisplayVotePosition = 'SIM' | 'NÃO' | 'ABSTENÇÃO' | 'AUSENTE';
 
   interface SearchResultsView {
     parliamentarians: {
@@ -104,37 +104,12 @@
     officialFullTextUrl?: string;
     sources: {
       id: string;
-      type: 'official' | 'press' | 'technical';
+      type: 'official' | 'press' | 'technical' | 'institutional';
       label: string;
       title: string;
       publisher: string;
       url: string;
       checkedAt?: string;
-    }[];
-  }
-
-  interface ParliamentarianVoteView {
-    id: string;
-    parliamentarianId: string;
-    billIdentification: string;
-    chamber: string;
-    description: string;
-    parliamentarianVote?: DisplayVotePosition;
-    parliamentarianVoteNotice?: string;
-    votedAt?: string;
-    officialResult?: string;
-    counts?: {
-      yes: number;
-      no: number;
-      abstention: number;
-      absent: number;
-    };
-    individualVotes: {
-      parliamentarianName: string;
-      party: string;
-      state: string;
-      vote: DisplayVotePosition;
-      isSelectedParliamentarian: boolean;
     }[];
   }
 
@@ -207,6 +182,10 @@
       return 'Cobertura de imprensa';
     }
 
+    if (reference.type === 'institutional') {
+      return 'Fonte institucional';
+    }
+
     return 'Referência técnica';
   }
 
@@ -244,18 +223,6 @@
         checkedAt: reference.checkedAt
       }))
     };
-  }
-
-  function toDisplayVotePosition(vote: VotePosition): DisplayVotePosition {
-    if (vote === 'NAO') {
-      return 'NÃO';
-    }
-
-    if (vote === 'ABSTENCAO') {
-      return 'ABSTENÇÃO';
-    }
-
-    return vote;
   }
 
   function normalizeName(value: string) {
@@ -341,6 +308,28 @@
     };
   }
 
+  function toParliamentarianBillViews(
+    proposals: LegislativeProposal[],
+    parliamentarian: Parliamentarian | null
+  ) {
+    if (!parliamentarian) {
+      return [];
+    }
+
+    return proposals.map((proposal) => toParliamentarianBillView(proposal, parliamentarian.id));
+  }
+
+  function toParliamentarianVoteViews(
+    votes: RollCallVote[],
+    parliamentarian: Parliamentarian | null
+  ) {
+    if (!parliamentarian) {
+      return [];
+    }
+
+    return votes.map((vote) => toParliamentarianVoteView(vote, parliamentarian));
+  }
+
   let submittedSearch = $derived(
     chatContext.lastQuery ? { id: searchRenderKey, query: chatContext.lastQuery } : null
   );
@@ -368,18 +357,13 @@
       : null
   );
   let selectedParliamentarianBills: ParliamentarianBillView[] = $derived(
-    chatContext.selectedParliamentarian
-      ? chatContext.parliamentarianProposals.map((proposal) =>
-          toParliamentarianBillView(proposal, chatContext.selectedParliamentarian!.id)
-        )
-      : []
+    toParliamentarianBillViews(
+      chatContext.parliamentarianProposals,
+      chatContext.selectedParliamentarian
+    )
   );
   let selectedParliamentarianVotes: ParliamentarianVoteView[] = $derived(
-    chatContext.selectedParliamentarian
-      ? chatContext.voteHistory.map((vote) =>
-          toParliamentarianVoteView(vote, chatContext.selectedParliamentarian!)
-        )
-      : []
+    toParliamentarianVoteViews(chatContext.voteHistory, chatContext.selectedParliamentarian)
   );
   let selectedParliamentarianIsOfficial = $derived(
     chatContext.selectedParliamentarian
@@ -419,10 +403,8 @@
       : undefined
   );
   let selectedBillVotes: ParliamentarianVoteView[] = $derived(
-    chatContext.selectedParliamentarian && chatContext.selectedProposal
-      ? chatContext.voteHistory.map((vote) =>
-          toParliamentarianVoteView(vote, chatContext.selectedParliamentarian!)
-        )
+    chatContext.selectedProposal
+      ? toParliamentarianVoteViews(chatContext.voteHistory, chatContext.selectedParliamentarian)
       : []
   );
   let selectedBillShowsOfficialVotes = $derived(

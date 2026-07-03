@@ -118,7 +118,7 @@ export function mapParliamentarianDetailToDomain(
 function mapBillSourceToDomain(source: BillSource): LegislativeProposal['references'][number] {
   return {
     id: source.id,
-    type: source.type === 'official' ? 'official' : 'technical',
+    type: source.type,
     title: source.title,
     publisher: source.publisher,
     url: source.url

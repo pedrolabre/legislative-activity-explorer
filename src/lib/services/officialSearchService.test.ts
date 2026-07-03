@@ -263,7 +263,7 @@ describe('searchOfficialRecords', () => {
       group: 'parliamentarians',
       kind: 'mapper',
       message:
-        'Parte dos dados oficiais de parlamentares da Câmara dos Deputados veio incompleta nesta consulta.'
+        'Dados oficiais de parlamentares da Câmara dos Deputados vieram incompletos nesta consulta.'
     });
   });
 

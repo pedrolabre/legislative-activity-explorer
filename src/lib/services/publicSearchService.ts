@@ -1,15 +1,11 @@
-import type { LegislativeSource } from '$lib/domain';
 import {
   searchOfficialRecords,
   type OfficialSearchResult,
   type OfficialSearchServiceOptions,
   type OfficialSearchSourceReport
 } from './officialSearchService';
+import { getSourceReference } from './officialNotices';
 import type { SearchResults } from './searchService';
-
-function getSourceReference(source: LegislativeSource) {
-  return source === 'camara' ? 'da Câmara dos Deputados' : 'do Senado Federal';
-}
 
 function formatReferenceList(references: string[]) {
   if (references.length <= 1) {

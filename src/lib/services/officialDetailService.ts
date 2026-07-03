@@ -1,31 +1,35 @@
 import {
   CamaraApiClient,
-  CamaraApiClientError,
   type CamaraProposicaoPayload
 } from '$lib/api/camaraClient';
 import {
   SenadoApiClient,
-  SenadoApiClientError,
   type SenadoMandatoPayload,
   type SenadoSenadorPayload
 } from '$lib/api/senadoClient';
 import type { LegislativeProposal, LegislativeSource, Parliamentarian } from '$lib/domain';
 import {
-  CamaraMapperError,
   mapCamaraDeputadoToParliamentarian,
   mapCamaraProposicaoTemasToSubject,
   mapCamaraProposicaoToLegislativeProposal
 } from '$lib/mappers/camaraMapper';
 import {
   mapSenadoMateriaToLegislativeProposal,
-  mapSenadoSenadorToParliamentarian,
-  SenadoMapperError
+  mapSenadoSenadorToParliamentarian
 } from '$lib/mappers/senadoMapper';
+import { officialSenadoAssociatedMattersUnavailableMessage } from '$lib/ui/officialMessages';
 import { attachReviewedFactualSummaryToProposal } from './factualSummaryService';
 import {
   createOfficialApiClients,
   type OfficialApiClientFactoryOptions
 } from './officialApiClientFactory';
+import {
+  getOfficialErrorKind,
+  getSourceReference,
+  isOfficialClientError,
+  isOfficialMapperError,
+  type OfficialRecoverableErrorKind
+} from './officialNotices';
 import { attachEditorialReferencesToProposal } from './referenceService';
 
 export type OfficialDetailEntity = 'parliamentarian' | 'parliamentarian-proposals' | 'proposal';
@@ -74,33 +78,8 @@ export interface OfficialDetailServiceOptions extends OfficialApiClientFactoryOp
   senadoClient?: OfficialSenadoDetailClient;
 }
 
-export const officialSenadoAssociatedMattersUnavailableMessage =
-  'Matérias associadas a senador ainda não conectadas nesta versão.';
-
-function isOfficialClientError(
-  error: unknown
-): error is CamaraApiClientError | SenadoApiClientError {
-  return error instanceof CamaraApiClientError || error instanceof SenadoApiClientError;
-}
-
 function getErrorKind(error: unknown): OfficialDetailErrorKind {
-  if (isOfficialClientError(error)) {
-    if (error.kind === 'timeout') {
-      return 'timeout';
-    }
-
-    return 'client';
-  }
-
-  if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
-    return 'mapper';
-  }
-
-  return 'unknown';
-}
-
-function getSourceReference(source: LegislativeSource) {
-  return source === 'camara' ? 'da Câmara dos Deputados' : 'do Senado Federal';
+  return getOfficialErrorKind(error) as Exclude<OfficialRecoverableErrorKind, 'pagination-limit'>;
 }
 
 function getEntityLabel(entity: OfficialDetailEntity) {
@@ -135,12 +114,14 @@ function getErrorMessage(
     return `Dados oficiais de ${entityLabel} ${sourceReference} não puderam ser carregados neste momento.`;
   }
 
-  if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
+  if (isOfficialMapperError(error)) {
     return `Dados oficiais de ${entityLabel} ${sourceReference} vieram incompletos nesta consulta.`;
   }
 
   return `Falha temporária ao processar dados oficiais de ${entityLabel}.`;
 }
+
+export { officialSenadoAssociatedMattersUnavailableMessage };
 
 function toRecoverableError(
   source: LegislativeSource,
@@ -197,8 +178,7 @@ function mapCamaraAuthorProposals(payloads: CamaraProposicaoPayload[]) {
 
       proposals.push(
         attachEditorialReferencesToProposal({
-          ...attachReviewedFactualSummaryToProposal(proposal),
-          relationship: proposal.relationship ?? 'Autoria'
+          ...attachReviewedFactualSummaryToProposal(proposal)
         })
       );
     } catch (error) {

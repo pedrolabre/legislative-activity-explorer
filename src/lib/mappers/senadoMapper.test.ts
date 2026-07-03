@@ -48,7 +48,7 @@ describe('mapSenadoSenadorToParliamentarian', () => {
       office: 'Senador',
       party: 'REPUBLICANOS',
       state: 'AC',
-      status: 'Exercício - Titular',
+      status: undefined,
       term: '2023-02-01 a 2031-01-31',
       termLabel: 'Mandato',
       photoUrl: 'http://www.senado.leg.br/senadores/img/fotos-oficiais/senador5672.jpg',
@@ -136,7 +136,7 @@ describe('mapSenadoSenadorToParliamentarian', () => {
     expect(parliamentarian).toMatchObject({
       id: 'senado-6000',
       state: 'RJ',
-      status: 'Exercício - Titular',
+      status: undefined,
       term: '2023-02-01 a 2031-01-31',
       termLabel: 'Mandato'
     });

@@ -142,7 +142,7 @@ describe('getOfficialParliamentarianDetail', () => {
         fullName: 'Maria Souza Almeida',
         party: 'DEF',
         state: 'SP',
-        status: 'Exercício - Titular',
+        status: undefined,
         term: '2023-02-01 a 2031-01-31',
         termLabel: 'Mandato'
       },
@@ -277,7 +277,6 @@ describe('getOfficialProposalsByParliamentarian', () => {
       expect.objectContaining({
         id: 'camara-proposicao-100',
         title: 'PL 2/2024',
-        relationship: 'Autoria',
         officialSummary: 'Trata de transparencia de dados publicos.',
         references: [
           {

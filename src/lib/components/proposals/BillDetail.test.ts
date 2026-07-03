@@ -100,14 +100,11 @@ describe('BillDetail', () => {
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain(
-      'Referências externas revisadas ainda não foram adicionadas para esta proposição.'
-    );
-    expect(html).not.toContain(
-      'As três referências revisadas (oficial, imprensa e técnica) ainda não estão completas nesta visualização.'
+      'Conjunto completo de referências externas revisadas ainda não foi adicionado para esta proposição.'
     );
   });
 
-  it('does not show the missing external references message when one reviewed external reference exists', () => {
+  it('does not show the missing external references message when the reviewed set is complete', () => {
     const html = renderBillDetail({
       sources: [
         {
@@ -126,13 +123,23 @@ describe('BillDetail', () => {
           publisher: 'Veículo de imprensa',
           url: 'https://example.com/politica/proposicao',
           checkedAt: '2026-06-29'
+        },
+        {
+          id: 'camara-proposicao-100-technical',
+          type: 'technical',
+          label: 'Referência técnica',
+          title: 'Nota técnica revisada',
+          publisher: 'Instituição técnica',
+          url: 'https://example.com/tecnica/proposicao',
+          checkedAt: '2026-06-29'
         }
       ]
     });
 
     expect(html).toContain('Cobertura informativa revisada');
+    expect(html).toContain('Nota técnica revisada');
     expect(html).not.toContain(
-      'Referências externas revisadas ainda não foram adicionadas para esta proposição.'
+      'Conjunto completo de referências externas revisadas ainda não foi adicionado para esta proposição.'
     );
   });
 

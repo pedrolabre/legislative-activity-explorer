@@ -1,6 +1,6 @@
 import type { LegislativeSource } from './legislativeSource';
 import type { ExternalReferenceType } from './references';
-import type { VoteCounts, VotePosition } from './votes';
+import type { DisplayVotePosition, VoteCounts, VotePosition } from './votes';
 
 export interface Parliamentarian {
   id: string;
@@ -49,6 +49,28 @@ export interface RollCallVote {
   result?: string;
   counts?: VoteCounts;
   individualVotes: IndividualVote[];
+}
+
+export interface ParliamentarianVoteView {
+  id: string;
+  parliamentarianId: string;
+  billIdentification: string;
+  chamber: string;
+  description: string;
+  parliamentarianVote?: DisplayVotePosition;
+  parliamentarianVoteNotice?: string;
+  votedAt?: string;
+  officialResult?: string;
+  counts?: VoteCounts;
+  individualVotes: ParliamentarianVoteIndividualView[];
+}
+
+export interface ParliamentarianVoteIndividualView {
+  parliamentarianName: string;
+  party: string;
+  state: string;
+  vote: DisplayVotePosition;
+  isSelectedParliamentarian?: boolean;
 }
 
 export interface IndividualVote {

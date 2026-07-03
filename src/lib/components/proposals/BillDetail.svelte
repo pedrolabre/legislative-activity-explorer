@@ -1,7 +1,9 @@
 <script lang="ts">
   import VoteBadge from '$lib/components/votes/VoteBadge.svelte';
-
-  type DisplayVotePosition = 'SIM' | 'NÃO' | 'ABSTENÇÃO' | 'AUSENTE';
+  import type { ParliamentarianVoteView } from '$lib/domain';
+  import { hasCompleteReviewedReferenceSet } from '$lib/services/referenceService';
+  import { formatCheckedAt, formatPresentedAt, formatVotedAt } from '$lib/ui/dateFormatters';
+  import { unavailableOfficialFieldLabel as unavailableLabel } from '$lib/ui/officialMessages';
 
   interface ParliamentarianBillView {
     id: string;
@@ -23,24 +25,13 @@
     officialFullTextUrl?: string;
     sources: {
       id: string;
-      type: 'official' | 'press' | 'technical';
+      type: 'official' | 'press' | 'technical' | 'institutional';
       label: string;
       title: string;
       publisher: string;
       url: string;
       checkedAt?: string;
     }[];
-  }
-
-  interface ParliamentarianVoteView {
-    id: string;
-    billIdentification: string;
-    chamber: string;
-    description: string;
-    parliamentarianVote?: DisplayVotePosition;
-    parliamentarianVoteNotice?: string;
-    votedAt?: string;
-    officialResult?: string;
   }
 
   let {
@@ -67,52 +58,14 @@
     onStartOver: () => void;
   } = $props();
 
-  const unavailableLabel = 'Não informado pela fonte oficial consultada.';
-  const reviewedExternalReferenceTypes = ['press', 'technical'] as const;
   const unavailableOfficialSourceMessage =
     'Fonte oficial ainda não conectada nesta versão.';
   const noReviewedReferencesMessage =
-    'Referências externas revisadas ainda não foram adicionadas para esta proposição.';
+    'Conjunto completo de referências externas revisadas ainda não foi adicionado para esta proposição.';
   const unavailableReviewedFactualSummaryMessage =
     'Resumo factual revisado ainda não foi adicionado para esta proposição.';
 
-  let hasReviewedExternalReferences = $derived(
-    reviewedExternalReferenceTypes.some((type) =>
-      bill.sources.some((source) => source.type === type && Boolean(source.checkedAt?.trim()))
-    )
-  );
-
-  function formatPresentedAt(value?: string) {
-    if (!value) {
-      return unavailableLabel;
-    }
-
-    const [year, month, day] = value.split('-');
-
-    if (!year || !month || !day) {
-      return value;
-    }
-
-    return `${day}/${month}/${year}`;
-  }
-
-  function formatVotedAt(value?: string) {
-    return formatPresentedAt(value);
-  }
-
-  function formatCheckedAt(value?: string) {
-    if (!value) {
-      return undefined;
-    }
-
-    const [year, month, day] = value.split('-');
-
-    if (!year || !month || !day) {
-      return value;
-    }
-
-    return `${day}/${month}/${year}`;
-  }
+  let hasCompleteReviewedReferences = $derived(hasCompleteReviewedReferenceSet(bill.sources));
 </script>
 
 <div class="space-y-6">
@@ -258,7 +211,7 @@
         </p>
       </div>
     {/if}
-    {#if !hasReviewedExternalReferences}
+    {#if !hasCompleteReviewedReferences}
       <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
           {noReviewedReferencesMessage}

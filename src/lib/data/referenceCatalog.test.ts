@@ -42,10 +42,10 @@ describe('referenceCatalog', () => {
     }
   });
 
-  it('covers the accepted catalog reference types', () => {
+  it('covers the required editorial catalog reference types', () => {
     const catalogTypes = new Set(referenceCatalog.map((entry) => entry.reference.type));
 
-    expect(catalogTypes).toEqual(new Set(EXTERNAL_REFERENCE_TYPES));
+    expect(catalogTypes).toEqual(new Set(['official', 'press', 'technical']));
   });
 
   it('keeps reference ids unique', () => {

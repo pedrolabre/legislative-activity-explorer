@@ -1,13 +1,12 @@
+import { OFFICIAL_API_DEFAULT_TIMEOUT_MS } from './officialApiConfig';
+import { OfficialApiClientError, type OfficialApiErrorKind } from './officialApiErrors';
+
 export const SENADO_API_BASE_URL = 'https://legis.senado.leg.br/dadosabertos';
-export const SENADO_API_DEFAULT_TIMEOUT_MS = 10000;
+export const SENADO_API_DEFAULT_TIMEOUT_MS = OFFICIAL_API_DEFAULT_TIMEOUT_MS;
 
-export type SenadoApiErrorKind = 'http' | 'network' | 'invalid-payload' | 'timeout';
+export type SenadoApiErrorKind = OfficialApiErrorKind;
 
-export class SenadoApiClientError extends Error {
-  kind: SenadoApiErrorKind;
-  status?: number;
-  url?: string;
-
+export class SenadoApiClientError extends OfficialApiClientError {
   constructor(
     message: string,
     options: {
@@ -17,11 +16,11 @@ export class SenadoApiClientError extends Error {
       cause?: unknown;
     }
   ) {
-    super(message, { cause: options.cause });
-    this.name = 'SenadoApiClientError';
-    this.kind = options.kind;
-    this.status = options.status;
-    this.url = options.url;
+    super(message, {
+      ...options,
+      source: 'senado',
+      name: 'SenadoApiClientError'
+    });
   }
 }
 

@@ -1,15 +1,18 @@
 import { CAMARA_API_BASE_URL } from './camaraClient';
+import {
+  isAllowedOfficialApiTargetUrl,
+  isHttpsProtocol,
+  LEGISLATIVE_OFFICIAL_ALLOWED_HOSTS,
+  type LegislativeOfficialAllowedHost
+} from './officialApiConfig';
 import { SENADO_API_BASE_URL } from './senadoClient';
 
 export const PUBLIC_LEGISLATIVE_PROXY_URL_ENV = 'PUBLIC_LEGISLATIVE_PROXY_URL';
 export const LEGISLATIVE_PROXY_QUERY_PARAM = 'url';
-export const LEGISLATIVE_DATA_SOURCE_ALLOWED_HOSTS = [
-  'dadosabertos.camara.leg.br',
-  'legis.senado.leg.br'
-] as const;
+export const LEGISLATIVE_DATA_SOURCE_ALLOWED_HOSTS = LEGISLATIVE_OFFICIAL_ALLOWED_HOSTS;
 
 export type LegislativeDataSourceAllowedHost =
-  (typeof LEGISLATIVE_DATA_SOURCE_ALLOWED_HOSTS)[number];
+  LegislativeOfficialAllowedHost;
 export type LegislativeDataSourceMode = 'direct' | 'proxy';
 export type LegislativeDataSourceConfigIssue =
   | 'invalid-proxy-url'
@@ -56,18 +59,6 @@ export class LegislativeDataSourceConfigError extends Error {
     this.name = 'LegislativeDataSourceConfigError';
     this.issue = issue;
   }
-}
-
-function isHttpsProtocol(protocol: string) {
-  return protocol === 'https:';
-}
-
-function isAllowedOfficialHost(hostname: string): hostname is LegislativeDataSourceAllowedHost {
-  const normalizedHostname = hostname.toLowerCase();
-
-  return LEGISLATIVE_DATA_SOURCE_ALLOWED_HOSTS.some(
-    (allowedHost) => allowedHost === normalizedHostname
-  );
 }
 
 function resolvePublicProxyUrl(rawProxyUrl: string | null | undefined): ProxyUrlResolution {
@@ -135,20 +126,7 @@ export function resolveLegislativeDataSourceConfig(
 }
 
 export function isAllowedLegislativeApiTargetUrl(targetUrl: string) {
-  let parsedTargetUrl: URL;
-
-  try {
-    parsedTargetUrl = new URL(targetUrl);
-  } catch {
-    return false;
-  }
-
-  return (
-    isHttpsProtocol(parsedTargetUrl.protocol) &&
-    !parsedTargetUrl.username &&
-    !parsedTargetUrl.password &&
-    isAllowedOfficialHost(parsedTargetUrl.hostname)
-  );
+  return isAllowedOfficialApiTargetUrl(targetUrl);
 }
 
 export function buildLegislativeProxyRequestUrl(proxyUrl: string, targetUrl: string) {

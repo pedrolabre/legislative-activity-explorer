@@ -1,12 +1,11 @@
-import {
-  EXTERNAL_REFERENCE_TYPES,
-  type ExternalReference,
-  type ExternalReferenceType,
-  type LegislativeProposal
-} from '$lib/domain';
+import type { ExternalReference, ExternalReferenceType, LegislativeProposal } from '$lib/domain';
 import { getReferencesByProposalId } from '$lib/data/referenceCatalog';
 
-export const REQUIRED_EDITORIAL_REFERENCE_TYPES = EXTERNAL_REFERENCE_TYPES;
+export const REQUIRED_EDITORIAL_REFERENCE_TYPES = [
+  'official',
+  'press',
+  'technical'
+] as const satisfies readonly ExternalReferenceType[];
 export const REVIEWED_EXTERNAL_REFERENCE_TYPES = [
   'press',
   'technical'

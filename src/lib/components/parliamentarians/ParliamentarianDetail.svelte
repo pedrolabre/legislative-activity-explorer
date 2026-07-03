@@ -1,4 +1,8 @@
 <script lang="ts">
+  import {
+    unavailableOfficialFieldLabel
+  } from '$lib/ui/officialMessages';
+
   interface ParliamentarianDetailView {
     id: string;
     name: string;
@@ -27,8 +31,6 @@
     onBackToResults: () => void;
     onStartOver: () => void;
   } = $props();
-
-  const unavailableOfficialFieldLabel = 'Não informado pela fonte oficial consultada.';
 
   function formatOptional(value?: string, fallback = unavailableOfficialFieldLabel) {
     return value?.trim() ? value : fallback;
