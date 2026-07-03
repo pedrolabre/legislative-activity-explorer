@@ -305,7 +305,7 @@
     }
 
     if (vote.individualVotes.length > 0) {
-      return 'Voto individual do parlamentar não localizado na lista nominal consultada.';
+      return 'Voto individual do parlamentar não localizado na lista nominal oficial.';
     }
 
     return unavailableNominalVoteListLabel;

@@ -51,7 +51,7 @@ export interface OfficialVoteServiceOptions extends OfficialApiClientFactoryOpti
 const defaultMaxVotesPerProposal = 50;
 
 export const officialSenadoProposalVotesUnavailableMessage =
-  'Votações nominais do Senado ainda não estão conectadas nesta versão.';
+  'Votações nominais do Senado ainda não conectadas nesta versão.';
 
 function getConfiguredCamaraVoteClient(options: OfficialVoteServiceOptions) {
   return options.camaraClient ?? createOfficialApiClients(options).camaraClient;
@@ -128,8 +128,7 @@ function createPaginationLimitError(): OfficialVoteRecoverableError {
     source: 'camara',
     entity: 'proposal-votes',
     kind: 'pagination-limit',
-    message:
-      'Há mais votações disponíveis na fonte oficial; esta versão processa apenas as primeiras votações retornadas pela consulta oficial.'
+    message: 'Há mais votações na fonte oficial. Exige backend futuro para consulta completa.'
   };
 }
 
@@ -141,7 +140,7 @@ function createUnsupportedSourceError(source: LegislativeSource): OfficialVoteRe
     message:
       source === 'senado'
         ? officialSenadoProposalVotesUnavailableMessage
-        : 'Votações oficiais desta fonte ainda não estão conectadas nesta versão.'
+        : 'Votações oficiais desta fonte ainda não conectadas nesta versão.'
   };
 }
 

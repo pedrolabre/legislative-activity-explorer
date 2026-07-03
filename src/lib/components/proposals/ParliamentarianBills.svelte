@@ -25,7 +25,7 @@
   let {
     parliamentarianName,
     bills,
-    emptyTitle = 'Nenhuma proposição associada foi retornada pela fonte consultada.',
+    emptyTitle = 'Nenhuma proposição associada foi retornada pela fonte oficial consultada.',
     emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
     onSelectBill,
     onBackToParliamentarian,
@@ -71,7 +71,7 @@
     </h3>
     <p class="mt-3 text-sm leading-6 text-ink-muted">{billCountLabel} nesta página.</p>
     <p class="mt-2 text-sm leading-6 text-ink-muted">
-      Registros retornados pela fonte consultada.
+      Registros retornados pela fonte oficial consultada.
     </p>
   </header>
 

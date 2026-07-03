@@ -254,7 +254,7 @@ function getErrorMessage(
   }
 
   if (error instanceof CamaraMapperError || error instanceof SenadoMapperError) {
-    return `Parte dos dados oficiais de ${groupLabel} ${sourceReference} veio incompleta e não foi exibida.`;
+    return `Parte dos dados oficiais de ${groupLabel} ${sourceReference} veio incompleta nesta consulta.`;
   }
 
   return `Falha temporária ao processar dados oficiais de ${groupLabel}.`;

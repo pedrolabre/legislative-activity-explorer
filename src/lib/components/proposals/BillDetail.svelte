@@ -74,7 +74,7 @@
   const noReviewedReferencesMessage =
     'Referências externas revisadas ainda não foram adicionadas para esta proposição.';
   const unavailableReviewedFactualSummaryMessage =
-    'Resumo factual revisado ainda não disponível.';
+    'Resumo factual revisado ainda não foi adicionado para esta proposição.';
 
   let hasReviewedExternalReferences = $derived(
     reviewedExternalReferenceTypes.some((type) =>

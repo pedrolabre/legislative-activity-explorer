@@ -60,7 +60,7 @@ export function getOfficialSearchRecoverableMessage(result: OfficialSearchResult
   if (partialReports.length > 0) {
     const partialReferences = formatReferenceList(getSourceReferences(partialReports));
 
-    return `Parte dos dados oficiais ${partialReferences} não foi exibida nesta consulta. ${suffix}`;
+    return `Dados oficiais ${partialReferences} vieram incompletos nesta consulta. ${suffix}`;
   }
 
   return reportsWithErrors[0]?.errors[0]?.message ?? '';

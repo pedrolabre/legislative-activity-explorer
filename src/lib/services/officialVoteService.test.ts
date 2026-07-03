@@ -211,8 +211,7 @@ describe('getOfficialVotesByProposal', () => {
         source: 'camara',
         entity: 'proposal-votes',
         kind: 'pagination-limit',
-        message:
-          'Há mais votações disponíveis na fonte oficial; esta versão processa apenas as primeiras votações retornadas pela consulta oficial.'
+        message: 'Há mais votações na fonte oficial. Exige backend futuro para consulta completa.'
       }
     ]);
   });

@@ -875,7 +875,8 @@ describe('chatStore actions', () => {
               source: 'camara',
               entity: 'parliamentarian-proposals',
               kind: 'mapper',
-              message: 'payload parcial'
+              message:
+                'Dados oficiais de proposições associadas vieram incompletos nesta consulta.'
             }
           ]
         })
@@ -892,7 +893,7 @@ describe('chatStore actions', () => {
         }
       ],
       errorMessage:
-        'Parte dos dados oficiais de proposições associadas não foi exibida nesta consulta.'
+        'Dados oficiais de proposições associadas vieram incompletos nesta consulta.'
     });
   });
 

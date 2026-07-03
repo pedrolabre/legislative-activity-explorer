@@ -33,10 +33,10 @@ describe('ParliamentarianDetail', () => {
     });
 
     expect(html).toContain('Não informado pela fonte oficial consultada.');
-    expect(html).toContain('Ainda não conectado nesta versão.');
     expect(html).toContain('Foto não informada pela fonte oficial consultada para Ana Costa');
     expect(html).toContain('Votações disponíveis');
     expect(html).toContain('Abrir votos oficiais já disponíveis nesta consulta.');
+    expect(html).not.toContain('>Mandato</dt>');
   });
   it('uses the provided term label for legislature data', () => {
     const html = renderParliamentarianDetail({

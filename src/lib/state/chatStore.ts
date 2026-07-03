@@ -94,17 +94,17 @@ export interface SelectVoteByIdOptions {
 const defaultSearchDelayMs = 450;
 const genericSearchErrorMessage = 'Não foi possível concluir a busca nesta página.';
 export const officialParliamentarianVoteHistoryUnavailableMessage =
-  'Histórico completo por parlamentar exige backend/cache futuro.';
+  'Histórico completo por parlamentar exige backend futuro para consulta completa.';
 export const officialParliamentarianSessionVotesCoverageMessage =
-  'Cobertura parcial: votações exibidas aqui vieram de proposições abertas nesta sessão.';
+  'Cobertura parcial: votos exibidos vieram de proposições abertas nesta sessão.';
 export const officialParliamentarianSessionVotesEmptyMessage =
   'Nenhuma votação de proposição aberta foi carregada nesta sessão.';
 export const officialParliamentarianStaticCoverageDescription =
   `Abra uma proposição com votações oficiais para ver votos disponíveis nesta sessão. ${officialParliamentarianVoteHistoryUnavailableMessage}`;
 export const officialSenadoStaticCoverageDescription =
-  'Esta versão estática não usa scraping nem varre matérias, votações ou arquivos grandes para montar esse dado.';
+  'Ainda não conectado nesta versão. Exige backend futuro para consulta completa.';
 export const officialSenadoAssociatedMattersUnavailableDescription =
-  'Esta versão mantém a consulta ao Senado restrita a busca e detalhe de matérias quando não há endpoint leve confirmado para associação por senador.';
+  'Ainda não conectado nesta versão. A consulta completa por senador exige backend futuro.';
 
 export {
   officialSenadoAssociatedMattersUnavailableMessage,
@@ -242,18 +242,18 @@ function getOfficialDetailNotice(
   label: string,
   errors: OfficialDetailRecoverableError[] = []
 ) {
+  const recoverableMessage = errors.find((error) => error.message.trim())?.message.trim();
+
   if (status === 'fulfilled') {
     return '';
   }
 
   if (status === 'partial') {
-    return `Parte dos dados oficiais de ${label} não foi exibida nesta consulta.`;
+    return recoverableMessage ?? `Dados oficiais de ${label} vieram incompletos nesta consulta.`;
   }
 
   if (status === 'unavailable') {
-    const unavailableMessage = errors.find((error) => error.message.trim())?.message.trim();
-
-    return unavailableMessage ?? `Consulta oficial de ${label} ainda não conectada nesta versão.`;
+    return recoverableMessage ?? `Consulta oficial de ${label} ainda não conectada nesta versão.`;
   }
 
   return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;
@@ -264,18 +264,18 @@ function getOfficialVoteNotice(
   label: string,
   errors: OfficialVoteRecoverableError[] = []
 ) {
+  const recoverableMessage = errors.find((error) => error.message.trim())?.message.trim();
+
   if (status === 'fulfilled') {
     return '';
   }
 
   if (status === 'partial') {
-    return `Parte dos dados oficiais de ${label} não foi exibida nesta consulta.`;
+    return recoverableMessage ?? `Dados oficiais de ${label} vieram incompletos nesta consulta.`;
   }
 
   if (status === 'unavailable') {
-    const unavailableMessage = errors.find((error) => error.message.trim())?.message.trim();
-
-    return unavailableMessage ?? `Consulta oficial de ${label} ainda não conectada nesta versão.`;
+    return recoverableMessage ?? `Consulta oficial de ${label} ainda não conectada nesta versão.`;
   }
 
   return `Dados oficiais de ${label} não puderam ser carregados neste momento.`;

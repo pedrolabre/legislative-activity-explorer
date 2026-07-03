@@ -75,7 +75,7 @@ export interface OfficialDetailServiceOptions extends OfficialApiClientFactoryOp
 }
 
 export const officialSenadoAssociatedMattersUnavailableMessage =
-  'Matérias associadas a senador ainda não estão conectadas nesta versão.';
+  'Matérias associadas a senador ainda não conectadas nesta versão.';
 
 function isOfficialClientError(
   error: unknown

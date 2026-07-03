@@ -19,7 +19,9 @@ describe('ParliamentarianBills', () => {
   it('renders a specific default empty state for associated proposals', () => {
     const html = renderParliamentarianBills();
 
-    expect(html).toContain('Nenhuma proposição associada foi retornada pela fonte consultada.');
+    expect(html).toContain(
+      'Nenhuma proposição associada foi retornada pela fonte oficial consultada.'
+    );
     expect(html).toContain('Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.');
   });
 

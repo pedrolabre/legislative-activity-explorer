@@ -30,8 +30,8 @@
   let {
     parliamentarianName,
     votes,
-    coverageDescription = 'Registros disponíveis pela fonte consultada.',
-    emptyTitle = 'Nenhuma votação disponível nesta consulta.',
+    coverageDescription = 'Registros disponíveis pela fonte oficial consultada.',
+    emptyTitle = 'Nenhuma votação foi retornada pela fonte oficial consultada.',
     emptyDescription = 'Você pode voltar ao perfil do parlamentar ou iniciar uma nova consulta.',
     onSelectVote,
     onBackToParliamentarian,

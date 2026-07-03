@@ -29,7 +29,6 @@
   } = $props();
 
   const unavailableOfficialFieldLabel = 'Não informado pela fonte oficial consultada.';
-  const unavailableVersionFieldLabel = 'Ainda não conectado nesta versão.';
 
   function formatOptional(value?: string, fallback = unavailableOfficialFieldLabel) {
     return value?.trim() ? value : fallback;
@@ -46,6 +45,7 @@
   }
 
   let initials = $derived(getInitials(parliamentarian.name));
+  let hasTerm = $derived(Boolean(parliamentarian.term?.trim()));
   let termLabel = $derived(parliamentarian.termLabel ?? 'Mandato');
 </script>
 
@@ -114,12 +114,12 @@
         <dt class="font-bold text-ink">Casa legislativa</dt>
         <dd>{parliamentarian.chamber}</dd>
       </div>
-      <div>
-        <dt class="font-bold text-ink">{termLabel}</dt>
-        <dd class:text-ink-muted={!parliamentarian.term}>
-          {formatOptional(parliamentarian.term, unavailableVersionFieldLabel)}
-        </dd>
-      </div>
+      {#if hasTerm}
+        <div>
+          <dt class="font-bold text-ink">{termLabel}</dt>
+          <dd>{parliamentarian.term}</dd>
+        </div>
+      {/if}
       <div class="sm:col-span-2">
         <dt class="font-bold text-ink">E-mail institucional</dt>
         <dd class:text-ink-muted={!parliamentarian.email}>

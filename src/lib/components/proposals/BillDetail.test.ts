@@ -39,7 +39,7 @@ describe('BillDetail', () => {
 
     expect(html).toContain('Ementa oficial');
     expect(html.match(/Ementa oficial controlada\./g)).toHaveLength(1);
-    expect(html).toContain('Resumo factual revisado ainda não disponível.');
+    expect(html).toContain('Resumo factual revisado ainda não foi adicionado para esta proposição.');
     expect(html).toContain('Fonte oficial ainda não conectada nesta versão.');
     expect(html).not.toContain('A ementa oficial é exibida nesta seção.');
     expect(html).not.toContain('<h4 id="factual-summary-title"');
@@ -78,7 +78,7 @@ describe('BillDetail', () => {
 
     expect(html).toContain('Resumo factual revisado');
     expect(html).toContain('Resumo factual revisado controlado.');
-    expect(html).not.toContain('Resumo factual revisado ainda não disponível.');
+    expect(html).not.toContain('Resumo factual revisado ainda não foi adicionado para esta proposição.');
   });
 
   it('renders an automatic official source without requiring reviewed external references', () => {
@@ -203,16 +203,16 @@ describe('BillDetail', () => {
         chamber: 'Senado Federal'
       },
       {
-        unavailableVotesTitle: 'Votações nominais do Senado ainda não estão conectadas nesta versão.',
+        unavailableVotesTitle: 'Votações nominais do Senado ainda não conectadas nesta versão.',
         unavailableVotesDescription:
-          'Esta versão estática não usa scraping nem varre matérias, votações ou arquivos grandes para montar esse dado.'
+          'Ainda não conectado nesta versão. Exige backend futuro para consulta completa.'
       }
     );
 
     expect(html).toContain('Votações do Senado');
-    expect(html).toContain('Votações nominais do Senado ainda não estão conectadas nesta versão.');
+    expect(html).toContain('Votações nominais do Senado ainda não conectadas nesta versão.');
     expect(html).toContain(
-      'Esta versão estática não usa scraping nem varre matérias, votações ou arquivos grandes para montar esse dado.'
+      'Ainda não conectado nesta versão. Exige backend futuro para consulta completa.'
     );
     expect(html).not.toContain('Votações da Câmara');
   });

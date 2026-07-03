@@ -83,7 +83,7 @@ describe('searchPublicRecords', () => {
 
     expect(result.proposals.map((proposal) => proposal.id)).toEqual(['camara-proposicao-100']);
     expect(result.recoverableMessage).toBe(
-      'Parte dos dados oficiais da Câmara dos Deputados não foi exibida nesta consulta. Os resultados retornados foram exibidos.'
+      'Dados oficiais da Câmara dos Deputados vieram incompletos nesta consulta. Os resultados retornados foram exibidos.'
     );
   });
 
