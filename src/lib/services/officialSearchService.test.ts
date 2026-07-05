@@ -16,7 +16,19 @@ function createEmptySenadoClient(): OfficialSenadoSearchClient {
 }
 
 describe('searchOfficialRecords', () => {
-  it('recognizes only the direct proposal formats scoped to this block', () => {
+  it('recognizes national legislative identifier formats scoped to the parser', () => {
+    expect(parseDirectProposalQuery('PL2630')).toEqual({
+      type: 'PL',
+      number: '2630',
+      year: undefined,
+      label: 'PL 2630'
+    });
+    expect(parseDirectProposalQuery('PL-2630')).toEqual({
+      type: 'PL',
+      number: '2630',
+      year: undefined,
+      label: 'PL 2630'
+    });
     expect(parseDirectProposalQuery('PL 2630/2020')).toEqual({
       type: 'PL',
       number: '2630',
@@ -35,8 +47,13 @@ describe('searchOfficialRecords', () => {
       year: 2023,
       label: 'PLP 19/2023'
     });
-    expect(parseDirectProposalQuery('PL2630')).toBeNull();
-    expect(parseDirectProposalQuery('PL-2630')).toBeNull();
+    expect(parseDirectProposalQuery('PDC 100/2019')?.type).toBe('PDC');
+    expect(parseDirectProposalQuery('PDL 508/2021')?.type).toBe('PDL');
+    expect(parseDirectProposalQuery('MPV 1300/2025')?.type).toBe('MPV');
+    expect(parseDirectProposalQuery('REQ 10/2024')?.type).toBe('REQ');
+    expect(parseDirectProposalQuery('RQS 368/2026')?.type).toBe('RQS');
+    expect(parseDirectProposalQuery('RQN 1/2024')?.type).toBe('RQN');
+    expect(parseDirectProposalQuery('MSC 123/2023')?.type).toBe('MSC');
   });
 
   it('combines official sources into separated domain result groups', async () => {
@@ -213,6 +230,166 @@ describe('searchOfficialRecords', () => {
     expect(result.directProposalResolution).toBe('single');
     expect(result.directProposal?.id).toBe('camara-proposicao-2630');
     expect(result.parliamentarians).toEqual([]);
+  });
+
+  it('uses official Camara proposition filters for compact and hyphenated identifiers', async () => {
+    const camaraCalls: unknown[] = [];
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => [],
+      getProposicoes: async (options) => {
+        camaraCalls.push(options);
+        return [
+          {
+            id: 2630,
+            siglaTipo: 'PL',
+            numero: 2630,
+            ano: 2020
+          }
+        ];
+      }
+    };
+
+    await searchOfficialRecords('PL2630', {
+      camaraClient,
+      senadoClient: createEmptySenadoClient()
+    });
+    await searchOfficialRecords('PL-2630', {
+      camaraClient,
+      senadoClient: createEmptySenadoClient()
+    });
+
+    expect(camaraCalls).toEqual([
+      expect.objectContaining({
+        siglaTipo: 'PL',
+        numero: '2630',
+        ano: undefined
+      }),
+      expect.objectContaining({
+        siglaTipo: 'PL',
+        numero: '2630',
+        ano: undefined
+      })
+    ]);
+  });
+
+  it('uses explicit national legislative types in direct official searches', async () => {
+    let camaraProposicoesOptions: unknown;
+    let senadoMateriaOptions: unknown;
+
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => [],
+      getProposicoes: async (options) => {
+        camaraProposicoesOptions = options;
+        return [
+          {
+            id: 1300,
+            siglaTipo: 'MPV',
+            numero: 1300,
+            ano: 2025
+          }
+        ];
+      }
+    };
+    const senadoClient: OfficialSenadoSearchClient = {
+      getSenadoresAtuais: async () => [],
+      searchMaterias: async (options) => {
+        senadoMateriaOptions = options;
+        return [];
+      }
+    };
+
+    const result = await searchOfficialRecords('MPV 1300/2025', {
+      camaraClient,
+      senadoClient
+    });
+
+    expect(camaraProposicoesOptions).toMatchObject({
+      siglaTipo: 'MPV',
+      numero: '1300',
+      ano: 2025
+    });
+    expect(senadoMateriaOptions).toEqual({
+      termo: 'MPV 1300/2025'
+    });
+    expect(result.directProposalResolution).toBe('single');
+    expect(result.directProposal?.title).toBe('MPV 1300/2025');
+  });
+
+  it('does not confuse parliamentarian names with direct legislative identifiers', async () => {
+    let camaraDeputadosOptions: unknown;
+    let camaraProposicoesOptions: unknown;
+
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async (options) => {
+        camaraDeputadosOptions = options;
+        return [
+          {
+            id: 10,
+            nome: 'Plinio Valerio'
+          }
+        ];
+      },
+      getProposicoes: async (options) => {
+        camaraProposicoesOptions = options;
+        return [];
+      }
+    };
+
+    const result = await searchOfficialRecords('Plinio Valerio', {
+      camaraClient,
+      senadoClient: createEmptySenadoClient()
+    });
+
+    expect(camaraDeputadosOptions).toMatchObject({
+      nome: 'Plinio Valerio'
+    });
+    expect(camaraProposicoesOptions).toMatchObject({
+      keywords: 'Plinio Valerio'
+    });
+    expect(result.directProposalResolution).toBe('not-direct-query');
+    expect(result.parliamentarians.map((parliamentarian) => parliamentarian.name)).toEqual([
+      'Plinio Valerio'
+    ]);
+  });
+
+  it('returns a specific invalid resolution without touching official clients', async () => {
+    let calls = 0;
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => {
+        calls += 1;
+        return [];
+      },
+      getProposicoes: async () => {
+        calls += 1;
+        return [];
+      }
+    };
+    const senadoClient: OfficialSenadoSearchClient = {
+      getSenadoresAtuais: async () => {
+        calls += 1;
+        return [];
+      },
+      searchMaterias: async () => {
+        calls += 1;
+        return [];
+      }
+    };
+
+    const result = await searchOfficialRecords('PL 2630/20', {
+      camaraClient,
+      senadoClient
+    });
+
+    expect(calls).toBe(0);
+    expect(result).toMatchObject({
+      query: 'PL 2630/20',
+      parliamentarians: [],
+      proposals: [],
+      sources: [],
+      directProposalError:
+        'Identificador legislativo incompleto. Use formatos como PL 2630/2020, PL-2630 ou PEC 45.',
+      directProposalResolution: 'invalid'
+    });
   });
 
   it('keeps direct proposal queries with multiple exact official matches in the result list', async () => {

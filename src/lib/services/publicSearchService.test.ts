@@ -79,6 +79,35 @@ describe('searchPublicRecords', () => {
     expect(result.recoverableMessage).toBe('');
   });
 
+  it('exposes a specific message for malformed direct legislative identifiers', async () => {
+    const result = await searchPublicRecords('PL 2630/20', {
+      camaraClient: {
+        getDeputados: async () => {
+          throw new Error('Camara parliamentarian search should not run.');
+        },
+        getProposicoes: async () => {
+          throw new Error('Camara proposal search should not run.');
+        }
+      },
+      senadoClient: {
+        getSenadoresAtuais: async () => {
+          throw new Error('Senado parliamentarian search should not run.');
+        },
+        searchMaterias: async () => {
+          throw new Error('Senado matter search should not run.');
+        }
+      }
+    });
+
+    expect(result).toEqual({
+      parliamentarians: [],
+      proposals: [],
+      directProposal: undefined,
+      recoverableMessage:
+        'Identificador legislativo incompleto. Use formatos como PL 2630/2020, PL-2630 ou PEC 45.'
+    });
+  });
+
   it('keeps available official results and exposes partial source failures', async () => {
     const camaraClient: OfficialCamaraSearchClient = {
       getDeputados: async () => {
@@ -131,6 +160,21 @@ describe('searchPublicRecords', () => {
     expect(result.proposals).toEqual([]);
     expect(result.recoverableMessage).toBe(
       'As fontes oficiais da Câmara dos Deputados e do Senado Federal não puderam ser consultadas neste momento. Tente novamente mais tarde.'
+    );
+  });
+  it('describes malformed direct proposal searches', () => {
+    expect(
+      getDirectProposalSearchMessage({
+        query: 'PL 2630/20',
+        parliamentarians: [],
+        proposals: [],
+        sources: [],
+        directProposalError:
+          'Identificador legislativo incompleto. Use formatos como PL 2630/2020, PL-2630 ou PEC 45.',
+        directProposalResolution: 'invalid'
+      })
+    ).toBe(
+      'Identificador legislativo incompleto. Use formatos como PL 2630/2020, PL-2630 ou PEC 45.'
     );
   });
 });

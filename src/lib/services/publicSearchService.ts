@@ -32,6 +32,10 @@ function joinMessages(messages: string[]) {
 }
 
 export function getDirectProposalSearchMessage(result: OfficialSearchResult) {
+  if (result.directProposalResolution === 'invalid') {
+    return result.directProposalError ?? 'Identificador legislativo não reconhecido nesta busca.';
+  }
+
   if (!result.directProposalQuery) {
     return '';
   }

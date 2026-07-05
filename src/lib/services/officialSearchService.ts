@@ -28,19 +28,25 @@ import {
   isOfficialMapperError,
   type OfficialRecoverableErrorKind
 } from './officialNotices';
+import {
+  parseLegislativeIdentifier,
+  type NationalLegislativeIdentifier,
+  type NationalLegislativeIdentifierType
+} from './legislativeIdentifierParser';
+
+export { parseDirectProposalQuery } from './legislativeIdentifierParser';
 
 export type OfficialSearchGroup = 'parliamentarians' | 'proposals';
 export type OfficialSearchSourceStatus = 'fulfilled' | 'partial' | 'failed';
 export type OfficialSearchErrorKind = 'client' | 'mapper' | 'timeout' | 'unknown';
-export type DirectProposalQueryType = 'PL' | 'PEC' | 'PLP';
-export type DirectProposalResolution = 'not-direct-query' | 'single' | 'ambiguous' | 'not-found';
-
-export interface DirectProposalQuery {
-  type: DirectProposalQueryType;
-  number: string;
-  year?: number;
-  label: string;
-}
+export type DirectProposalQueryType = NationalLegislativeIdentifierType;
+export type DirectProposalResolution =
+  | 'not-direct-query'
+  | 'invalid'
+  | 'single'
+  | 'ambiguous'
+  | 'not-found';
+export type DirectProposalQuery = NationalLegislativeIdentifier;
 
 export interface OfficialSearchRecoverableError {
   source: LegislativeSource;
@@ -63,6 +69,7 @@ export interface OfficialSearchResult {
   proposals: LegislativeProposal[];
   sources: OfficialSearchSourceReport[];
   directProposalQuery?: DirectProposalQuery;
+  directProposalError?: string;
   directProposal?: LegislativeProposal;
   directProposalResolution: DirectProposalResolution;
 }
@@ -114,8 +121,6 @@ const defaultLimits: OfficialSearchLimits = {
   proposalsPerSource: 20
 };
 
-const directProposalQueryPattern = /^(PLP|PEC|PL)\s+(\d{1,6})(?:\s*\/\s*(\d{4}))?$/i;
-
 function normalizeText(value: string | undefined) {
   return (value ?? '')
     .normalize('NFD')
@@ -133,29 +138,6 @@ function normalizeProposalNumber(value: string | undefined) {
   const normalized = value?.trim().replace(/^0+(?=\d)/, '');
 
   return normalized || undefined;
-}
-
-export function parseDirectProposalQuery(query: string): DirectProposalQuery | null {
-  const match = query.trim().match(directProposalQueryPattern);
-
-  if (!match) {
-    return null;
-  }
-
-  const type = match[1].toLocaleUpperCase('pt-BR') as DirectProposalQueryType;
-  const number = normalizeProposalNumber(match[2]);
-  const year = match[3] ? Number(match[3]) : undefined;
-
-  if (!number || (year !== undefined && !Number.isInteger(year))) {
-    return null;
-  }
-
-  return {
-    type,
-    number,
-    year,
-    label: year ? `${type} ${number}/${year}` : `${type} ${number}`
-  };
 }
 
 function matchesQuery(query: string, fields: (string | undefined)[]) {
@@ -525,7 +507,22 @@ export async function searchOfficialRecords(
     ...defaultLimits,
     ...options.limits
   };
-  const directProposalQuery = parseDirectProposalQuery(normalizedQuery);
+  const directProposalParseResult = parseLegislativeIdentifier(normalizedQuery);
+
+  if (!directProposalParseResult.ok && directProposalParseResult.attempted) {
+    return {
+      query: normalizedQuery,
+      parliamentarians: [],
+      proposals: [],
+      sources: [],
+      directProposalError: directProposalParseResult.message,
+      directProposalResolution: 'invalid'
+    };
+  }
+
+  const directProposalQuery = directProposalParseResult.ok
+    ? directProposalParseResult.identifier
+    : null;
   const { camaraClient, senadoClient } = resolveOfficialSearchClients(options);
   const sourceResults = await Promise.all([
     searchCamaraSource(normalizedQuery, camaraClient, limits, directProposalQuery),
