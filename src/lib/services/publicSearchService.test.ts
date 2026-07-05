@@ -11,7 +11,7 @@ import type { OfficialCamaraSearchClient, OfficialSenadoSearchClient } from './o
 function createEmptySenadoClient(): OfficialSenadoSearchClient {
   return {
     getSenadoresAtuais: async () => [],
-    searchMaterias: async () => []
+    searchProcessos: async () => []
   };
 }
 
@@ -22,7 +22,7 @@ function createFailingSenadoClient(): OfficialSenadoSearchClient {
         kind: 'network'
       });
     },
-    searchMaterias: async () => {
+    searchProcessos: async () => {
       throw new SenadoApiClientError('indisponivel', {
         kind: 'network'
       });
@@ -93,7 +93,7 @@ describe('searchPublicRecords', () => {
         getSenadoresAtuais: async () => {
           throw new Error('Senado parliamentarian search should not run.');
         },
-        searchMaterias: async () => {
+        searchProcessos: async () => {
           throw new Error('Senado matter search should not run.');
         }
       }

@@ -15,6 +15,7 @@ import {
 } from '$lib/mappers/camaraMapper';
 import {
   mapSenadoMateriaToLegislativeProposal,
+  mapSenadoProcessoToLegislativeProposal,
   mapSenadoSenadorToParliamentarian
 } from '$lib/mappers/senadoMapper';
 import { officialSenadoAssociatedMattersUnavailableMessage } from '$lib/ui/officialMessages';
@@ -70,7 +71,7 @@ export type OfficialCamaraDetailClient = Pick<
 
 export type OfficialSenadoDetailClient = Pick<
   SenadoApiClient,
-  'getSenadorById' | 'getSenadorMandatosById' | 'getMateriaById'
+  'getSenadorById' | 'getSenadorMandatosById' | 'getMateriaById' | 'getProcessoById'
 >;
 
 export interface OfficialDetailServiceOptions extends OfficialApiClientFactoryOptions {
@@ -278,6 +279,10 @@ async function getOfficialSenadoParliamentarianDetail(
   }
 }
 
+function isModernSenadoProcessProposal(proposal: LegislativeProposal) {
+  return proposal.id === `senado-processo-${proposal.sourceId}`;
+}
+
 export async function getOfficialParliamentarianDetail(
   parliamentarian: Parliamentarian,
   options: OfficialDetailServiceOptions = {}
@@ -362,9 +367,10 @@ export async function getOfficialProposalDetail(
   }
 
   try {
-    const data = mapSenadoMateriaToLegislativeProposal(
-      await getConfiguredSenadoDetailClient(options).getMateriaById(sourceId)
-    );
+    const senadoClient = getConfiguredSenadoDetailClient(options);
+    const data = isModernSenadoProcessProposal(proposal)
+      ? mapSenadoProcessoToLegislativeProposal(await senadoClient.getProcessoById(sourceId))
+      : mapSenadoMateriaToLegislativeProposal(await senadoClient.getMateriaById(sourceId));
 
     return {
       status: 'fulfilled',

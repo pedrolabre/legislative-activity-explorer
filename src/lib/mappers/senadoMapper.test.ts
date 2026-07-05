@@ -3,6 +3,8 @@ import { SenadoMapperError } from './senadoMapper';
 import {
   mapSenadoMateriaToLegislativeProposal,
   mapSenadoMateriasToLegislativeProposals,
+  mapSenadoProcessoToLegislativeProposal,
+  mapSenadoProcessosToLegislativeProposals,
   mapSenadoSenadorToParliamentarian
 } from './senadoMapper';
 
@@ -298,6 +300,125 @@ describe('mapSenadoMateriaToLegislativeProposal', () => {
         IdentificacaoMateria: {
           SiglaSubtipoMateria: 'PL'
         }
+      })
+    ).toThrow(SenadoMapperError);
+  });
+});
+
+describe('mapSenadoProcessoToLegislativeProposal', () => {
+  it('normalizes a modern Senado process list payload to the domain contract', () => {
+    const proposal = mapSenadoProcessoToLegislativeProposal({
+      id: 9046221,
+      codigoMateria: 174108,
+      identificacao: 'RQS 368/2026',
+      casaIdentificadora: 'SF',
+      tipoConteudo: 'Urgencia para materia',
+      tipoDocumento: 'Requerimento',
+      ementa: 'Requer urgencia para materia.',
+      dataApresentacao: '2026-05-12',
+      situacaoAtual: 'PRONTO PARA DELIBERACAO DO PLENARIO',
+      tramitando: 'Sim',
+      urlDocumento: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=10220595'
+    });
+
+    expect(proposal).toEqual({
+      id: 'senado-processo-9046221',
+      source: 'senado',
+      sourceId: '9046221',
+      title: 'RQS 368/2026',
+      type: 'RQS',
+      number: '368',
+      year: 2026,
+      status: 'PRONTO PARA DELIBERACAO DO PLENARIO',
+      subject: 'Urgencia para materia',
+      presentedAt: '2026-05-12',
+      officialSummary: 'Requer urgencia para materia.',
+      officialUrl: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/174108',
+      officialFullTextUrl: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=10220595',
+      references: [
+        {
+          id: 'senado-processo-9046221-fonte-oficial',
+          type: 'official',
+          title: 'Fonte oficial do processo legislativo',
+          publisher: 'Senado Federal',
+          url: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/174108'
+        }
+      ]
+    });
+  });
+
+  it('normalizes a modern Senado process detail payload with nested content', () => {
+    const proposal = mapSenadoProcessoToLegislativeProposal({
+      id: '9046221',
+      codigoMateria: '174108',
+      identificacao: 'RQS 368/2026',
+      sigla: 'RQS',
+      numero: '368',
+      ano: '2026',
+      conteudo: {
+        tipo: 'Urgencia para materia',
+        ementa: 'Ementa retornada no detalhe moderno.'
+      },
+      documento: {
+        dataApresentacao: '2026-05-12',
+        url: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=10220595'
+      },
+      tramitando: 'Sim'
+    });
+
+    expect(proposal).toMatchObject({
+      id: 'senado-processo-9046221',
+      title: 'RQS 368/2026',
+      type: 'RQS',
+      number: '368',
+      year: 2026,
+      status: 'Em tramitação',
+      subject: 'Urgencia para materia',
+      presentedAt: '2026-05-12',
+      officialSummary: 'Ementa retornada no detalhe moderno.',
+      officialFullTextUrl: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=10220595'
+    });
+  });
+
+  it('keeps missing optional process fields undefined without using legacy matter ids', () => {
+    const proposal = mapSenadoProcessoToLegislativeProposal({
+      id: 9046221
+    });
+
+    expect(proposal).toMatchObject({
+      id: 'senado-processo-9046221',
+      sourceId: '9046221',
+      title: 'Processo 9046221',
+      type: 'Processo',
+      officialUrl: 'https://legis.senado.leg.br/dadosabertos/processo/9046221'
+    });
+    expect(proposal.number).toBeUndefined();
+    expect(proposal.year).toBeUndefined();
+    expect(proposal.status).toBeUndefined();
+    expect(proposal.subject).toBeUndefined();
+    expect(proposal.presentedAt).toBeUndefined();
+    expect(proposal.officialSummary).toBeUndefined();
+  });
+
+  it('normalizes a list of modern Senado process payloads', () => {
+    expect(
+      mapSenadoProcessosToLegislativeProposals([
+        {
+          id: 1,
+          identificacao: 'RQS 368/2026'
+        },
+        {
+          id: 2,
+          identificacao: 'PL 1102/2026'
+        }
+      ]).map((proposal) => proposal.title)
+    ).toEqual(['RQS 368/2026', 'PL 1102/2026']);
+  });
+
+  it('represents a missing process id as a mapper error', () => {
+    expect(() =>
+      mapSenadoProcessoToLegislativeProposal({
+        identificacao: 'RQS 368/2026'
       })
     ).toThrow(SenadoMapperError);
   });

@@ -251,11 +251,18 @@ function isOfficialProposal(proposal: LegislativeProposal) {
     return proposal.id === `camara-proposicao-${proposal.sourceId}`;
   }
 
-  return proposal.id === `senado-materia-${proposal.sourceId}`;
+  return (
+    proposal.id === `senado-materia-${proposal.sourceId}` ||
+    proposal.id === `senado-processo-${proposal.sourceId}`
+  );
 }
 
 function hasOfficialProposalIdPattern(id: string) {
-  return /^camara-proposicao-.+/.test(id) || /^senado-materia-.+/.test(id);
+  return (
+    /^camara-proposicao-.+/.test(id) ||
+    /^senado-materia-.+/.test(id) ||
+    /^senado-processo-.+/.test(id)
+  );
 }
 
 function isOfficialCamaraProposal(proposal: LegislativeProposal) {

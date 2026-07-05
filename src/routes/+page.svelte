@@ -239,7 +239,11 @@
   }
 
   function isOfficialSenadoProposal(proposal: LegislativeProposal) {
-    return proposal.source === 'senado' && proposal.id === `senado-materia-${proposal.sourceId}`;
+    return (
+      proposal.source === 'senado' &&
+      (proposal.id === `senado-materia-${proposal.sourceId}` ||
+        proposal.id === `senado-processo-${proposal.sourceId}`)
+    );
   }
 
   function isOfficialParliamentarian(parliamentarian: Parliamentarian) {

@@ -117,8 +117,63 @@ export interface SenadoMateriaPayload {
   } | null;
 }
 
+export interface SenadoProcessoConteudoPayload {
+  id?: number | string | null;
+  idTipo?: number | string | null;
+  siglaTipo?: string | null;
+  tipo?: string | null;
+  ementa?: string | null;
+}
+
+export interface SenadoProcessoDocumentoPayload {
+  id?: number | string | null;
+  siglaTipo?: string | null;
+  tipo?: string | null;
+  dataApresentacao?: string | null;
+  url?: string | null;
+  resumoAutoria?: string | null;
+}
+
+export interface SenadoProcessoPayload {
+  id?: number | string | null;
+  codigoMateria?: number | string | null;
+  identificacao?: string | null;
+  sigla?: string | null;
+  descricaoSigla?: string | null;
+  numero?: number | string | null;
+  ano?: number | string | null;
+  casaIdentificadora?: string | null;
+  enteIdentificador?: string | null;
+  siglaEnteIdentificador?: string | null;
+  tipoConteudo?: string | null;
+  tipoDocumento?: string | null;
+  ementa?: string | null;
+  autoria?: string | null;
+  conteudo?: SenadoProcessoConteudoPayload | null;
+  documento?: SenadoProcessoDocumentoPayload | null;
+  tramitando?: string | null;
+  situacaoAtual?: string | null;
+  siglaSituacaoAtual?: string | null;
+  dataApresentacao?: string | null;
+  dataInicioEfetivo?: string | null;
+  dataSituacaoAtual?: string | null;
+  dataUltimaAtualizacao?: string | null;
+  dthUltimaAtualizacao?: string | null;
+  ultimaInformacaoAtualizada?: string | null;
+  urlDocumento?: string | null;
+}
+
 export interface GetSenadoMateriasPesquisaOptions {
   termo: string;
+}
+
+export interface GetSenadoProcessosOptions {
+  termo?: string;
+  sigla?: string;
+  numero?: string;
+  ano?: number;
+  codigoMateria?: string | number;
+  tramitando?: 'S' | 'N';
 }
 
 interface SenadoDetalheParlamentarResponse {
@@ -215,12 +270,34 @@ export class SenadoApiClient {
     ]);
   }
 
+  async getProcessoById(id: number | string): Promise<SenadoProcessoPayload> {
+    return this.requestJson<SenadoProcessoPayload>(`processo/${id}`);
+  }
+
+  async searchProcessos(options: GetSenadoProcessosOptions): Promise<SenadoProcessoPayload[]> {
+    return this.requestNestedArray<SenadoProcessoPayload>('processo', [[]], {
+      termo: options.termo,
+      sigla: options.sigla,
+      numero: options.numero,
+      ano: options.ano,
+      codigoMateria: options.codigoMateria,
+      tramitando: options.tramitando
+    });
+  }
+
+  /**
+   * Endpoint legado/depreciado pelo Senado. Mantido apenas para compatibilidade
+   * com registros antigos que ainda tenham CodigoMateria como identificador.
+   */
   async getMateriaById(id: number | string): Promise<SenadoMateriaPayload> {
     return this.requestNestedData<SenadoMateriaPayload>(`materia/${id}`, [
       ['DetalheMateria', 'Materia']
     ]);
   }
 
+  /**
+   * Endpoint legado/depreciado pelo Senado. A busca moderna usa /processo.
+   */
   async searchMaterias(
     options: GetSenadoMateriasPesquisaOptions
   ): Promise<SenadoMateriaPayload[]> {

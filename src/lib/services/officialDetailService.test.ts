@@ -31,6 +31,10 @@ function createEmptySenadoClient(): OfficialSenadoDetailClient {
       }
     }),
     getSenadorMandatosById: async () => [],
+    getProcessoById: async () => ({
+      id: '9046221',
+      codigoMateria: '174108'
+    }),
     getMateriaById: async () => ({
       IdentificacaoMateria: {
         CodigoMateria: '300'
@@ -651,6 +655,67 @@ describe('getOfficialProposalDetail', () => {
             title: 'Página oficial da matéria',
             publisher: 'Senado Federal',
             url: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/300'
+          }
+        ]
+      },
+      errors: []
+    });
+  });
+
+  it('loads a modern Senado process detail by official process source id', async () => {
+    const result = await getOfficialProposalDetail(
+      {
+        id: 'senado-processo-9046221',
+        source: 'senado',
+        sourceId: '9046221',
+        title: 'RQS 368/2026',
+        type: 'RQS',
+        references: []
+      },
+      {
+        camaraClient: createEmptyCamaraClient(),
+        senadoClient: {
+          ...createEmptySenadoClient(),
+          getProcessoById: async () => ({
+            id: 9046221,
+            codigoMateria: 174108,
+            identificacao: 'RQS 368/2026',
+            sigla: 'RQS',
+            numero: '368',
+            ano: 2026,
+            conteudo: {
+              tipo: 'Urgencia para materia',
+              ementa: 'Detalhe moderno oficial da materia.'
+            },
+            documento: {
+              dataApresentacao: '2026-05-12',
+              url: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=10220595'
+            },
+            situacaoAtual: 'PRONTO PARA DELIBERACAO DO PLENARIO'
+          })
+        }
+      }
+    );
+
+    expect(result).toMatchObject({
+      status: 'fulfilled',
+      data: {
+        id: 'senado-processo-9046221',
+        title: 'RQS 368/2026',
+        type: 'RQS',
+        number: '368',
+        year: 2026,
+        subject: 'Urgencia para materia',
+        status: 'PRONTO PARA DELIBERACAO DO PLENARIO',
+        officialSummary: 'Detalhe moderno oficial da materia.',
+        officialFullTextUrl: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=10220595',
+        references: [
+          {
+            id: 'senado-processo-9046221-fonte-oficial',
+            type: 'official',
+            title: 'Fonte oficial do processo legislativo',
+            publisher: 'Senado Federal',
+            url: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/174108'
           }
         ]
       },

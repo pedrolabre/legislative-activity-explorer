@@ -5,7 +5,7 @@ import {
 } from '$lib/api/camaraClient';
 import {
   SenadoApiClient,
-  type SenadoMateriaPayload,
+  type SenadoProcessoPayload,
   type SenadoSenadorPayload
 } from '$lib/api/senadoClient';
 import type { LegislativeProposal, LegislativeSource, Parliamentarian } from '$lib/domain';
@@ -14,7 +14,7 @@ import {
   mapCamaraProposicaoToLegislativeProposal
 } from '$lib/mappers/camaraMapper';
 import {
-  mapSenadoMateriaToLegislativeProposal,
+  mapSenadoProcessoToLegislativeProposal,
   mapSenadoSenadorToParliamentarian
 } from '$lib/mappers/senadoMapper';
 import {
@@ -82,7 +82,7 @@ export interface OfficialSearchLimits {
 export type OfficialCamaraSearchClient = Pick<CamaraApiClient, 'getDeputados' | 'getProposicoes'>;
 export type OfficialSenadoSearchClient = Pick<
   SenadoApiClient,
-  'getSenadoresAtuais' | 'searchMaterias'
+  'getSenadoresAtuais' | 'searchProcessos'
 >;
 
 export interface OfficialSearchServiceOptions extends OfficialApiClientFactoryOptions {
@@ -120,6 +120,15 @@ const defaultLimits: OfficialSearchLimits = {
   parliamentariansPerSource: 20,
   proposalsPerSource: 20
 };
+
+const senadoOnlyDirectProposalTypes: DirectProposalQueryType[] = [
+  'RQS',
+  'RQN',
+  'PLS',
+  'PLC',
+  'PRS',
+  'PDS'
+];
 
 function normalizeText(value: string | undefined) {
   return (value ?? '')
@@ -215,6 +224,24 @@ function filterDirectProposalMatches(
   return directQuery
     ? proposals.filter((proposal) => matchesDirectProposalQuery(proposal, directQuery))
     : proposals;
+}
+
+function getSenadoProcessSearchOptions(query: string, directQuery: DirectProposalQuery | null) {
+  if (directQuery) {
+    return {
+      sigla: directQuery.type,
+      numero: directQuery.number,
+      ano: directQuery.year
+    };
+  }
+
+  return {
+    termo: query
+  };
+}
+
+function shouldSearchCamaraProposals(directQuery: DirectProposalQuery | null) {
+  return !directQuery || !senadoOnlyDirectProposalTypes.includes(directQuery.type);
 }
 
 function sortByNeutralText<T>(
@@ -415,27 +442,34 @@ async function searchCamaraSource(
           mapCamaraDeputadoToParliamentarian
         )
       );
+  const proposalSearch = shouldSearchCamaraProposals(directQuery)
+    ? searchGroup('camara', 'proposals', async () => {
+        const mapped = mapPayloads<CamaraProposicaoPayload, LegislativeProposal>(
+          'camara',
+          'proposals',
+          await client.getProposicoes({
+            keywords: directQuery ? undefined : query,
+            siglaTipo: directQuery?.type,
+            numero: directQuery?.number,
+            ano: directQuery?.year,
+            itens: limits.proposalsPerSource
+          }),
+          mapCamaraProposicaoToLegislativeProposal
+        );
+
+        return {
+          items: filterDirectProposalMatches(mapped.items, directQuery),
+          errors: mapped.errors
+        };
+      })
+    : Promise.resolve<GroupSearchResult<LegislativeProposal>>({
+        items: [],
+        errors: [],
+        succeeded: false
+      });
   const [parliamentarianResult, proposalResult] = await Promise.all([
     parliamentarianSearch,
-    searchGroup('camara', 'proposals', async () => {
-      const mapped = mapPayloads<CamaraProposicaoPayload, LegislativeProposal>(
-        'camara',
-        'proposals',
-        await client.getProposicoes({
-          keywords: directQuery ? undefined : query,
-          siglaTipo: directQuery?.type,
-          numero: directQuery?.number,
-          ano: directQuery?.year,
-          itens: limits.proposalsPerSource
-        }),
-        mapCamaraProposicaoToLegislativeProposal
-      );
-
-      return {
-        items: filterDirectProposalMatches(mapped.items, directQuery),
-        errors: mapped.errors
-      };
-    })
+    proposalSearch
   ]);
 
   return buildSourceSearchResult('camara', parliamentarianResult, proposalResult);
@@ -473,13 +507,11 @@ async function searchSenadoSource(
   const [parliamentarianResult, proposalResult] = await Promise.all([
     parliamentarianSearch,
     searchGroup('senado', 'proposals', async () => {
-      const mapped = mapPayloads<SenadoMateriaPayload, LegislativeProposal>(
+      const mapped = mapPayloads<SenadoProcessoPayload, LegislativeProposal>(
         'senado',
         'proposals',
-        await client.searchMaterias({
-          termo: directQuery?.label ?? query
-        }),
-        mapSenadoMateriaToLegislativeProposal
+        await client.searchProcessos(getSenadoProcessSearchOptions(query, directQuery)),
+        mapSenadoProcessoToLegislativeProposal
       );
       const proposals = filterDirectProposalMatches(mapped.items, directQuery);
 

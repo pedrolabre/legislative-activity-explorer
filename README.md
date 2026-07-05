@@ -58,8 +58,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/api/camaraClient.test.ts`: Testes unitários do client da Câmara com `fetch` injetado, timeout controlado, busca/listagem/votações controladas e sem rede real.
 * `src/lib/api/legislativeDataSourceConfig.ts`: Configuracao publica e testavel para escolher chamadas diretas as APIs oficiais ou roteamento futuro por Worker opcional, sem segredos no frontend.
 * `src/lib/api/legislativeDataSourceConfig.test.ts`: Testes unitarios da configuracao de fonte de dados, cobrindo fallback direto, URL publica de proxy, rejeicao de configuracao insegura e `fetch` injetado sem rede real.
-* `src/lib/api/senadoClient.ts`: Client HTTP base do Senado Federal, com tipos mínimos de payload, suporte a JSON por sufixo ou cabeçalho, lista de senadores, pesquisa de matérias, timeout configurável e erro recuperável.
-* `src/lib/api/senadoClient.test.ts`: Testes unitários do client do Senado com `fetch` injetado, timeout controlado, envelopes controlados, busca/listagem controlada e sem rede real.
+* `src/lib/api/senadoClient.ts`: Client HTTP base do Senado Federal, com tipos mínimos de payload, suporte a JSON por sufixo ou cabeçalho, lista de senadores, busca moderna de processos legislativos, compatibilidade explícita com endpoints legados de matérias, timeout configurável e erro recuperável.
+* `src/lib/api/senadoClient.test.ts`: Testes unitários do client do Senado com `fetch` injetado, timeout controlado, envelopes controlados, busca moderna de processos, compatibilidade legada e sem rede real.
 * `src/lib/components/about/AboutPrivacyInfo.svelte`: Área informativa pública sobre finalidade do projeto, neutralidade institucional, privacidade, acessibilidade e consulta a fontes oficiais.
 * `src/lib/components/brand/ProductLogo.svelte`: Componente reutilizavel e acessivel para renderizar o logotipo oficial em SVG sem conversao para PNG.
 * `src/lib/components/conversation/ConversationBubble.svelte`: Balão visual para mensagens da experiência conversacional.
@@ -97,8 +97,8 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/domain/votes.ts`: Constantes, união de posições de voto e contagens agregadas.
 * `src/lib/mappers/camaraMapper.ts`: Mapper da Câmara para normalizar deputados, proposições, temas, votações e votos individuais aos contratos de domínio.
 * `src/lib/mappers/camaraMapper.test.ts`: Testes unitários do mapper da Câmara com payloads completos, parciais, inválidos e votos individuais oficiais controlados.
-* `src/lib/mappers/senadoMapper.ts`: Mapper do Senado para normalizar senadores e matérias aos contratos de domínio.
-* `src/lib/mappers/senadoMapper.test.ts`: Testes unitários do mapper do Senado com payloads aninhados, parciais e inválidos.
+* `src/lib/mappers/senadoMapper.ts`: Mapper do Senado para normalizar senadores, processos legislativos modernos e matérias legadas aos contratos de domínio.
+* `src/lib/mappers/senadoMapper.test.ts`: Testes unitários do mapper do Senado com payloads modernos, legados, aninhados, parciais e inválidos.
 * `src/lib/services/factualSummaryService.ts`: Service interno para aplicar resumos factuais revisados ao detalhe de proposicao sem geracao dinamica.
 * `src/lib/services/factualSummaryService.test.ts`: Testes unitarios do service de resumos factuais, cobrindo aplicacao revisada, descarte de resumo nao catalogado e ausencia de inferencia pela ementa oficial.
 * `src/lib/services/fixtureAdapters.ts`: Adaptadores internos que convertem fixtures controladas para contratos de domínio.
@@ -110,12 +110,12 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/officialApiClientFactory.test.ts`: Testes unitários da factory de clients oficiais com `fetch` injetado, modo direto, modo proxy e sem rede real.
 * `src/lib/services/legislativeIdentifierParser.ts`: Parser legislativo nacional para identificadores de proposições, com tipos explícitos, formatos compactos, hifenizados ou com ano e falhas explicáveis sem heurística sobre nomes de parlamentares.
 * `src/lib/services/legislativeIdentifierParser.test.ts`: Testes unitários do parser legislativo nacional, cobrindo formatos aceitos, tipos oficiais no escopo, nomes de parlamentares e entradas inválidas.
-* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeouts, dados parciais por fonte, clients configurados por direct/proxy e busca direta baseada no parser legislativo nacional.
-* `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha parcial, ordenação neutra, deduplicação objetiva, parser legislativo nacional e sem rede real.
+* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeouts, dados parciais por fonte, clients configurados por direct/proxy, busca direta baseada no parser legislativo nacional e filtros modernos de processos do Senado.
+* `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha parcial, ordenação neutra, deduplicação objetiva, parser legislativo nacional, busca moderna do Senado e sem rede real.
 * `src/lib/services/publicSearchService.ts`: Adapter da busca pública padrão, convertendo `officialSearchService` para o contrato da store e preservando mensagens recuperáveis de falhas oficiais parciais, falhas completas, busca direta ambígua, identificador inválido ou proposição oficial não encontrada.
 * `src/lib/services/publicSearchService.test.ts`: Testes unitários do adapter de busca pública oficial com clients controlados, falha parcial, falha completa, busca direta de proposição, identificador inválido e sem fallback para fixtures.
-* `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com clients configurados por direct/proxy e estados recuperáveis de indisponibilidade, timeout ou falha parcial.
-* `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, indisponibilidade do Senado para matérias associadas e sem rede real.
+* `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição, processo legislativo moderno do Senado ou matéria legada, com clients configurados por direct/proxy e estados recuperáveis de indisponibilidade, timeout ou falha parcial.
+* `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, detalhe moderno do Senado, indisponibilidade do Senado para matérias associadas e sem rede real.
 * `src/lib/services/officialVoteService.ts`: Service isolado para votações oficiais da Câmara associadas à proposição aberta, com detalhe de votação, lista nominal quando disponível, limite de paginação leve e sem fallback para fixtures.
 * `src/lib/services/officialVoteService.test.ts`: Testes unitários das votações oficiais da Câmara com clients controlados, falhas parciais, paginação limitada, indisponibilidade do Senado neste bloco e sem rede real.
 * `src/lib/services/referenceService.ts`: Service interno para combinar referências existentes da proposição com o catálogo revisado e identificar cobertura editorial incompleta.

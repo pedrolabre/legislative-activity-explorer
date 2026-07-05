@@ -11,7 +11,7 @@ import {
 function createEmptySenadoClient(): OfficialSenadoSearchClient {
   return {
     getSenadoresAtuais: async () => [],
-    searchMaterias: async () => []
+    searchProcessos: async () => []
   };
 }
 
@@ -59,7 +59,7 @@ describe('searchOfficialRecords', () => {
   it('combines official sources into separated domain result groups', async () => {
     let camaraDeputadosOptions: unknown;
     let camaraProposicoesOptions: unknown;
-    let senadoMateriaOptions: unknown;
+    let senadoProcessoOptions: unknown;
 
     const camaraClient: OfficialCamaraSearchClient = {
       getDeputados: async (options) => {
@@ -103,19 +103,14 @@ describe('searchOfficialRecords', () => {
           }
         }
       ],
-      searchMaterias: async (options) => {
-        senadoMateriaOptions = options;
+      searchProcessos: async (options) => {
+        senadoProcessoOptions = options;
         return [
           {
-            IdentificacaoMateria: {
-              CodigoMateria: '300',
-              SiglaSubtipoMateria: 'PLS',
-              NumeroMateria: '00003',
-              AnoMateria: '2024'
-            },
-            DadosBasicosMateria: {
-              EmentaMateria: 'Materia relacionada a Ana.'
-            }
+            id: 300,
+            codigoMateria: 301,
+            identificacao: 'PLS 3/2024',
+            ementa: 'Materia relacionada a Ana.'
           }
         ];
       }
@@ -140,7 +135,7 @@ describe('searchOfficialRecords', () => {
       keywords: 'Ana',
       itens: 5
     });
-    expect(senadoMateriaOptions).toEqual({
+    expect(senadoProcessoOptions).toEqual({
       termo: 'Ana'
     });
     expect(result.query).toBe('Ana');
@@ -150,7 +145,7 @@ describe('searchOfficialRecords', () => {
     ]);
     expect(result.proposals.map((proposal) => proposal.id).sort()).toEqual([
       'camara-proposicao-100',
-      'senado-materia-300'
+      'senado-processo-300'
     ]);
     expect(result.sources).toEqual([
       {
@@ -174,7 +169,7 @@ describe('searchOfficialRecords', () => {
     let camaraDeputadosCalled = false;
     let senadoSenadoresCalled = false;
     let camaraProposicoesOptions: unknown;
-    let senadoMateriaOptions: unknown;
+    let senadoProcessoOptions: unknown;
 
     const camaraClient: OfficialCamaraSearchClient = {
       getDeputados: async () => {
@@ -199,8 +194,8 @@ describe('searchOfficialRecords', () => {
         senadoSenadoresCalled = true;
         return [];
       },
-      searchMaterias: async (options) => {
-        senadoMateriaOptions = options;
+      searchProcessos: async (options) => {
+        senadoProcessoOptions = options;
         return [];
       }
     };
@@ -224,11 +219,65 @@ describe('searchOfficialRecords', () => {
     expect(camaraProposicoesOptions).not.toMatchObject({
       keywords: expect.any(String)
     });
-    expect(senadoMateriaOptions).toEqual({
-      termo: 'PL 2630/2020'
+    expect(senadoProcessoOptions).toEqual({
+      sigla: 'PL',
+      numero: '2630',
+      ano: 2020
     });
     expect(result.directProposalResolution).toBe('single');
     expect(result.directProposal?.id).toBe('camara-proposicao-2630');
+    expect(result.parliamentarians).toEqual([]);
+  });
+
+  it('uses modern Senado process filters for a direct Senado matter query with year', async () => {
+    let camaraProposicoesCalled = false;
+    let senadoProcessoOptions: unknown;
+
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => [],
+      getProposicoes: async () => {
+        camaraProposicoesCalled = true;
+        return [];
+      }
+    };
+    const senadoClient: OfficialSenadoSearchClient = {
+      getSenadoresAtuais: async () => [],
+      searchProcessos: async (options) => {
+        senadoProcessoOptions = options;
+        return [
+          {
+            id: 9046221,
+            codigoMateria: 174108,
+            identificacao: 'RQS 368/2026',
+            ementa: 'Requer urgencia para materia.',
+            situacaoAtual: 'PRONTO PARA DELIBERACAO DO PLENARIO',
+            dataApresentacao: '2026-05-12'
+          }
+        ];
+      }
+    };
+
+    const result = await searchOfficialRecords('RQS 368/2026', {
+      camaraClient,
+      senadoClient
+    });
+
+    expect(camaraProposicoesCalled).toBe(false);
+    expect(senadoProcessoOptions).toEqual({
+      sigla: 'RQS',
+      numero: '368',
+      ano: 2026
+    });
+    expect(result.directProposalResolution).toBe('single');
+    expect(result.directProposal).toMatchObject({
+      id: 'senado-processo-9046221',
+      sourceId: '9046221',
+      title: 'RQS 368/2026',
+      type: 'RQS',
+      number: '368',
+      year: 2026,
+      officialSummary: 'Requer urgencia para materia.'
+    });
     expect(result.parliamentarians).toEqual([]);
   });
 
@@ -274,7 +323,7 @@ describe('searchOfficialRecords', () => {
 
   it('uses explicit national legislative types in direct official searches', async () => {
     let camaraProposicoesOptions: unknown;
-    let senadoMateriaOptions: unknown;
+    let senadoProcessoOptions: unknown;
 
     const camaraClient: OfficialCamaraSearchClient = {
       getDeputados: async () => [],
@@ -292,8 +341,8 @@ describe('searchOfficialRecords', () => {
     };
     const senadoClient: OfficialSenadoSearchClient = {
       getSenadoresAtuais: async () => [],
-      searchMaterias: async (options) => {
-        senadoMateriaOptions = options;
+      searchProcessos: async (options) => {
+        senadoProcessoOptions = options;
         return [];
       }
     };
@@ -308,8 +357,10 @@ describe('searchOfficialRecords', () => {
       numero: '1300',
       ano: 2025
     });
-    expect(senadoMateriaOptions).toEqual({
-      termo: 'MPV 1300/2025'
+    expect(senadoProcessoOptions).toEqual({
+      sigla: 'MPV',
+      numero: '1300',
+      ano: 2025
     });
     expect(result.directProposalResolution).toBe('single');
     expect(result.directProposal?.title).toBe('MPV 1300/2025');
@@ -369,7 +420,7 @@ describe('searchOfficialRecords', () => {
         calls += 1;
         return [];
       },
-      searchMaterias: async () => {
+      searchProcessos: async () => {
         calls += 1;
         return [];
       }
@@ -443,7 +494,7 @@ describe('searchOfficialRecords', () => {
           }
         }
       ],
-      searchMaterias: async () => []
+      searchProcessos: async () => []
     };
 
     const result = await searchOfficialRecords('ana', {

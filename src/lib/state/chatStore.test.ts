@@ -229,6 +229,56 @@ describe('chatStore actions', () => {
     });
   });
 
+  it('opens a single direct official Senado process search immediately without a parliamentarian', async () => {
+    const directProposal = {
+      id: 'senado-processo-9046221',
+      source: 'senado' as const,
+      sourceId: '9046221',
+      title: 'RQS 368/2026',
+      type: 'RQS',
+      number: '368',
+      year: 2026,
+      officialSummary: 'Ementa oficial retornada pela busca.',
+      references: []
+    };
+
+    await executeSearch('RQS 368/2026', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [],
+        proposals: [directProposal],
+        directProposal
+      }),
+      getOfficialProposalDetail: async (proposal) => ({
+        status: 'fulfilled',
+        data: {
+          ...proposal,
+          officialSummary: 'Detalhe moderno oficial da matÃ©ria.'
+        },
+        errors: []
+      })
+    });
+
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_DETAIL',
+      historyStack: [],
+      lastQuery: 'RQS 368/2026',
+      parliamentariansFound: [],
+      proposalsFound: [
+        {
+          id: 'senado-processo-9046221'
+        }
+      ],
+      selectedParliamentarian: null,
+      selectedProposal: {
+        id: 'senado-processo-9046221',
+        officialSummary: 'Detalhe moderno oficial da matÃ©ria.'
+      },
+      voteHistory: [],
+      errorMessage: ''
+    });
+  });
+
   it('opens an official proposal result manually without selecting a parliamentarian', async () => {
     await executeSearch('PEC 45', {
       delayMs: 0,

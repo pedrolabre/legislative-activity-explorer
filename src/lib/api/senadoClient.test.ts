@@ -216,7 +216,100 @@ describe('SenadoApiClient', () => {
     });
   });
 
-  it('searches matters by term from the Senado list envelope', async () => {
+  it('fetches a modern legislative process detail by process id', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse({
+          id: 9046221,
+          codigoMateria: 174108,
+          identificacao: 'RQS 368/2026',
+          sigla: 'RQS',
+          numero: '368',
+          ano: 2026,
+          conteudo: {
+            tipo: 'Urgencia para materia',
+            ementa: 'Requer urgencia para materia.'
+          },
+          documento: {
+            dataApresentacao: '2026-05-12',
+            url: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=10220595'
+          }
+        });
+      }
+    });
+
+    await expect(client.getProcessoById(9046221)).resolves.toMatchObject({
+      id: 9046221,
+      codigoMateria: 174108,
+      identificacao: 'RQS 368/2026',
+      conteudo: {
+        ementa: 'Requer urgencia para materia.'
+      }
+    });
+    expect(calls[0]).toBe('https://senado.example/dadosabertos/processo/9046221.json');
+  });
+
+  it('searches modern legislative processes by free term', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse([
+          {
+            id: 9046221,
+            codigoMateria: 174108,
+            identificacao: 'RQS 368/2026',
+            ementa: 'Requer urgencia para materia.'
+          }
+        ]);
+      }
+    });
+
+    const processos = await client.searchProcessos({
+      termo: 'internet'
+    });
+    const url = new URL(calls[0]);
+
+    expect(processos).toEqual([
+      {
+        id: 9046221,
+        codigoMateria: 174108,
+        identificacao: 'RQS 368/2026',
+        ementa: 'Requer urgencia para materia.'
+      }
+    ]);
+    expect(url.origin + url.pathname).toBe('https://senado.example/dadosabertos/processo.json');
+    expect(url.searchParams.get('termo')).toBe('internet');
+  });
+
+  it('searches modern legislative processes by structured identifier filters', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+        return jsonResponse([]);
+      }
+    });
+
+    await client.searchProcessos({
+      sigla: 'RQS',
+      numero: '368',
+      ano: 2026
+    });
+    const url = new URL(calls[0]);
+
+    expect(url.origin + url.pathname).toBe('https://senado.example/dadosabertos/processo.json');
+    expect(url.searchParams.get('sigla')).toBe('RQS');
+    expect(url.searchParams.get('numero')).toBe('368');
+    expect(url.searchParams.get('ano')).toBe('2026');
+  });
+
+  it('keeps the deprecated matter search endpoint available as legacy compatibility', async () => {
     const calls: string[] = [];
     const client = new SenadoApiClient({
       baseUrl: 'https://senado.example/dadosabertos',

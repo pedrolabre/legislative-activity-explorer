@@ -9,12 +9,14 @@ import type {
   SenadoExercicioMandatoPayload,
   SenadoMandatoPayload,
   SenadoMateriaPayload,
+  SenadoProcessoPayload,
   SenadoSenadorPayload
 } from '$lib/api/senadoClient';
 import { OfficialMapperError } from './officialMapperError';
 
 const senadoSenadorOfficialUrl = 'https://www25.senado.leg.br/web/senadores/senador/-/perfil';
 const senadoMateriaOfficialUrl = 'https://www25.senado.leg.br/web/atividade/materias/-/materia';
+const senadoProcessoOfficialApiUrl = 'https://legis.senado.leg.br/dadosabertos/processo';
 const senadoMandateTermLabel = 'Mandato';
 const senadoPublisher = 'Senado Federal';
 
@@ -45,7 +47,7 @@ function normalizeMatterNumber(value: string | number | null | undefined): strin
 }
 
 function requireSourceId(
-  entity: 'senador' | 'materia',
+  entity: 'senador' | 'materia' | 'processo',
   value: string | number | null | undefined
 ) {
   const sourceId = normalizeString(value);
@@ -55,6 +57,25 @@ function requireSourceId(
   }
 
   return sourceId;
+}
+
+function parseProcessoIdentification(value: string | null | undefined) {
+  const normalized = normalizeString(value);
+  const match = normalized?.match(/^([A-Z]{2,5})\s+(\d+)(?:\/(\d{4}))?/i);
+
+  if (!match) {
+    return {
+      type: undefined,
+      number: undefined,
+      year: undefined
+    };
+  }
+
+  return {
+    type: match[1].toLocaleUpperCase('pt-BR'),
+    number: normalizeMatterNumber(match[2]),
+    year: normalizeNumber(match[3])
+  };
 }
 
 function toArray<T>(value: T | T[] | null | undefined): T[] {
@@ -273,8 +294,72 @@ export function mapSenadoMateriaToLegislativeProposal(
   };
 }
 
+export function mapSenadoProcessoToLegislativeProposal(
+  payload: SenadoProcessoPayload
+): LegislativeProposal {
+  const sourceId = requireSourceId('processo', payload.id);
+  const codigoMateria = normalizeString(payload.codigoMateria);
+  const parsedIdentification = parseProcessoIdentification(payload.identificacao);
+  const type =
+    normalizeString(payload.sigla) ??
+    parsedIdentification.type ??
+    normalizeString(payload.descricaoSigla) ??
+    normalizeString(payload.tipoDocumento) ??
+    'Processo';
+  const number = normalizeMatterNumber(payload.numero) ?? parsedIdentification.number;
+  const year = normalizeNumber(payload.ano) ?? parsedIdentification.year;
+  const title =
+    normalizeString(payload.identificacao) ??
+    (type && number && year ? `${type} ${number}/${year}` : undefined) ??
+    (type && number ? `${type} ${number}` : undefined) ??
+    `Processo ${sourceId}`;
+  const officialUrl = codigoMateria
+    ? `${senadoMateriaOfficialUrl}/${codigoMateria}`
+    : `${senadoProcessoOfficialApiUrl}/${sourceId}`;
+
+  return {
+    id: `senado-processo-${sourceId}`,
+    source: 'senado',
+    sourceId,
+    title,
+    type,
+    number,
+    year,
+    status:
+      normalizeString(payload.situacaoAtual) ??
+      mapMateriaStatus({
+        IdentificacaoMateria: {
+          IndicadorTramitando: payload.tramitando
+        }
+      }),
+    subject: normalizeString(payload.conteudo?.tipo) ?? normalizeString(payload.tipoConteudo),
+    presentedAt:
+      normalizeDate(payload.dataApresentacao) ??
+      normalizeDate(payload.documento?.dataApresentacao) ??
+      normalizeDate(payload.dataInicioEfetivo),
+    officialSummary: normalizeString(payload.ementa) ?? normalizeString(payload.conteudo?.ementa),
+    officialUrl,
+    officialFullTextUrl: normalizeString(payload.urlDocumento) ?? normalizeString(payload.documento?.url),
+    references: [
+      {
+        id: `senado-processo-${sourceId}-fonte-oficial`,
+        type: 'official',
+        title: 'Fonte oficial do processo legislativo',
+        publisher: senadoPublisher,
+        url: officialUrl
+      }
+    ]
+  };
+}
+
 export function mapSenadoMateriasToLegislativeProposals(
   payloads: SenadoMateriaPayload[]
 ): LegislativeProposal[] {
   return payloads.map(mapSenadoMateriaToLegislativeProposal);
+}
+
+export function mapSenadoProcessosToLegislativeProposals(
+  payloads: SenadoProcessoPayload[]
+): LegislativeProposal[] {
+  return payloads.map(mapSenadoProcessoToLegislativeProposal);
 }
