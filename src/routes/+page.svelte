@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import AboutPrivacyInfo from '$lib/components/about/AboutPrivacyInfo.svelte';
+  import ProductLogo from '$lib/components/brand/ProductLogo.svelte';
   import ConversationBubble from '$lib/components/conversation/ConversationBubble.svelte';
   import ConversationLog from '$lib/components/conversation/ConversationLog.svelte';
   import ParliamentarianDetail from '$lib/components/parliamentarians/ParliamentarianDetail.svelte';
@@ -570,7 +571,10 @@
     aria-labelledby="home-title"
   >
     <div class="max-w-readable">
-      <p class="text-kicker font-bold uppercase tracking-normal text-accent">Consulta pública</p>
+      <div class="flex min-w-0 items-center gap-3">
+        <ProductLogo showText={false} decorative class="shrink-0" />
+        <p class="text-kicker font-bold uppercase tracking-normal text-accent">Consulta pública</p>
+      </div>
       <h1
         id="home-title"
         class="mt-2 max-w-[18ch] text-3xl font-semibold leading-tight tracking-normal text-ink sm:text-4xl lg:text-4xl"
