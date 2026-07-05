@@ -191,13 +191,13 @@
 
   function toParliamentarianBillView(
     proposal: LegislativeProposal,
-    parliamentarianId: string
+    parliamentarianId?: string
   ): ParliamentarianBillView {
     const hasReviewedFactualSummary = Boolean(proposal.simplifiedSummary?.trim());
 
     return {
       id: proposal.id,
-      parliamentarianId,
+      parliamentarianId: parliamentarianId ?? '',
       identification: proposal.title,
       chamber: getChamberLabel(proposal.source),
       type: proposal.type,
@@ -208,7 +208,9 @@
       status: proposal.status ?? unavailableOfficialFieldLabel,
       currentStageLabel: proposal.source === 'camara' ? 'Tramitação atual' : undefined,
       currentStage: proposal.currentStage,
-      relationship: proposal.relationship ?? unavailableVersionFieldLabel,
+      relationship: parliamentarianId
+        ? proposal.relationship ?? unavailableVersionFieldLabel
+        : proposal.relationship ?? '',
       presentedAt: proposal.presentedAt,
       officialSummary: proposal.officialSummary ?? unavailableOfficialFieldLabel,
       factualSummary: hasReviewedFactualSummary ? proposal.simplifiedSummary : undefined,
@@ -344,10 +346,10 @@
       : null
   );
   let selectedBill: ParliamentarianBillView | null = $derived(
-    chatContext.selectedProposal && chatContext.selectedParliamentarian
+    chatContext.selectedProposal
       ? toParliamentarianBillView(
           chatContext.selectedProposal,
-          chatContext.selectedParliamentarian.id
+          chatContext.selectedParliamentarian?.id
         )
       : null
   );
@@ -403,12 +405,14 @@
       : undefined
   );
   let selectedBillVotes: ParliamentarianVoteView[] = $derived(
-    chatContext.selectedProposal
+    chatContext.selectedProposal && chatContext.selectedParliamentarian
       ? toParliamentarianVoteViews(chatContext.voteHistory, chatContext.selectedParliamentarian)
       : []
   );
   let selectedBillShowsOfficialVotes = $derived(
-    chatContext.selectedProposal ? isOfficialCamaraProposal(chatContext.selectedProposal) : false
+    chatContext.selectedProposal && chatContext.selectedParliamentarian
+      ? isOfficialCamaraProposal(chatContext.selectedProposal)
+      : false
   );
   let selectedBillUnavailableVotesTitle = $derived(
     chatContext.selectedProposal && isOfficialSenadoProposal(chatContext.selectedProposal)
@@ -649,6 +653,7 @@
                 query={submittedSearch.query}
                 results={searchResults}
                 onSelectParliamentarian={handleSelectParliamentarian}
+                onSelectProposal={handleSelectBill}
               />
             </ConversationBubble>
           {:else if searchState === 'ERROR'}
@@ -747,7 +752,7 @@
                 onStartOver={handleStartOver}
               />
             </ConversationBubble>
-          {:else if searchState === 'BILL_DETAIL' && selectedParliamentarian && selectedBill}
+          {:else if searchState === 'BILL_DETAIL' && selectedBill}
             <ConversationBubble tone="user">
               <p class="text-xs font-bold uppercase tracking-normal opacity-80">
                 Proposição selecionada
@@ -766,7 +771,7 @@
               {/if}
               <BillDetail
                 bill={selectedBill}
-                parliamentarianName={selectedParliamentarian.name}
+                parliamentarianName={selectedParliamentarian?.name}
                 associatedVotes={selectedBillVotes}
                 showOfficialVotes={selectedBillShowsOfficialVotes}
                 unavailableVotesTitle={selectedBillUnavailableVotesTitle}
@@ -774,6 +779,7 @@
                 onSelectVote={handleSelectVote}
                 onBackToBills={handleBackToBills}
                 onBackToParliamentarian={handleBackToParliamentarian}
+                onBackToResults={handleBackToResults}
                 onStartOver={handleStartOver}
               />
             </ConversationBubble>

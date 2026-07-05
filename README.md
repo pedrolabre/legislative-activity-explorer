@@ -65,12 +65,12 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/components/conversation/ConversationBubble.svelte`: Balão visual para mensagens da experiência conversacional.
 * `src/lib/components/conversation/ConversationLog.svelte`: Container conversacional com semântica de log e atualização acessível.
 * `src/lib/components/parliamentarians/ParliamentarianDetail.svelte`: Perfil factual de parlamentar com foto quando disponível, alternativa acessível sem foto e controles para abrir proposições e votações associadas.
-* `src/lib/components/proposals/BillDetail.svelte`: Detalhe factual de proposição com dados gerais, ementa oficial, resumo factual revisado apenas quando disponível em catálogo versionado, indisponibilidade neutra para resumo ausente, fontes e referências revisadas.
+* `src/lib/components/proposals/BillDetail.svelte`: Detalhe factual de proposição com dados gerais, ementa oficial, resumo factual revisado apenas quando disponível em catálogo versionado, indisponibilidade neutra para resumo ausente, fontes e referências revisadas, aceitando abertura associada a parlamentar ou consulta direta.
 * `src/lib/components/proposals/BillDetail.test.ts`: Testes unitários do detalhe de proposição, cobrindo separação entre ementa oficial, resumo factual revisado e resumo indisponível.
 * `src/lib/components/proposals/ParliamentarianBills.svelte`: Lista factual de proposições associadas a parlamentar, com dados parciais tratados de forma neutra.
 * `src/lib/components/search/InitialSearchForm.svelte`: Formulário inicial de busca com label, envio por `Enter` e validação local.
-* `src/lib/components/search/SearchResultCard.svelte`: Card factual para item de resultado de parlamentar ou proposição, com abertura de perfil para parlamentares.
-* `src/lib/components/search/SearchResults.svelte`: Lista de resultados agrupada por parlamentares e proposições, incluindo estado vazio e seleção de parlamentar.
+* `src/lib/components/search/SearchResultCard.svelte`: Card factual para item de resultado de parlamentar ou proposição, com abertura de perfil para parlamentares e abertura de detalhe para proposições oficiais.
+* `src/lib/components/search/SearchResults.svelte`: Lista de resultados agrupada por parlamentares e proposições, incluindo estado vazio, seleção de parlamentar e seleção de proposição oficial.
 * `src/lib/components/votes/BillVotes.svelte`: Detalhe factual de votação com identificação da proposição, resultado quando disponível, contagens agregadas, lista nominal e destaque neutro do parlamentar selecionado quando disponível.
 * `src/lib/components/votes/ParliamentarianVotes.svelte`: Lista factual de votações associadas a parlamentar ou à proposição aberta, com cobertura parcial da sessão para parlamentar oficial e dados parciais tratados de forma neutra.
 * `src/lib/components/votes/ParliamentarianVotes.test.ts`: Testes unitários da lista de votações por parlamentar, cobrindo estado vazio oficial específico e cobertura parcial da sessão.
@@ -108,10 +108,10 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/proposalService.test.ts`: Testes unitários do service interno de proposições e das referências associadas.
 * `src/lib/services/officialApiClientFactory.ts`: Factory testável dos clients oficiais, conectando chamadas diretas ou roteamento por proxy público opcional sem segredos no frontend.
 * `src/lib/services/officialApiClientFactory.test.ts`: Testes unitários da factory de clients oficiais com `fetch` injetado, modo direto, modo proxy e sem rede real.
-* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeouts, dados parciais por fonte e clients configurados por direct/proxy.
-* `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha parcial, ordenação neutra, deduplicação objetiva e sem rede real.
-* `src/lib/services/publicSearchService.ts`: Adapter da busca pública padrão, convertendo `officialSearchService` para o contrato da store e preservando mensagens recuperáveis de falhas oficiais parciais ou completas.
-* `src/lib/services/publicSearchService.test.ts`: Testes unitários do adapter de busca pública oficial com clients controlados, falha parcial, falha completa e sem fallback para fixtures.
+* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeouts, dados parciais por fonte, clients configurados por direct/proxy e detecção direta limitada de proposições `PL`, `PEC` e `PLP`.
+* `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha parcial, ordenação neutra, deduplicação objetiva, detecção direta limitada de proposições e sem rede real.
+* `src/lib/services/publicSearchService.ts`: Adapter da busca pública padrão, convertendo `officialSearchService` para o contrato da store e preservando mensagens recuperáveis de falhas oficiais parciais, falhas completas, busca direta ambígua ou proposição oficial não encontrada.
+* `src/lib/services/publicSearchService.test.ts`: Testes unitários do adapter de busca pública oficial com clients controlados, falha parcial, falha completa, busca direta de proposição e sem fallback para fixtures.
 * `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição ou matéria, com clients configurados por direct/proxy e estados recuperáveis de indisponibilidade, timeout ou falha parcial.
 * `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, indisponibilidade do Senado para matérias associadas e sem rede real.
 * `src/lib/services/officialVoteService.ts`: Service isolado para votações oficiais da Câmara associadas à proposição aberta, com detalhe de votação, lista nominal quando disponível, limite de paginação leve e sem fallback para fixtures.
@@ -122,11 +122,11 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/searchService.test.ts`: Testes unitários do service interno de busca inicial.
 * `src/lib/services/voteService.ts`: Service interno para votações associadas e detalhe de votação baseado nas fixtures existentes.
 * `src/lib/services/voteService.test.ts`: Testes unitários do service interno de votações.
-* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com busca pública oficial como caminho padrão, fixtures apenas por injeção explícita, seleção gradual de detalhes oficiais e mensagens recuperáveis quando fontes oficiais retornam dados parciais ou falham.
+* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com busca pública oficial como caminho padrão, fixtures apenas por injeção explícita, seleção gradual de detalhes oficiais, abertura direta de proposição oficial confiável e mensagens recuperáveis quando fontes oficiais retornam dados parciais ou falham.
 * `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo busca oficial padrão mockada, fixtures injetadas explicitamente, detalhes oficiais, dado parcial controlado e sem rede real.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
-* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial oficial, avisos recuperáveis mínimos e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
+* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial oficial, avisos recuperáveis mínimos, detalhe direto de proposição e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
 * `static/_headers`: Cabeçalhos estáticos mínimos para Cloudflare Pages, sem CSP dependente de domínio futuro e sem cache persistente de navegador criado pela aplicação.
 * `static/brand/profile_logo_traced.svg`: Logotipo oficial do produto em SVG original, incorporado como asset vetorial publico.
 * `static/parliamentarians/ana-costa.svg`: Imagem local neutra usada no perfil com foto disponível.

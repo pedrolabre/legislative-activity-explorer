@@ -21,8 +21,13 @@
 
   let {
     result,
-    onSelectParliamentarian
-  }: { result: SearchResult; onSelectParliamentarian?: (id: string) => void } = $props();
+    onSelectParliamentarian,
+    onSelectProposal
+  }: {
+    result: SearchResult;
+    onSelectParliamentarian?: (id: string) => void;
+    onSelectProposal?: (id: string) => void;
+  } = $props();
 
   let resultLabel = $derived(result.kind === 'parliamentarian' ? 'Parlamentar' : 'Proposição');
 
@@ -32,6 +37,14 @@
     }
 
     onSelectParliamentarian?.(result.id);
+  }
+
+  function handleSelectProposal() {
+    if (result.kind !== 'proposal') {
+      return;
+    }
+
+    onSelectProposal?.(result.id);
   }
 </script>
 
@@ -86,5 +99,15 @@
         <dd>{result.status}</dd>
       </div>
     </dl>
+    {#if onSelectProposal}
+      <button
+        type="button"
+        class="mt-4 min-h-11 rounded-ui bg-accent px-4 py-2 text-sm font-bold text-white transition hover:bg-accent-strong"
+        aria-label={`Ver detalhe de ${result.title}`}
+        onclick={handleSelectProposal}
+      >
+        Ver proposição
+      </button>
+    {/if}
   {/if}
 </article>

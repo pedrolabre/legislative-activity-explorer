@@ -10,7 +10,7 @@
 
   interface ParliamentarianBillView {
     id: string;
-    parliamentarianId: string;
+    parliamentarianId?: string;
     identification: string;
     chamber: string;
     type: string;
@@ -21,7 +21,7 @@
     status: string;
     currentStageLabel?: string;
     currentStage?: string;
-    relationship: string;
+    relationship?: string;
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
@@ -47,10 +47,11 @@
     onSelectVote = () => undefined,
     onBackToBills,
     onBackToParliamentarian,
+    onBackToResults,
     onStartOver
   }: {
     bill: ParliamentarianBillView;
-    parliamentarianName: string;
+    parliamentarianName?: string;
     associatedVotes?: ParliamentarianVoteView[];
     showOfficialVotes?: boolean;
     unavailableVotesTitle?: string;
@@ -58,6 +59,7 @@
     onSelectVote?: (id: string) => void;
     onBackToBills: () => void;
     onBackToParliamentarian: () => void;
+    onBackToResults?: () => void;
     onStartOver: () => void;
   } = $props();
 
@@ -80,7 +82,11 @@
       {bill.identification}
     </h3>
     <p class="mt-3 text-sm leading-6 text-ink-muted">
-      Registro associado a <span class="font-medium text-ink">{parliamentarianName}</span>.
+      {#if parliamentarianName}
+        Registro associado a <span class="font-medium text-ink">{parliamentarianName}</span>.
+      {:else}
+        Registro oficial consultado diretamente.
+      {/if}
     </p>
   </header>
 
@@ -121,10 +127,12 @@
         <dt class="font-bold text-ink">Situação</dt>
         <dd>{bill.status}</dd>
       </div>
-      <div>
-        <dt class="font-bold text-ink">Vínculo</dt>
-        <dd>{bill.relationship}</dd>
-      </div>
+      {#if bill.relationship}
+        <div>
+          <dt class="font-bold text-ink">Vínculo</dt>
+          <dd>{bill.relationship}</dd>
+        </div>
+      {/if}
       <div>
         <dt class="font-bold text-ink">Apresentação</dt>
         <dd class:text-ink-muted={!bill.presentedAt}>{formatPresentedAt(bill.presentedAt)}</dd>
@@ -309,20 +317,30 @@
   {/if}
 
   <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:flex-wrap">
-    <button
-      type="button"
-      class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
-      onclick={onBackToBills}
-    >
-      Voltar às proposições
-    </button>
-    <button
-      type="button"
-      class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
-      onclick={onBackToParliamentarian}
-    >
-      Voltar ao perfil
-    </button>
+    {#if parliamentarianName}
+      <button
+        type="button"
+        class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+        onclick={onBackToBills}
+      >
+        Voltar às proposições
+      </button>
+      <button
+        type="button"
+        class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+        onclick={onBackToParliamentarian}
+      >
+        Voltar ao perfil
+      </button>
+    {:else if onBackToResults}
+      <button
+        type="button"
+        class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+        onclick={onBackToResults}
+      >
+        Voltar aos resultados
+      </button>
+    {/if}
     <button
       type="button"
       class="min-h-12 rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"

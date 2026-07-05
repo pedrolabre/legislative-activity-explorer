@@ -12,6 +12,7 @@ export interface SearchResults {
   parliamentarians: Parliamentarian[];
   proposals: LegislativeProposal[];
   recoverableMessage?: string;
+  directProposal?: LegislativeProposal;
 }
 
 export const emptySearchResults: SearchResults = {

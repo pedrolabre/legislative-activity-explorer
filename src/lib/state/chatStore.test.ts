@@ -172,6 +172,111 @@ describe('chatStore actions', () => {
     expect(context.selectedProposal).toBeNull();
   });
 
+  it('opens a single direct official proposal search immediately without a parliamentarian', async () => {
+    const directProposal = {
+      id: 'camara-proposicao-2630',
+      source: 'camara' as const,
+      sourceId: '2630',
+      title: 'PL 2630/2020',
+      type: 'PL',
+      number: '2630',
+      year: 2020,
+      officialSummary: 'Ementa oficial retornada pela busca.',
+      references: []
+    };
+    const officialVotesLoader = vi.fn(async () => ({
+      status: 'fulfilled' as const,
+      data: [],
+      errors: []
+    }));
+
+    await executeSearch('PL 2630/2020', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [],
+        proposals: [directProposal],
+        directProposal
+      }),
+      getOfficialProposalDetail: async (proposal) => ({
+        status: 'fulfilled',
+        data: {
+          ...proposal,
+          officialSummary: 'Detalhe oficial controlado da proposição.'
+        },
+        errors: []
+      }),
+      getOfficialVotesByProposal: officialVotesLoader
+    });
+
+    expect(officialVotesLoader).not.toHaveBeenCalled();
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_DETAIL',
+      historyStack: [],
+      lastQuery: 'PL 2630/2020',
+      parliamentariansFound: [],
+      proposalsFound: [
+        {
+          id: 'camara-proposicao-2630'
+        }
+      ],
+      selectedParliamentarian: null,
+      selectedProposal: {
+        id: 'camara-proposicao-2630',
+        officialSummary: 'Detalhe oficial controlado da proposição.'
+      },
+      voteHistory: [],
+      errorMessage: ''
+    });
+  });
+
+  it('opens an official proposal result manually without selecting a parliamentarian', async () => {
+    await executeSearch('PEC 45', {
+      delayMs: 0,
+      search: () => ({
+        parliamentarians: [],
+        proposals: [
+          {
+            id: 'camara-proposicao-451',
+            source: 'camara',
+            sourceId: '451',
+            title: 'PEC 45/2019',
+            type: 'PEC',
+            number: '45',
+            year: 2019,
+            references: []
+          }
+        ],
+        recoverableMessage:
+          'Mais de uma proposição oficial corresponde a PEC 45. Informe o ano ou selecione um resultado oficial exibido.'
+      })
+    });
+
+    await expect(
+      selectProposalById('camara-proposicao-451', {
+        getOfficialProposalDetail: async (proposal) => ({
+          status: 'fulfilled',
+          data: {
+            ...proposal,
+            officialSummary: 'Detalhe oficial da PEC controlada.'
+          },
+          errors: []
+        })
+      })
+    ).resolves.toBe(true);
+
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_DETAIL',
+      historyStack: ['SEARCH_RESULTS'],
+      selectedParliamentarian: null,
+      selectedProposal: {
+        id: 'camara-proposicao-451',
+        officialSummary: 'Detalhe oficial da PEC controlada.'
+      },
+      voteHistory: [],
+      errorMessage: ''
+    });
+  });
+
   it('resets search results and selections to a new initial context', async () => {
     await executeFixtureSearch('ana');
     await selectParliamentarianById('parliamentarian-ana-costa');

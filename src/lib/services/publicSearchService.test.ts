@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CamaraApiClientError } from '$lib/api/camaraClient';
 import { SenadoApiClientError } from '$lib/api/senadoClient';
 import {
+  getDirectProposalSearchMessage,
   getOfficialSearchRecoverableMessage,
   searchPublicRecords
 } from './publicSearchService';
@@ -56,6 +57,26 @@ describe('searchPublicRecords', () => {
       proposals: [],
       recoverableMessage: ''
     });
+  });
+
+  it('keeps a single direct official proposal available to the store', async () => {
+    const result = await searchPublicRecords('PL 2630/2020', {
+      camaraClient: {
+        getDeputados: async () => [],
+        getProposicoes: async () => [
+          {
+            id: 2630,
+            siglaTipo: 'PL',
+            numero: 2630,
+            ano: 2020
+          }
+        ]
+      },
+      senadoClient: createEmptySenadoClient()
+    });
+
+    expect(result.directProposal?.id).toBe('camara-proposicao-2630');
+    expect(result.recoverableMessage).toBe('');
   });
 
   it('keeps available official results and exposes partial source failures', async () => {
@@ -136,8 +157,48 @@ describe('getOfficialSearchRecoverableMessage', () => {
             proposalCount: 0,
             errors: []
           }
-        ]
+        ],
+        directProposalResolution: 'not-direct-query'
       })
     ).toBe('');
+  });
+
+  it('describes ambiguous direct proposal searches without opening a detail automatically', () => {
+    expect(
+      getDirectProposalSearchMessage({
+        query: 'PEC 45',
+        parliamentarians: [],
+        proposals: [],
+        sources: [],
+        directProposalQuery: {
+          type: 'PEC',
+          number: '45',
+          label: 'PEC 45'
+        },
+        directProposalResolution: 'ambiguous'
+      })
+    ).toBe(
+      'Mais de uma proposição oficial corresponde a PEC 45. Informe o ano ou selecione um resultado oficial exibido.'
+    );
+  });
+
+  it('describes direct proposal searches without official matches', () => {
+    expect(
+      getDirectProposalSearchMessage({
+        query: 'PLP 19/2023',
+        parliamentarians: [],
+        proposals: [],
+        sources: [],
+        directProposalQuery: {
+          type: 'PLP',
+          number: '19',
+          year: 2023,
+          label: 'PLP 19/2023'
+        },
+        directProposalResolution: 'not-found'
+      })
+    ).toBe(
+      'Nenhuma proposição oficial foi encontrada para PLP 19/2023 nas fontes consultadas. Confira tipo, número e ano.'
+    );
   });
 });

@@ -73,6 +73,24 @@ describe('BillDetail', () => {
     expect(html).toContain('rel="noopener noreferrer"');
   });
 
+  it('renders direct proposal detail without a parliamentarian association', () => {
+    const html = renderBillDetail(
+      {
+        relationship: ''
+      },
+      {
+        parliamentarianName: undefined,
+        onBackToResults: () => undefined
+      }
+    );
+
+    expect(html).toContain('Registro oficial consultado diretamente.');
+    expect(html).toContain('Voltar aos resultados');
+    expect(html).not.toContain('Registro associado a');
+    expect(html).not.toContain('Voltar ao perfil');
+    expect(html).not.toContain('Vínculo');
+  });
+
   it('renders reviewed factual summary only when one is provided', () => {
     const html = renderBillDetail({
       factualSummary: 'Resumo factual revisado controlado.'

@@ -25,11 +25,13 @@
   let {
     query,
     results,
-    onSelectParliamentarian
+    onSelectParliamentarian,
+    onSelectProposal
   }: {
     query: string;
     results: SearchResultsView;
     onSelectParliamentarian?: (id: string) => void;
+    onSelectProposal?: (id: string) => void;
   } = $props();
 
   let totalResults = $derived(results.parliamentarians.length + results.proposals.length);
@@ -90,7 +92,7 @@
         <ul class="mt-3 grid gap-3">
           {#each results.proposals as result (result.id)}
             <li>
-              <SearchResultCard {result} />
+              <SearchResultCard {result} {onSelectProposal} />
             </li>
           {/each}
         </ul>

@@ -27,4 +27,28 @@ describe('SearchResults', () => {
 
     expect(html).toContain('Registros exibidos conforme retorno das fontes oficiais consultadas.');
   });
+
+  it('renders an action for official proposal results', () => {
+    const html = render(SearchResults, {
+      props: {
+        query: 'PL 2630/2020',
+        results: {
+          parliamentarians: [],
+          proposals: [
+            {
+              kind: 'proposal',
+              id: 'camara-proposicao-2630',
+              title: 'PL 2630/2020',
+              chamber: 'Câmara dos Deputados',
+              status: 'Em tramitação'
+            }
+          ]
+        },
+        onSelectProposal: () => undefined
+      }
+    }).body;
+
+    expect(html).toContain('Ver proposição');
+    expect(html).toContain('aria-label="Ver detalhe de PL 2630/2020"');
+  });
 });

@@ -32,6 +32,15 @@ import {
 export type OfficialSearchGroup = 'parliamentarians' | 'proposals';
 export type OfficialSearchSourceStatus = 'fulfilled' | 'partial' | 'failed';
 export type OfficialSearchErrorKind = 'client' | 'mapper' | 'timeout' | 'unknown';
+export type DirectProposalQueryType = 'PL' | 'PEC' | 'PLP';
+export type DirectProposalResolution = 'not-direct-query' | 'single' | 'ambiguous' | 'not-found';
+
+export interface DirectProposalQuery {
+  type: DirectProposalQueryType;
+  number: string;
+  year?: number;
+  label: string;
+}
 
 export interface OfficialSearchRecoverableError {
   source: LegislativeSource;
@@ -53,6 +62,9 @@ export interface OfficialSearchResult {
   parliamentarians: Parliamentarian[];
   proposals: LegislativeProposal[];
   sources: OfficialSearchSourceReport[];
+  directProposalQuery?: DirectProposalQuery;
+  directProposal?: LegislativeProposal;
+  directProposalResolution: DirectProposalResolution;
 }
 
 export interface OfficialSearchLimits {
@@ -93,13 +105,16 @@ export const emptyOfficialSearchResult: OfficialSearchResult = {
   query: '',
   parliamentarians: [],
   proposals: [],
-  sources: []
+  sources: [],
+  directProposalResolution: 'not-direct-query'
 };
 
 const defaultLimits: OfficialSearchLimits = {
   parliamentariansPerSource: 20,
   proposalsPerSource: 20
 };
+
+const directProposalQueryPattern = /^(PLP|PEC|PL)\s+(\d{1,6})(?:\s*\/\s*(\d{4}))?$/i;
 
 function normalizeText(value: string | undefined) {
   return (value ?? '')
@@ -112,6 +127,35 @@ function normalizeText(value: string | undefined) {
 
 function getQueryTokens(query: string) {
   return normalizeText(query).split(' ').filter(Boolean);
+}
+
+function normalizeProposalNumber(value: string | undefined) {
+  const normalized = value?.trim().replace(/^0+(?=\d)/, '');
+
+  return normalized || undefined;
+}
+
+export function parseDirectProposalQuery(query: string): DirectProposalQuery | null {
+  const match = query.trim().match(directProposalQueryPattern);
+
+  if (!match) {
+    return null;
+  }
+
+  const type = match[1].toLocaleUpperCase('pt-BR') as DirectProposalQueryType;
+  const number = normalizeProposalNumber(match[2]);
+  const year = match[3] ? Number(match[3]) : undefined;
+
+  if (!number || (year !== undefined && !Number.isInteger(year))) {
+    return null;
+  }
+
+  return {
+    type,
+    number,
+    year,
+    label: year ? `${type} ${number}/${year}` : `${type} ${number}`
+  };
 }
 
 function matchesQuery(query: string, fields: (string | undefined)[]) {
@@ -169,6 +213,26 @@ function getProposalFields(proposal: LegislativeProposal) {
     proposal.status,
     proposal.officialSummary
   ];
+}
+
+function matchesDirectProposalQuery(proposal: LegislativeProposal, directQuery: DirectProposalQuery) {
+  const proposalType = proposal.type.toLocaleUpperCase('pt-BR');
+  const proposalNumber = normalizeProposalNumber(proposal.number);
+
+  if (proposalType !== directQuery.type || proposalNumber !== directQuery.number) {
+    return false;
+  }
+
+  return directQuery.year === undefined || proposal.year === directQuery.year;
+}
+
+function filterDirectProposalMatches(
+  proposals: LegislativeProposal[],
+  directQuery: DirectProposalQuery | null
+) {
+  return directQuery
+    ? proposals.filter((proposal) => matchesDirectProposalQuery(proposal, directQuery))
+    : proposals;
 }
 
 function sortByNeutralText<T>(
@@ -347,33 +411,49 @@ function resolveOfficialSearchClients(options: OfficialSearchServiceOptions) {
 async function searchCamaraSource(
   query: string,
   client: OfficialCamaraSearchClient,
-  limits: OfficialSearchLimits
+  limits: OfficialSearchLimits,
+  directQuery: DirectProposalQuery | null
 ): Promise<SourceSearchResult> {
+  const parliamentarianSearch = directQuery
+    ? Promise.resolve<GroupSearchResult<Parliamentarian>>({
+        items: [],
+        errors: [],
+        succeeded: false
+      })
+    : searchGroup('camara', 'parliamentarians', async () =>
+        mapPayloads<CamaraDeputadoPayload, Parliamentarian>(
+          'camara',
+          'parliamentarians',
+          await client.getDeputados({
+            nome: query,
+            itens: limits.parliamentariansPerSource,
+            ordem: 'ASC',
+            ordenarPor: 'nome'
+          }),
+          mapCamaraDeputadoToParliamentarian
+        )
+      );
   const [parliamentarianResult, proposalResult] = await Promise.all([
-    searchGroup('camara', 'parliamentarians', async () =>
-      mapPayloads<CamaraDeputadoPayload, Parliamentarian>(
-        'camara',
-        'parliamentarians',
-        await client.getDeputados({
-          nome: query,
-          itens: limits.parliamentariansPerSource,
-          ordem: 'ASC',
-          ordenarPor: 'nome'
-        }),
-        mapCamaraDeputadoToParliamentarian
-      )
-    ),
-    searchGroup('camara', 'proposals', async () =>
-      mapPayloads<CamaraProposicaoPayload, LegislativeProposal>(
+    parliamentarianSearch,
+    searchGroup('camara', 'proposals', async () => {
+      const mapped = mapPayloads<CamaraProposicaoPayload, LegislativeProposal>(
         'camara',
         'proposals',
         await client.getProposicoes({
-          keywords: query,
+          keywords: directQuery ? undefined : query,
+          siglaTipo: directQuery?.type,
+          numero: directQuery?.number,
+          ano: directQuery?.year,
           itens: limits.proposalsPerSource
         }),
         mapCamaraProposicaoToLegislativeProposal
-      )
-    )
+      );
+
+      return {
+        items: filterDirectProposalMatches(mapped.items, directQuery),
+        errors: mapped.errors
+      };
+    })
   ]);
 
   return buildSourceSearchResult('camara', parliamentarianResult, proposalResult);
@@ -382,36 +462,47 @@ async function searchCamaraSource(
 async function searchSenadoSource(
   query: string,
   client: OfficialSenadoSearchClient,
-  limits: OfficialSearchLimits
+  limits: OfficialSearchLimits,
+  directQuery: DirectProposalQuery | null
 ): Promise<SourceSearchResult> {
-  const [parliamentarianResult, proposalResult] = await Promise.all([
-    searchGroup('senado', 'parliamentarians', async () => {
-      const mapped = mapPayloads<SenadoSenadorPayload, Parliamentarian>(
-        'senado',
-        'parliamentarians',
-        await client.getSenadoresAtuais(),
-        mapSenadoSenadorToParliamentarian
-      );
+  const parliamentarianSearch = directQuery
+    ? Promise.resolve<GroupSearchResult<Parliamentarian>>({
+        items: [],
+        errors: [],
+        succeeded: false
+      })
+    : searchGroup('senado', 'parliamentarians', async () => {
+        const mapped = mapPayloads<SenadoSenadorPayload, Parliamentarian>(
+          'senado',
+          'parliamentarians',
+          await client.getSenadoresAtuais(),
+          mapSenadoSenadorToParliamentarian
+        );
 
-      return {
-        items: mapped.items
-          .filter((parliamentarian) => matchesQuery(query, getParliamentarianFields(parliamentarian)))
-          .slice(0, limits.parliamentariansPerSource),
-        errors: mapped.errors
-      };
-    }),
+        return {
+          items: mapped.items
+            .filter((parliamentarian) =>
+              matchesQuery(query, getParliamentarianFields(parliamentarian))
+            )
+            .slice(0, limits.parliamentariansPerSource),
+          errors: mapped.errors
+        };
+      });
+  const [parliamentarianResult, proposalResult] = await Promise.all([
+    parliamentarianSearch,
     searchGroup('senado', 'proposals', async () => {
       const mapped = mapPayloads<SenadoMateriaPayload, LegislativeProposal>(
         'senado',
         'proposals',
         await client.searchMaterias({
-          termo: query
+          termo: directQuery?.label ?? query
         }),
         mapSenadoMateriaToLegislativeProposal
       );
+      const proposals = filterDirectProposalMatches(mapped.items, directQuery);
 
       return {
-        items: mapped.items.slice(0, limits.proposalsPerSource),
+        items: proposals.slice(0, limits.proposalsPerSource),
         errors: mapped.errors
       };
     })
@@ -434,10 +525,11 @@ export async function searchOfficialRecords(
     ...defaultLimits,
     ...options.limits
   };
+  const directProposalQuery = parseDirectProposalQuery(normalizedQuery);
   const { camaraClient, senadoClient } = resolveOfficialSearchClients(options);
   const sourceResults = await Promise.all([
-    searchCamaraSource(normalizedQuery, camaraClient, limits),
-    searchSenadoSource(normalizedQuery, senadoClient, limits)
+    searchCamaraSource(normalizedQuery, camaraClient, limits, directProposalQuery),
+    searchSenadoSource(normalizedQuery, senadoClient, limits, directProposalQuery)
   ]);
 
   const parliamentarians = sortByNeutralText(
@@ -454,11 +546,25 @@ export async function searchOfficialRecords(
     (proposal) => proposal.title,
     (proposal) => proposal.id
   );
+  const directProposalMatches = directProposalQuery
+    ? proposals.filter((proposal) => matchesDirectProposalQuery(proposal, directProposalQuery))
+    : [];
+  const directProposalResolution: DirectProposalResolution = directProposalQuery
+    ? directProposalMatches.length === 1
+      ? 'single'
+      : directProposalMatches.length > 1
+        ? 'ambiguous'
+        : 'not-found'
+    : 'not-direct-query';
 
   return {
     query: normalizedQuery,
     parliamentarians,
     proposals,
-    sources: sourceResults.map(buildSourceReport)
+    sources: sourceResults.map(buildSourceReport),
+    directProposalQuery: directProposalQuery ?? undefined,
+    directProposal:
+      directProposalResolution === 'single' ? directProposalMatches[0] : undefined,
+    directProposalResolution
   };
 }

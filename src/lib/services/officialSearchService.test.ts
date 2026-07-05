@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CamaraApiClientError } from '$lib/api/camaraClient';
 import {
   emptyOfficialSearchResult,
+  parseDirectProposalQuery,
   searchOfficialRecords,
   type OfficialCamaraSearchClient,
   type OfficialSenadoSearchClient
@@ -15,6 +16,29 @@ function createEmptySenadoClient(): OfficialSenadoSearchClient {
 }
 
 describe('searchOfficialRecords', () => {
+  it('recognizes only the direct proposal formats scoped to this block', () => {
+    expect(parseDirectProposalQuery('PL 2630/2020')).toEqual({
+      type: 'PL',
+      number: '2630',
+      year: 2020,
+      label: 'PL 2630/2020'
+    });
+    expect(parseDirectProposalQuery('PEC 45')).toEqual({
+      type: 'PEC',
+      number: '45',
+      year: undefined,
+      label: 'PEC 45'
+    });
+    expect(parseDirectProposalQuery('PLP 19/2023')).toEqual({
+      type: 'PLP',
+      number: '19',
+      year: 2023,
+      label: 'PLP 19/2023'
+    });
+    expect(parseDirectProposalQuery('PL2630')).toBeNull();
+    expect(parseDirectProposalQuery('PL-2630')).toBeNull();
+  });
+
   it('combines official sources into separated domain result groups', async () => {
     let camaraDeputadosOptions: unknown;
     let camaraProposicoesOptions: unknown;
@@ -126,6 +150,100 @@ describe('searchOfficialRecords', () => {
         proposalCount: 1,
         errors: []
       }
+    ]);
+  });
+
+  it('uses official Camara proposition filters for a direct proposal query with year', async () => {
+    let camaraDeputadosCalled = false;
+    let senadoSenadoresCalled = false;
+    let camaraProposicoesOptions: unknown;
+    let senadoMateriaOptions: unknown;
+
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => {
+        camaraDeputadosCalled = true;
+        return [];
+      },
+      getProposicoes: async (options) => {
+        camaraProposicoesOptions = options;
+        return [
+          {
+            id: 2630,
+            siglaTipo: 'PL',
+            numero: 2630,
+            ano: 2020,
+            ementa: 'Ementa oficial controlada.'
+          }
+        ];
+      }
+    };
+    const senadoClient: OfficialSenadoSearchClient = {
+      getSenadoresAtuais: async () => {
+        senadoSenadoresCalled = true;
+        return [];
+      },
+      searchMaterias: async (options) => {
+        senadoMateriaOptions = options;
+        return [];
+      }
+    };
+
+    const result = await searchOfficialRecords('PL 2630/2020', {
+      camaraClient,
+      senadoClient,
+      limits: {
+        proposalsPerSource: 5
+      }
+    });
+
+    expect(camaraDeputadosCalled).toBe(false);
+    expect(senadoSenadoresCalled).toBe(false);
+    expect(camaraProposicoesOptions).toMatchObject({
+      siglaTipo: 'PL',
+      numero: '2630',
+      ano: 2020,
+      itens: 5
+    });
+    expect(camaraProposicoesOptions).not.toMatchObject({
+      keywords: expect.any(String)
+    });
+    expect(senadoMateriaOptions).toEqual({
+      termo: 'PL 2630/2020'
+    });
+    expect(result.directProposalResolution).toBe('single');
+    expect(result.directProposal?.id).toBe('camara-proposicao-2630');
+    expect(result.parliamentarians).toEqual([]);
+  });
+
+  it('keeps direct proposal queries with multiple exact official matches in the result list', async () => {
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => [],
+      getProposicoes: async () => [
+        {
+          id: 451,
+          siglaTipo: 'PEC',
+          numero: 45,
+          ano: 2019
+        },
+        {
+          id: 452,
+          siglaTipo: 'PEC',
+          numero: 45,
+          ano: 2023
+        }
+      ]
+    };
+
+    const result = await searchOfficialRecords('PEC 45', {
+      camaraClient,
+      senadoClient: createEmptySenadoClient()
+    });
+
+    expect(result.directProposalResolution).toBe('ambiguous');
+    expect(result.directProposal).toBeUndefined();
+    expect(result.proposals.map((proposal) => proposal.id)).toEqual([
+      'camara-proposicao-451',
+      'camara-proposicao-452'
     ]);
   });
 

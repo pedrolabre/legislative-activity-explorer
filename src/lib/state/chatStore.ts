@@ -60,6 +60,12 @@ export interface NavigateToOptions {
 export interface ExecuteSearchOptions {
   delayMs?: number;
   search?: (query: string) => SearchResults | Promise<SearchResults>;
+  getOfficialProposalDetail?: (
+    proposal: LegislativeProposal
+  ) => Promise<OfficialDetailResult<LegislativeProposal>>;
+  getOfficialVotesByProposal?: (
+    proposal: LegislativeProposal
+  ) => Promise<OfficialVoteListResult<RollCallVote>>;
 }
 
 export interface SelectParliamentarianByIdOptions {
@@ -188,6 +194,50 @@ function applySearchResults(context: ChatContext, query: string, results: Search
   };
 }
 
+function applyDirectProposalSearchResult(
+  context: ChatContext,
+  query: string,
+  results: SearchResults,
+  proposal: LegislativeProposal,
+  voteHistory: RollCallVote[],
+  detailNotice: string
+): ChatContext {
+  const errorMessage = joinRecoverableNotices(
+    results.recoverableMessage?.trim() ?? '',
+    detailNotice
+  );
+  const nextContext = {
+    ...context,
+    lastQuery: query,
+    parliamentariansFound: results.parliamentarians,
+    proposalsFound: results.proposals,
+    selectedParliamentarian: null,
+    parliamentarianProposals: [],
+    selectedProposal: proposal,
+    selectedVote: null,
+    voteHistory,
+    errorMessage
+  };
+
+  if (context.currentState === 'ABOUT') {
+    const nextHistoryStack =
+      context.historyStack.length > 0
+        ? [...context.historyStack.slice(0, -1), 'BILL_DETAIL' as UIState]
+        : ['BILL_DETAIL' as UIState];
+
+    return {
+      ...nextContext,
+      currentState: 'ABOUT',
+      historyStack: nextHistoryStack
+    };
+  }
+
+  return {
+    ...nextContext,
+    currentState: 'BILL_DETAIL'
+  };
+}
+
 function isOfficialParliamentarian(parliamentarian: Parliamentarian) {
   return parliamentarian.id === `${parliamentarian.source}-${parliamentarian.sourceId}`;
 }
@@ -233,7 +283,11 @@ function findParliamentarianInContext(context: ChatContext, id: string) {
 }
 
 function findProposalInContext(context: ChatContext, id: string) {
-  return context.parliamentarianProposals.find((proposal) => proposal.id === id) ?? null;
+  return (
+    context.parliamentarianProposals.find((proposal) => proposal.id === id) ??
+    context.proposalsFound.find((proposal) => proposal.id === id) ??
+    null
+  );
 }
 
 function findVoteInContext(context: ChatContext, id: string) {
@@ -254,6 +308,54 @@ function getOfficialVoteNotice(
   errors: OfficialVoteRecoverableError[] = []
 ) {
   return getRecoverableStatusNotice(status, label, errors);
+}
+
+async function loadProposalOfficialDetail(
+  controlledProposal: LegislativeProposal,
+  options: Pick<SelectProposalByIdOptions, 'getOfficialProposalDetail' | 'getOfficialVotesByProposal'>,
+  includeOfficialVotes: boolean
+) {
+  let proposal = controlledProposal;
+  let voteHistory: RollCallVote[] = [];
+  let errorMessage = '';
+
+  if (!isOfficialProposal(controlledProposal)) {
+    return {
+      proposal,
+      voteHistory,
+      errorMessage
+    };
+  }
+
+  const officialResult = await (options.getOfficialProposalDetail ?? loadOfficialProposalDetail)(
+    controlledProposal
+  );
+
+  proposal = officialResult.data
+    ? mergeDefinedFields(controlledProposal, officialResult.data)
+    : controlledProposal;
+  const proposalNotice = getOfficialDetailNotice(officialResult.status, 'proposição');
+  let proposalVotesNotice = '';
+
+  if (includeOfficialVotes && isOfficialCamaraProposal(proposal)) {
+    const officialVoteResult = await (options.getOfficialVotesByProposal ??
+      loadOfficialVotesByProposal)(proposal);
+
+    voteHistory = officialVoteResult.data;
+    proposalVotesNotice = getOfficialVoteNotice(
+      officialVoteResult.status,
+      'votações da proposição',
+      officialVoteResult.errors
+    );
+  }
+
+  errorMessage = joinRecoverableNotices(proposalNotice, proposalVotesNotice);
+
+  return {
+    proposal,
+    voteHistory,
+    errorMessage
+  };
 }
 
 export function navigateTo(nextState: UIState, options: NavigateToOptions = {}) {
@@ -339,7 +441,31 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
             return;
           }
 
-          chatStore.update((context) => applySearchResults(context, normalizedQuery, results));
+          if (results.directProposal && isOfficialProposal(results.directProposal)) {
+            const directProposalDetail = await loadProposalOfficialDetail(
+              results.directProposal,
+              options,
+              false
+            );
+
+            if (currentSearchId !== searchSequence) {
+              resolve();
+              return;
+            }
+
+            chatStore.update((context) =>
+              applyDirectProposalSearchResult(
+                context,
+                normalizedQuery,
+                results,
+                directProposalDetail.proposal,
+                directProposalDetail.voteHistory,
+                directProposalDetail.errorMessage
+              )
+            );
+          } else {
+            chatStore.update((context) => applySearchResults(context, normalizedQuery, results));
+          }
         } catch {
           if (currentSearchId !== searchSequence) {
             return;
@@ -514,10 +640,6 @@ export async function selectProposalById(id: string, options: SelectProposalById
   const selectedParliamentarian = context.selectedParliamentarian;
   const selectedParliamentarianId = selectedParliamentarian?.id;
 
-  if (!selectedParliamentarian || !selectedParliamentarianId) {
-    return false;
-  }
-
   const contextProposal = findProposalInContext(context, id);
   const baseProposal =
     contextProposal && isOfficialProposal(contextProposal)
@@ -525,17 +647,23 @@ export async function selectProposalById(id: string, options: SelectProposalById
       : null;
 
   if (!baseProposal) {
-    if (isOfficialParliamentarian(selectedParliamentarian) || hasOfficialProposalIdPattern(id)) {
+    if (
+      !selectedParliamentarian ||
+      isOfficialParliamentarian(selectedParliamentarian) ||
+      hasOfficialProposalIdPattern(id)
+    ) {
       return false;
     }
   }
 
   const controlledProposal =
     baseProposal ??
-    (options.getFixtureProposalByIdForParliamentarian ?? getProposalByIdForParliamentarian)(
-      id,
-      selectedParliamentarianId
-    ) ??
+    (selectedParliamentarianId
+      ? (options.getFixtureProposalByIdForParliamentarian ?? getProposalByIdForParliamentarian)(
+          id,
+          selectedParliamentarianId
+        )
+      : null) ??
     contextProposal;
 
   if (!controlledProposal) {
@@ -547,29 +675,15 @@ export async function selectProposalById(id: string, options: SelectProposalById
   let voteHistory = isOfficialProposal(controlledProposal) ? [] : context.voteHistory;
 
   if (isOfficialProposal(controlledProposal)) {
-    const officialResult = await (options.getOfficialProposalDetail ?? loadOfficialProposalDetail)(
-      controlledProposal
+    const proposalDetail = await loadProposalOfficialDetail(
+      controlledProposal,
+      options,
+      Boolean(selectedParliamentarian)
     );
 
-    proposal = officialResult.data
-      ? mergeDefinedFields(controlledProposal, officialResult.data)
-      : controlledProposal;
-    const proposalNotice = getOfficialDetailNotice(officialResult.status, 'proposição');
-    let proposalVotesNotice = '';
-
-    if (isOfficialCamaraProposal(proposal)) {
-      const officialVoteResult = await (options.getOfficialVotesByProposal ??
-        loadOfficialVotesByProposal)(proposal);
-
-      voteHistory = officialVoteResult.data;
-      proposalVotesNotice = getOfficialVoteNotice(
-        officialVoteResult.status,
-        'votações da proposição',
-        officialVoteResult.errors
-      );
-    }
-
-    errorMessage = joinRecoverableNotices(proposalNotice, proposalVotesNotice);
+    proposal = proposalDetail.proposal;
+    errorMessage = proposalDetail.errorMessage;
+    voteHistory = proposalDetail.voteHistory;
   }
 
   navigateTo('BILL_DETAIL', {

@@ -27,6 +27,26 @@ function getSourceReferences(reports: OfficialSearchSourceReport[]) {
   return reports.map((report) => getSourceReference(report.source));
 }
 
+function joinMessages(messages: string[]) {
+  return messages.filter(Boolean).join(' ');
+}
+
+export function getDirectProposalSearchMessage(result: OfficialSearchResult) {
+  if (!result.directProposalQuery) {
+    return '';
+  }
+
+  if (result.directProposalResolution === 'ambiguous') {
+    return `Mais de uma proposição oficial corresponde a ${result.directProposalQuery.label}. Informe o ano ou selecione um resultado oficial exibido.`;
+  }
+
+  if (result.directProposalResolution === 'not-found') {
+    return `Nenhuma proposição oficial foi encontrada para ${result.directProposalQuery.label} nas fontes consultadas. Confira tipo, número e ano.`;
+  }
+
+  return '';
+}
+
 export function getOfficialSearchRecoverableMessage(result: OfficialSearchResult) {
   const reportsWithErrors = getReportsWithErrors(result);
 
@@ -71,6 +91,10 @@ export async function searchPublicRecords(
   return {
     parliamentarians: result.parliamentarians,
     proposals: result.proposals,
-    recoverableMessage: getOfficialSearchRecoverableMessage(result)
+    directProposal: result.directProposal,
+    recoverableMessage: joinMessages([
+      getDirectProposalSearchMessage(result),
+      getOfficialSearchRecoverableMessage(result)
+    ])
   };
 }
