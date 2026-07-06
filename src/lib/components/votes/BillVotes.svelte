@@ -2,7 +2,10 @@
   import VoteBadge from '$lib/components/votes/VoteBadge.svelte';
   import type { ParliamentarianVoteView } from '$lib/domain';
   import { formatVotedAt } from '$lib/ui/dateFormatters';
-  import { unavailableOfficialFieldLabel as unavailableLabel } from '$lib/ui/officialMessages';
+  import {
+    officialCamaraNominalVotesEmptyMessage,
+    unavailableOfficialFieldLabel as unavailableLabel
+  } from '$lib/ui/officialMessages';
 
   let {
     vote,
@@ -158,7 +161,7 @@
     {:else}
       <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
         <p class="text-sm leading-6 text-ink-muted">
-          Lista nominal não informada pela fonte oficial consultada.
+          {officialCamaraNominalVotesEmptyMessage}
         </p>
       </div>
     {/if}

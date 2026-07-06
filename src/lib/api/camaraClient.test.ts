@@ -242,7 +242,7 @@ describe('CamaraApiClient', () => {
     expect(calls[0]).toBe('https://dados.example/api/v2/proposicoes/9876/temas');
   });
 
-  it('fetches official proposition votes by proposition id without unsupported item parameters', async () => {
+  it('fetches official proposition votes by proposition id with only supported ordering parameters', async () => {
     const calls: string[] = [];
     const client = new CamaraApiClient({
       baseUrl: 'https://dados.example/api/v2',
@@ -265,7 +265,12 @@ describe('CamaraApiClient', () => {
       }
     });
 
-    await expect(client.getProposicaoVotacoesByIdPage(9876)).resolves.toEqual({
+    await expect(
+      client.getProposicaoVotacoesByIdPage(9876, {
+        ordem: 'DESC',
+        ordenarPor: 'dataHoraRegistro'
+      })
+    ).resolves.toEqual({
       data: [
         {
           id: '9876-1',
@@ -285,6 +290,8 @@ describe('CamaraApiClient', () => {
     expect(url.origin + url.pathname).toBe(
       'https://dados.example/api/v2/proposicoes/9876/votacoes'
     );
+    expect(url.searchParams.get('ordem')).toBe('DESC');
+    expect(url.searchParams.get('ordenarPor')).toBe('dataHoraRegistro');
     expect(url.searchParams.has('pagina')).toBe(false);
     expect(url.searchParams.has('itens')).toBe(false);
   });

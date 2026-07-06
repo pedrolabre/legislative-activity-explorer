@@ -124,7 +124,7 @@ function createPaginationLimitError(maxVotesPerProposal: number): OfficialVoteRe
     source: 'camara',
     entity: 'proposal-votes',
     kind: 'pagination-limit',
-    message: `Há mais votações na fonte oficial. Limite máximo desta consulta: ${voteLimitLabel} por proposição. ${backendFutureRequiredMessage}`
+    message: `A fonte oficial retornou mais votações ou indicou paginação adicional. Limite máximo desta consulta: ${voteLimitLabel} por proposição. ${backendFutureRequiredMessage}`
   };
 }
 
@@ -253,7 +253,10 @@ export async function getOfficialVotesByProposal(
   let page;
 
   try {
-    page = await client.getProposicaoVotacoesByIdPage(proposal.sourceId);
+    page = await client.getProposicaoVotacoesByIdPage(proposal.sourceId, {
+      ordem: 'DESC',
+      ordenarPor: 'dataHoraRegistro'
+    });
   } catch (error) {
     return {
       status: 'failed',

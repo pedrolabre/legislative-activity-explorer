@@ -332,19 +332,30 @@ describe('mapCamaraVotacaoToRollCallVote', () => {
     });
   });
 
-  it('keeps non textual approval flags out of the official result field', () => {
-    const vote = mapCamaraVotacaoToRollCallVote(
+  it('maps the official approval flag when textual result is absent', () => {
+    const approvedVote = mapCamaraVotacaoToRollCallVote(
       {
         id: '9876-1',
         descricao: 'Votacao nominal.',
-        aprovacao: true
+        aprovacao: 1
+      },
+      {
+        proposalIdentification: 'PL 2/2024'
+      }
+    );
+    const notApprovedVote = mapCamaraVotacaoToRollCallVote(
+      {
+        id: '9876-2',
+        descricao: 'Votacao nominal.',
+        aprovacao: false
       },
       {
         proposalIdentification: 'PL 2/2024'
       }
     );
 
-    expect(vote.result).toBeUndefined();
+    expect(approvedVote.result).toBe('Aprovada');
+    expect(notApprovedVote.result).toBe('Não aprovada');
   });
 
   it('does not infer an official result from free text descriptions', () => {

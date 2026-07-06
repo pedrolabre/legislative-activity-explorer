@@ -151,6 +151,11 @@ export interface GetCamaraProposicoesOptions {
   ordenarPor?: string;
 }
 
+export interface GetCamaraProposicaoVotacoesByIdOptions {
+  ordem?: 'ASC' | 'DESC';
+  ordenarPor?: 'id' | 'dataHoraRegistro';
+}
+
 export type CamaraFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 export interface CamaraApiClientOptions {
@@ -226,16 +231,23 @@ export class CamaraApiClient {
     return this.requestListPage<CamaraProposicaoTemaPayload>(`proposicoes/${id}/temas`);
   }
 
-  async getProposicaoVotacoesById(id: number | string): Promise<CamaraVotacaoPayload[]> {
-    const page = await this.getProposicaoVotacoesByIdPage(id);
+  async getProposicaoVotacoesById(
+    id: number | string,
+    options: GetCamaraProposicaoVotacoesByIdOptions = {}
+  ): Promise<CamaraVotacaoPayload[]> {
+    const page = await this.getProposicaoVotacoesByIdPage(id, options);
 
     return page.data;
   }
 
   async getProposicaoVotacoesByIdPage(
-    id: number | string
+    id: number | string,
+    options: GetCamaraProposicaoVotacoesByIdOptions = {}
   ): Promise<CamaraApiPage<CamaraVotacaoPayload>> {
-    return this.requestListPage<CamaraVotacaoPayload>(`proposicoes/${id}/votacoes`);
+    return this.requestListPage<CamaraVotacaoPayload>(`proposicoes/${id}/votacoes`, {
+      ordem: options.ordem,
+      ordenarPor: options.ordenarPor
+    });
   }
 
   async getVotacaoById(id: number | string): Promise<CamaraVotacaoPayload> {

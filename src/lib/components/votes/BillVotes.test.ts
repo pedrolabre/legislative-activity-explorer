@@ -11,7 +11,8 @@ function renderBillVotes(overrides = {}) {
         billIdentification: 'PL 2/2024',
         chamber: 'Câmara dos Deputados',
         description: 'Votação nominal oficial.',
-        parliamentarianVoteNotice: 'Lista nominal não informada pela fonte oficial consultada.',
+        parliamentarianVoteNotice:
+          'A fonte oficial não retornou lista nominal para esta votação.',
         individualVotes: [],
         ...overrides
       },
@@ -29,6 +30,7 @@ describe('BillVotes', () => {
 
     expect(html).toContain('Não informado pela fonte oficial consultada.');
     expect(html).toContain('Contagens agregadas não informadas pela fonte oficial consultada.');
-    expect(html).toContain('Lista nominal não informada pela fonte oficial consultada.');
+    expect(html).toContain('A fonte oficial da Câmara não retornou lista nominal para esta votação.');
+    expect(html).toContain('votações simbólicas ou secretas');
   });
 });

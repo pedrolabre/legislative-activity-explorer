@@ -1,7 +1,7 @@
 export const unavailableOfficialFieldLabel = 'Não informado pela fonte oficial consultada.';
 export const unavailableVersionFieldLabel = 'Ainda não conectado nesta versão.';
 export const unavailableNominalVoteListLabel =
-  'Lista nominal não informada pela fonte oficial consultada.';
+  'A fonte oficial não retornou lista nominal para esta votação.';
 
 export const backendFutureRequiredMessage =
   'Exige backend futuro para consulta completa.';
@@ -34,4 +34,7 @@ export const officialParliamentarianStaticCoverageDescription =
   `Ao abrir uma proposição da Câmara com votações oficiais, os votos ficam disponíveis nesta sessão. ${officialParliamentarianVoteHistoryUnavailableMessage}`;
 
 export const officialCamaraProposalVotesEmptyMessage =
-  'Nenhuma votação oficial da Câmara foi retornada para esta proposição nesta consulta.';
+  'A fonte oficial da Câmara retornou lista vazia de votações para esta proposição.';
+
+export const officialCamaraNominalVotesEmptyMessage =
+  'A fonte oficial da Câmara não retornou lista nominal para esta votação. Em votações simbólicas ou secretas, votos individuais podem não ser contabilizados.';

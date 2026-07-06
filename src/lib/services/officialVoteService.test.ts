@@ -33,12 +33,12 @@ function createEmptyCamaraVoteClient(): OfficialCamaraVoteClient {
 
 describe('getOfficialVotesByProposal', () => {
   it('loads Camara votes associated with an official proposal and maps nominal votes', async () => {
-    const requestedProposalIds: Array<string | number> = [];
+    const requestedProposalVotePages: Array<{ id: string | number; options: unknown }> = [];
     const requestedVoteDetails: Array<string | number> = [];
     const requestedNominalVotes: Array<string | number> = [];
     const client: OfficialCamaraVoteClient = {
-      getProposicaoVotacoesByIdPage: async (id) => {
-        requestedProposalIds.push(id);
+      getProposicaoVotacoesByIdPage: async (id, options) => {
+        requestedProposalVotePages.push({ id, options });
 
         return {
           data: [
@@ -91,7 +91,15 @@ describe('getOfficialVotesByProposal', () => {
       camaraClient: client
     });
 
-    expect(requestedProposalIds).toEqual(['100']);
+    expect(requestedProposalVotePages).toEqual([
+      {
+        id: '100',
+        options: {
+          ordem: 'DESC',
+          ordenarPor: 'dataHoraRegistro'
+        }
+      }
+    ]);
     expect(requestedVoteDetails).toEqual(['100-1']);
     expect(requestedNominalVotes).toEqual(['100-1']);
     expect(result).toEqual({
@@ -126,6 +134,18 @@ describe('getOfficialVotesByProposal', () => {
       ]
     });
     expect(result.data[0].counts).toBeUndefined();
+  });
+
+  it('represents an empty official Camara vote list as fulfilled absence', async () => {
+    await expect(
+      getOfficialVotesByProposal(createCamaraProposal(), {
+        camaraClient: createEmptyCamaraVoteClient()
+      })
+    ).resolves.toEqual({
+      status: 'fulfilled',
+      data: [],
+      errors: []
+    });
   });
 
   it('keeps vote data available when the nominal list fails', async () => {
@@ -212,7 +232,7 @@ describe('getOfficialVotesByProposal', () => {
         entity: 'proposal-votes',
         kind: 'pagination-limit',
         message:
-          'Há mais votações na fonte oficial. Limite máximo desta consulta: 1 votação por proposição. Exige backend futuro para consulta completa.'
+          'A fonte oficial retornou mais votações ou indicou paginação adicional. Limite máximo desta consulta: 1 votação por proposição. Exige backend futuro para consulta completa.'
       }
     ]);
   });

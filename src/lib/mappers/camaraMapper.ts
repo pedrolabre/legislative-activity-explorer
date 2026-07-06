@@ -95,21 +95,29 @@ function mapCamaraTipoVoto(value: string | null | undefined): IndividualVote['vo
 }
 
 function normalizeOfficialVoteResult(payload: CamaraVotacaoPayload) {
-  return normalizeString(payload.resultado) ?? normalizeStringTextOnly(payload.aprovacao);
+  return normalizeString(payload.resultado) ?? normalizeOfficialApprovalFlag(payload.aprovacao);
 }
 
-function normalizeStringTextOnly(value: string | number | boolean | null | undefined) {
-  if (typeof value !== 'string') {
-    return undefined;
+function normalizeOfficialApprovalFlag(value: string | number | boolean | null | undefined) {
+  if (value === true || value === 1) {
+    return 'Aprovada';
   }
 
-  const normalized = normalizeString(value);
-
-  if (!normalized || /^(0|1|true|false)$/i.test(normalized)) {
-    return undefined;
+  if (value === false || value === 0) {
+    return 'Não aprovada';
   }
 
-  return normalized;
+  const normalized = normalizeString(value)?.toLocaleLowerCase('pt-BR');
+
+  if (normalized === '1' || normalized === 'true') {
+    return 'Aprovada';
+  }
+
+  if (normalized === '0' || normalized === 'false') {
+    return 'Não aprovada';
+  }
+
+  return undefined;
 }
 
 function buildProposicaoTitle(payload: CamaraProposicaoPayload, sourceId: string) {

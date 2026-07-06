@@ -200,7 +200,7 @@ describe('BillDetail', () => {
 
     expect(html).toContain('Votações da Câmara');
     expect(html).toContain(
-      'Nenhuma votação oficial da Câmara foi retornada para esta proposição nesta consulta.'
+      'A fonte oficial da Câmara retornou lista vazia de votações para esta proposição.'
     );
     expect(html).not.toContain('Nenhuma votação foi retornada pela fonte oficial consultada.');
   });
