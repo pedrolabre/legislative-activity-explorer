@@ -22,7 +22,10 @@ import {
   type OfficialApiClientFactoryOptions
 } from './officialApiClientFactory';
 import {
+  getOfficialClientErrorMessage,
   getOfficialErrorKind,
+  getOfficialErrorStatus,
+  getOfficialMapperErrorMessage,
   getSourceReference,
   isOfficialClientError,
   isOfficialMapperError,
@@ -38,7 +41,10 @@ export { parseDirectProposalQuery } from './legislativeIdentifierParser';
 
 export type OfficialSearchGroup = 'parliamentarians' | 'proposals';
 export type OfficialSearchSourceStatus = 'fulfilled' | 'partial' | 'failed';
-export type OfficialSearchErrorKind = 'client' | 'mapper' | 'timeout' | 'unknown';
+export type OfficialSearchErrorKind = Exclude<
+  OfficialRecoverableErrorKind,
+  'unsupported-source' | 'pagination-limit'
+>;
 export type DirectProposalQueryType = NationalLegislativeIdentifierType;
 export type DirectProposalResolution =
   | 'not-direct-query'
@@ -53,6 +59,7 @@ export interface OfficialSearchRecoverableError {
   group: OfficialSearchGroup;
   kind: OfficialSearchErrorKind;
   message: string;
+  status?: number;
 }
 
 export interface OfficialSearchSourceReport {
@@ -299,19 +306,11 @@ function getErrorMessage(
   const groupLabel = getGroupLabel(group);
 
   if (isOfficialClientError(error)) {
-    if (error.kind === 'timeout') {
-      return `A consulta oficial ${sourceReference} excedeu o tempo limite.`;
-    }
-
-    if (error.kind === 'invalid-payload') {
-      return `Dados oficiais de ${groupLabel} ${sourceReference} vieram incompletos nesta consulta.`;
-    }
-
-    return `A fonte oficial ${sourceReference} não pode ser consultada neste momento.`;
+    return getOfficialClientErrorMessage(sourceReference, groupLabel, error);
   }
 
   if (isOfficialMapperError(error)) {
-    return `Dados oficiais de ${groupLabel} ${sourceReference} vieram incompletos nesta consulta.`;
+    return getOfficialMapperErrorMessage(groupLabel, sourceReference);
   }
 
   return `Falha temporária ao processar dados oficiais de ${groupLabel}.`;
@@ -322,11 +321,14 @@ function toRecoverableError(
   group: OfficialSearchGroup,
   error: unknown
 ): OfficialSearchRecoverableError {
+  const status = getOfficialErrorStatus(error);
+
   return {
     source,
     group,
     kind: getErrorKind(error),
-    message: getErrorMessage(source, group, error)
+    message: getErrorMessage(source, group, error),
+    ...(status !== undefined ? { status } : {})
   };
 }
 

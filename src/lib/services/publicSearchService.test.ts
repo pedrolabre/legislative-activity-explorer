@@ -133,7 +133,34 @@ describe('searchPublicRecords', () => {
 
     expect(result.proposals.map((proposal) => proposal.id)).toEqual(['camara-proposicao-100']);
     expect(result.recoverableMessage).toBe(
-      'Dados oficiais da Câmara dos Deputados vieram incompletos nesta consulta. Os resultados retornados foram exibidos.'
+      'A fonte oficial da Câmara dos Deputados informou indisponibilidade temporária. Os resultados retornados foram exibidos.'
+    );
+  });
+
+  it('describes partial HTTP failures without treating them as incomplete data', async () => {
+    const result = await searchPublicRecords('educacao', {
+      camaraClient: {
+        getDeputados: async () => {
+          throw new CamaraApiClientError('falha http', {
+            kind: 'http',
+            status: 400
+          });
+        },
+        getProposicoes: async () => [
+          {
+            id: 100,
+            siglaTipo: 'PL',
+            numero: 2,
+            ano: 2024
+          }
+        ]
+      },
+      senadoClient: createEmptySenadoClient()
+    });
+
+    expect(result.proposals.map((proposal) => proposal.id)).toEqual(['camara-proposicao-100']);
+    expect(result.recoverableMessage).toBe(
+      'A fonte oficial da Câmara dos Deputados retornou uma falha HTTP nesta consulta. Os resultados retornados foram exibidos.'
     );
   });
 

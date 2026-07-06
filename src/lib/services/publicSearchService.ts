@@ -1,5 +1,6 @@
 import {
   searchOfficialRecords,
+  type OfficialSearchErrorKind,
   type OfficialSearchResult,
   type OfficialSearchServiceOptions,
   type OfficialSearchSourceReport
@@ -29,6 +30,67 @@ function getSourceReferences(reports: OfficialSearchSourceReport[]) {
 
 function joinMessages(messages: string[]) {
   return messages.filter(Boolean).join(' ');
+}
+
+function getReportErrorKinds(reports: OfficialSearchSourceReport[]) {
+  return reports.flatMap((report) => report.errors.map((error) => error.kind));
+}
+
+function getCommonErrorKind(
+  reports: OfficialSearchSourceReport[]
+): OfficialSearchErrorKind | undefined {
+  const kinds = getReportErrorKinds(reports);
+  const firstKind = kinds[0];
+
+  if (!firstKind || kinds.some((kind) => kind !== firstKind)) {
+    return undefined;
+  }
+
+  return firstKind;
+}
+
+function getCommonSourceMessage(reports: OfficialSearchSourceReport[]) {
+  const kind = getCommonErrorKind(reports);
+  const references = formatReferenceList(getSourceReferences(reports));
+  const isSingleSource = reports.length === 1;
+
+  if (!kind) {
+    return '';
+  }
+
+  if (kind === 'timeout') {
+    return isSingleSource
+      ? `A consulta oficial ${references} excedeu o tempo limite.`
+      : `As consultas oficiais ${references} excederam o tempo limite.`;
+  }
+
+  if (kind === 'official-unavailable') {
+    return isSingleSource
+      ? `A fonte oficial ${references} informou indisponibilidade temporária.`
+      : `As fontes oficiais ${references} informaram indisponibilidade temporária.`;
+  }
+
+  if (kind === 'http') {
+    return isSingleSource
+      ? `A fonte oficial ${references} retornou uma falha HTTP nesta consulta.`
+      : `As fontes oficiais ${references} retornaram falha HTTP nesta consulta.`;
+  }
+
+  if (kind === 'invalid-payload') {
+    return `Dados oficiais ${references} vieram em formato inesperado nesta consulta.`;
+  }
+
+  if (kind === 'mapper') {
+    return `Dados oficiais ${references} vieram incompletos nesta consulta.`;
+  }
+
+  if (kind === 'network') {
+    return isSingleSource
+      ? `A fonte oficial ${references} não pôde ser consultada neste momento.`
+      : `As fontes oficiais ${references} não puderam ser consultadas neste momento.`;
+  }
+
+  return '';
 }
 
 export function getDirectProposalSearchMessage(result: OfficialSearchResult) {
@@ -66,10 +128,20 @@ export function getOfficialSearchRecoverableMessage(result: OfficialSearchResult
     : 'A busca pode ser repetida mais tarde.';
 
   if (failedReports.length === result.sources.length && !hasResults) {
-    return 'As fontes oficiais da Câmara dos Deputados e do Senado Federal não puderam ser consultadas neste momento. Tente novamente mais tarde.';
+    const sourceMessage = getCommonSourceMessage(failedReports);
+
+    return sourceMessage
+      ? `${sourceMessage} Tente novamente mais tarde.`
+      : 'As fontes oficiais da Câmara dos Deputados e do Senado Federal não puderam ser consultadas neste momento. Tente novamente mais tarde.';
   }
 
   if (failedReports.length > 0) {
+    const sourceMessage = getCommonSourceMessage(failedReports);
+
+    if (sourceMessage) {
+      return `${sourceMessage} ${suffix}`;
+    }
+
     const failedReferences = formatReferenceList(getSourceReferences(failedReports));
 
     return failedReports.length === 1
@@ -78,6 +150,12 @@ export function getOfficialSearchRecoverableMessage(result: OfficialSearchResult
   }
 
   if (partialReports.length > 0) {
+    const sourceMessage = getCommonSourceMessage(partialReports);
+
+    if (sourceMessage) {
+      return `${sourceMessage} ${suffix}`;
+    }
+
     const partialReferences = formatReferenceList(getSourceReferences(partialReports));
 
     return `Dados oficiais ${partialReferences} vieram incompletos nesta consulta. ${suffix}`;

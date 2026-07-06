@@ -25,7 +25,10 @@ import {
   type OfficialApiClientFactoryOptions
 } from './officialApiClientFactory';
 import {
+  getOfficialClientErrorMessage,
   getOfficialErrorKind,
+  getOfficialErrorStatus,
+  getOfficialMapperErrorMessage,
   getSourceReference,
   isOfficialClientError,
   isOfficialMapperError,
@@ -35,18 +38,17 @@ import { attachEditorialReferencesToProposal } from './referenceService';
 
 export type OfficialDetailEntity = 'parliamentarian' | 'parliamentarian-proposals' | 'proposal';
 export type OfficialDetailStatus = 'fulfilled' | 'partial' | 'unavailable' | 'failed';
-export type OfficialDetailErrorKind =
-  | 'client'
-  | 'mapper'
-  | 'timeout'
-  | 'unsupported-source'
-  | 'unknown';
+export type OfficialDetailErrorKind = Exclude<
+  OfficialRecoverableErrorKind,
+  'pagination-limit'
+>;
 
 export interface OfficialDetailRecoverableError {
   source: LegislativeSource;
   entity: OfficialDetailEntity;
   kind: OfficialDetailErrorKind;
   message: string;
+  status?: number;
 }
 
 export interface OfficialDetailResult<T> {
@@ -104,19 +106,11 @@ function getErrorMessage(
   const entityLabel = getEntityLabel(entity);
 
   if (isOfficialClientError(error)) {
-    if (error.kind === 'timeout') {
-      return `A consulta oficial ${sourceReference} excedeu o tempo limite.`;
-    }
-
-    if (error.kind === 'invalid-payload') {
-      return `Dados oficiais de ${entityLabel} ${sourceReference} vieram incompletos nesta consulta.`;
-    }
-
-    return `Dados oficiais de ${entityLabel} ${sourceReference} não puderam ser carregados neste momento.`;
+    return getOfficialClientErrorMessage(sourceReference, entityLabel, error);
   }
 
   if (isOfficialMapperError(error)) {
-    return `Dados oficiais de ${entityLabel} ${sourceReference} vieram incompletos nesta consulta.`;
+    return getOfficialMapperErrorMessage(entityLabel, sourceReference);
   }
 
   return `Falha temporária ao processar dados oficiais de ${entityLabel}.`;
@@ -129,11 +123,14 @@ function toRecoverableError(
   entity: OfficialDetailEntity,
   error: unknown
 ): OfficialDetailRecoverableError {
+  const status = getOfficialErrorStatus(error);
+
   return {
     source,
     entity,
     kind: getErrorKind(error),
-    message: getErrorMessage(source, entity, error)
+    message: getErrorMessage(source, entity, error),
+    ...(status !== undefined ? { status } : {})
   };
 }
 

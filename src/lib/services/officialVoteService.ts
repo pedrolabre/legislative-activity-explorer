@@ -18,26 +18,25 @@ import {
   type OfficialApiClientFactoryOptions
 } from './officialApiClientFactory';
 import {
+  getOfficialClientErrorMessage,
   getOfficialErrorKind,
+  getOfficialErrorStatus,
+  getOfficialMapperErrorMessage,
   isOfficialClientError,
-  isOfficialMapperError
+  isOfficialMapperError,
+  type OfficialRecoverableErrorKind
 } from './officialNotices';
 
 export type OfficialVoteEntity = 'proposal-votes' | 'vote-detail' | 'individual-votes';
 export type OfficialVoteStatus = 'fulfilled' | 'partial' | 'unavailable' | 'failed';
-export type OfficialVoteErrorKind =
-  | 'client'
-  | 'mapper'
-  | 'timeout'
-  | 'unsupported-source'
-  | 'pagination-limit'
-  | 'unknown';
+export type OfficialVoteErrorKind = OfficialRecoverableErrorKind;
 
 export interface OfficialVoteRecoverableError {
   source: LegislativeSource;
   entity: OfficialVoteEntity;
   kind: OfficialVoteErrorKind;
   message: string;
+  status?: number;
 }
 
 export interface OfficialVoteListResult<T> {
@@ -80,21 +79,14 @@ function getEntityLabel(entity: OfficialVoteEntity) {
 
 function getErrorMessage(entity: OfficialVoteEntity, error: unknown) {
   const entityLabel = getEntityLabel(entity);
+  const sourceReference = 'da Câmara dos Deputados';
 
   if (isOfficialClientError(error)) {
-    if (error.kind === 'timeout') {
-      return `A consulta oficial de ${entityLabel} da Câmara dos Deputados excedeu o tempo limite.`;
-    }
-
-    if (error.kind === 'invalid-payload') {
-      return `Dados oficiais de ${entityLabel} da Câmara dos Deputados vieram incompletos nesta consulta.`;
-    }
-
-    return `Dados oficiais de ${entityLabel} da Câmara dos Deputados não puderam ser carregados neste momento.`;
+    return getOfficialClientErrorMessage(sourceReference, entityLabel, error);
   }
 
   if (isOfficialMapperError(error)) {
-    return `Dados oficiais de ${entityLabel} da Câmara dos Deputados vieram incompletos nesta consulta.`;
+    return getOfficialMapperErrorMessage(entityLabel, sourceReference);
   }
 
   return `Falha temporária ao processar dados oficiais de ${entityLabel}.`;
@@ -104,11 +96,14 @@ function toRecoverableError(
   entity: OfficialVoteEntity,
   error: unknown
 ): OfficialVoteRecoverableError {
+  const status = getOfficialErrorStatus(error);
+
   return {
     source: 'camara',
     entity,
     kind: getErrorKind(error),
-    message: getErrorMessage(entity, error)
+    message: getErrorMessage(entity, error),
+    ...(status !== undefined ? { status } : {})
   };
 }
 

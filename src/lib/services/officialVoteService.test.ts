@@ -182,7 +182,8 @@ describe('getOfficialVotesByProposal', () => {
       expect.objectContaining({
         source: 'camara',
         entity: 'individual-votes',
-        kind: 'client'
+        kind: 'official-unavailable',
+        status: 503
       })
     ]);
   });

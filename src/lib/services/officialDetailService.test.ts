@@ -195,9 +195,10 @@ describe('getOfficialParliamentarianDetail', () => {
         {
           source: 'senado',
           entity: 'parliamentarian',
-          kind: 'client',
+          kind: 'official-unavailable',
           message:
-            'Dados oficiais de parlamentar do Senado Federal não puderam ser carregados neste momento.'
+            'A fonte oficial do Senado Federal informou indisponibilidade temporária. A consulta pode ser repetida mais tarde.',
+          status: 503
         }
       ]
     });
@@ -234,9 +235,10 @@ describe('getOfficialParliamentarianDetail', () => {
         {
           source: 'camara',
           entity: 'parliamentarian',
-          kind: 'client',
+          kind: 'official-unavailable',
           message:
-            'Dados oficiais de parlamentar da Câmara dos Deputados não puderam ser carregados neste momento.'
+            'A fonte oficial da Câmara dos Deputados informou indisponibilidade temporária. A consulta pode ser repetida mais tarde.',
+          status: 503
         }
       ]
     });
@@ -540,7 +542,8 @@ describe('getOfficialProposalDetail', () => {
         {
           source: 'camara',
           entity: 'proposal',
-          kind: 'client'
+          kind: 'official-unavailable',
+          status: 503
         }
       ]
     });
@@ -754,7 +757,8 @@ describe('getOfficialProposalDetail', () => {
           source: 'senado',
           entity: 'proposal',
           kind: 'timeout',
-          message: 'A consulta oficial do Senado Federal excedeu o tempo limite.'
+          message:
+            'A consulta oficial de proposição ou matéria do Senado Federal excedeu o tempo limite.'
         }
       ]
     });

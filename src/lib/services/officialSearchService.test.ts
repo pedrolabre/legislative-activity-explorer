@@ -542,8 +542,10 @@ describe('searchOfficialRecords', () => {
       {
         source: 'camara',
         group: 'parliamentarians',
-        kind: 'client',
-        message: 'A fonte oficial da Câmara dos Deputados não pode ser consultada neste momento.'
+        kind: 'official-unavailable',
+        message:
+          'A fonte oficial da Câmara dos Deputados informou indisponibilidade temporária. A consulta pode ser repetida mais tarde.',
+        status: 503
       }
     ]);
   });
@@ -574,7 +576,63 @@ describe('searchOfficialRecords', () => {
         source: 'camara',
         group: 'parliamentarians',
         kind: 'timeout',
-        message: 'A consulta oficial da Câmara dos Deputados excedeu o tempo limite.'
+        message:
+          'A consulta oficial de parlamentares da Câmara dos Deputados excedeu o tempo limite.'
+      }
+    ]);
+  });
+
+  it('represents HTTP failures separately from official temporary unavailability', async () => {
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => {
+        throw new CamaraApiClientError('bad request', {
+          kind: 'http',
+          status: 400
+        });
+      },
+      getProposicoes: async () => []
+    };
+
+    const result = await searchOfficialRecords('ana', {
+      camaraClient,
+      senadoClient: createEmptySenadoClient()
+    });
+    const camaraReport = result.sources.find((source) => source.source === 'camara');
+
+    expect(camaraReport?.errors).toEqual([
+      {
+        source: 'camara',
+        group: 'parliamentarians',
+        kind: 'http',
+        message: 'A fonte oficial da Câmara dos Deputados retornou uma falha HTTP nesta consulta.',
+        status: 400
+      }
+    ]);
+  });
+
+  it('represents invalid client payloads separately from mapper errors', async () => {
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => [],
+      getProposicoes: async () => {
+        throw new CamaraApiClientError('invalid payload', {
+          kind: 'invalid-payload'
+        });
+      }
+    };
+
+    const result = await searchOfficialRecords('educacao', {
+      camaraClient,
+      senadoClient: createEmptySenadoClient()
+    });
+    const camaraReport = result.sources.find((source) => source.source === 'camara');
+
+    expect(camaraReport?.errors).toEqual([
+      {
+        source: 'camara',
+        group: 'proposals',
+        kind: 'invalid-payload',
+        message:
+          'A fonte oficial da Câmara dos Deputados retornou dados de proposições ou matérias em formato inesperado.'
       }
     ]);
   });
