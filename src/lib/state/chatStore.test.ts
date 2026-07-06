@@ -184,9 +184,17 @@ describe('chatStore actions', () => {
       officialSummary: 'Ementa oficial retornada pela busca.',
       references: []
     };
+    const officialVote: RollCallVote = {
+      id: 'camara-votacao-2630-1',
+      source: 'camara',
+      sourceId: '2630-1',
+      proposalId: 'PL 2630/2020',
+      description: 'Votacao oficial controlada.',
+      individualVotes: []
+    };
     const officialVotesLoader = vi.fn(async () => ({
       status: 'fulfilled' as const,
-      data: [],
+      data: [officialVote],
       errors: []
     }));
 
@@ -208,7 +216,12 @@ describe('chatStore actions', () => {
       getOfficialVotesByProposal: officialVotesLoader
     });
 
-    expect(officialVotesLoader).not.toHaveBeenCalled();
+    expect(officialVotesLoader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'camara-proposicao-2630',
+        officialSummary: expect.stringContaining('Detalhe oficial controlado')
+      })
+    );
     expect(get(chatStore)).toMatchObject({
       currentState: 'BILL_DETAIL',
       historyStack: [],
@@ -222,10 +235,27 @@ describe('chatStore actions', () => {
       selectedParliamentarian: null,
       selectedProposal: {
         id: 'camara-proposicao-2630',
-        officialSummary: 'Detalhe oficial controlado da proposição.'
+        officialSummary: expect.stringContaining('Detalhe oficial controlado')
       },
-      voteHistory: [],
+      voteHistory: [
+        {
+          id: 'camara-votacao-2630-1',
+          proposalId: 'PL 2630/2020'
+        }
+      ],
       errorMessage: ''
+    });
+
+    expect(selectVoteById('camara-votacao-2630-1')).toBe(true);
+    expect(get(chatStore)).toMatchObject({
+      currentState: 'BILL_VOTES',
+      selectedParliamentarian: null,
+      selectedProposal: {
+        id: 'camara-proposicao-2630'
+      },
+      selectedVote: {
+        id: 'camara-votacao-2630-1'
+      }
     });
   });
 
@@ -301,6 +331,12 @@ describe('chatStore actions', () => {
       })
     });
 
+    const officialVotesLoader = vi.fn(async () => ({
+      status: 'fulfilled' as const,
+      data: [],
+      errors: []
+    }));
+
     await expect(
       selectProposalById('camara-proposicao-451', {
         getOfficialProposalDetail: async (proposal) => ({
@@ -310,10 +346,17 @@ describe('chatStore actions', () => {
             officialSummary: 'Detalhe oficial da PEC controlada.'
           },
           errors: []
-        })
+        }),
+        getOfficialVotesByProposal: officialVotesLoader
       })
     ).resolves.toBe(true);
 
+    expect(officialVotesLoader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'camara-proposicao-451',
+        officialSummary: 'Detalhe oficial da PEC controlada.'
+      })
+    );
     expect(get(chatStore)).toMatchObject({
       currentState: 'BILL_DETAIL',
       historyStack: ['SEARCH_RESULTS'],

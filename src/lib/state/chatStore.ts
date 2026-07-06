@@ -452,7 +452,7 @@ export async function executeSearch(query: string, options: ExecuteSearchOptions
             const directProposalDetail = await loadProposalOfficialDetail(
               results.directProposal,
               options,
-              false
+              true
             );
 
             if (currentSearchId !== searchSequence) {
@@ -685,7 +685,7 @@ export async function selectProposalById(id: string, options: SelectProposalById
     const proposalDetail = await loadProposalOfficialDetail(
       controlledProposal,
       options,
-      Boolean(selectedParliamentarian)
+      true
     );
 
     proposal = proposalDetail.proposal;
@@ -709,12 +709,32 @@ export function selectVoteById(id: string, options: SelectVoteByIdOptions = {}) 
   const context = get(chatStore);
   const selectedParliamentarian = context.selectedParliamentarian;
   const selectedParliamentarianId = selectedParliamentarian?.id;
+  const selectedProposal = context.selectedProposal;
+  const contextVote = findVoteInContext(context, id);
 
-  if (!selectedParliamentarian || !selectedParliamentarianId) {
-    return false;
+  if (!selectedParliamentarian) {
+    if (
+      !selectedProposal ||
+      !isOfficialProposal(selectedProposal) ||
+      !contextVote ||
+      contextVote.source !== selectedProposal.source
+    ) {
+      return false;
+    }
+
+    navigateTo('BILL_VOTES', {
+      updates: {
+        selectedVote: contextVote,
+        errorMessage: ''
+      }
+    });
+
+    return true;
   }
 
-  const contextVote = findVoteInContext(context, id);
+  if (!selectedParliamentarianId) {
+    return false;
+  }
 
   if (isOfficialParliamentarian(selectedParliamentarian)) {
     if (!contextVote || contextVote.source !== selectedParliamentarian.source) {

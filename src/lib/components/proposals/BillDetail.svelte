@@ -253,16 +253,18 @@
                       {vote.description}
                     </h5>
                   </div>
-                  <div class="shrink-0">
-                    {#if vote.parliamentarianVote}
-                      <p class="sr-only">Voto registrado</p>
-                      <VoteBadge vote={vote.parliamentarianVote} />
-                    {:else}
-                      <p class="max-w-52 text-sm leading-6 text-ink-muted" role="status">
-                        {vote.parliamentarianVoteNotice}
-                      </p>
-                    {/if}
-                  </div>
+                  {#if parliamentarianName}
+                    <div class="shrink-0">
+                      {#if vote.parliamentarianVote}
+                        <p class="sr-only">Voto registrado</p>
+                        <VoteBadge vote={vote.parliamentarianVote} />
+                      {:else}
+                        <p class="max-w-52 text-sm leading-6 text-ink-muted" role="status">
+                          {vote.parliamentarianVoteNotice}
+                        </p>
+                      {/if}
+                    </div>
+                  {/if}
                 </div>
 
                 <dl class="mt-4 grid gap-3 text-sm leading-6 text-ink-muted sm:grid-cols-2">

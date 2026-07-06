@@ -12,7 +12,7 @@
     onStartOver
   }: {
     vote: ParliamentarianVoteView;
-    parliamentarianName: string;
+    parliamentarianName?: string;
     onBackToVotes: () => void;
     onBackToParliamentarian: () => void;
     onStartOver: () => void;
@@ -45,7 +45,11 @@
       {vote.billIdentification}
     </h3>
     <p class="mt-3 text-sm leading-6 text-ink-muted">
-      Registro associado a <span class="font-medium text-ink">{parliamentarianName}</span>.
+      {#if parliamentarianName}
+        Registro associado a <span class="font-medium text-ink">{parliamentarianName}</span>.
+      {:else}
+        Registro oficial da proposição aberta.
+      {/if}
     </p>
   </header>
 
@@ -70,18 +74,20 @@
           {vote.officialResult ?? unavailableLabel}
         </dd>
       </div>
-      <div class="sm:col-span-2">
-        <dt class="font-bold text-ink">Voto registrado</dt>
-        <dd class="mt-2">
-          {#if vote.parliamentarianVote}
-            <VoteBadge vote={vote.parliamentarianVote} />
-          {:else}
-            <p class="text-sm leading-6 text-ink-muted" role="status">
-              {vote.parliamentarianVoteNotice}
-            </p>
-          {/if}
-        </dd>
-      </div>
+      {#if parliamentarianName}
+        <div class="sm:col-span-2">
+          <dt class="font-bold text-ink">Voto registrado</dt>
+          <dd class="mt-2">
+            {#if vote.parliamentarianVote}
+              <VoteBadge vote={vote.parliamentarianVote} />
+            {:else}
+              <p class="text-sm leading-6 text-ink-muted" role="status">
+                {vote.parliamentarianVoteNotice}
+              </p>
+            {/if}
+          </dd>
+        </div>
+      {/if}
     </dl>
   </section>
 
@@ -166,13 +172,15 @@
     >
       Voltar às votações
     </button>
-    <button
-      type="button"
-      class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
-      onclick={onBackToParliamentarian}
-    >
-      Voltar ao perfil
-    </button>
+    {#if parliamentarianName}
+      <button
+        type="button"
+        class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+        onclick={onBackToParliamentarian}
+      >
+        Voltar ao perfil
+      </button>
+    {/if}
     <button
       type="button"
       class="min-h-12 rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
