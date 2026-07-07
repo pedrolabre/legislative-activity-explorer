@@ -31,7 +31,7 @@
 
 <div class={`inline-flex min-w-0 items-center gap-3 ${className}`}>
   <img
-    src="/brand/profile_logo_traced.svg"
+    src="/brand/legislative-activity-explorer-logo.svg"
     width="1254"
     height="1254"
     alt={imageIsHidden ? '' : label}

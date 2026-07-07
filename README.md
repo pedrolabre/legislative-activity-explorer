@@ -131,7 +131,7 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
 * `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial oficial, avisos recuperáveis mínimos, detalhe direto de proposição, votações por proposição sem parlamentar obrigatório e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
 * `static/_headers`: Cabeçalhos estáticos mínimos para Cloudflare Pages, sem CSP dependente de domínio futuro e sem cache persistente de navegador criado pela aplicação.
-* `static/brand/profile_logo_traced.svg`: Logotipo oficial do produto em SVG original, incorporado como asset vetorial publico.
+* `static/brand/legislative-activity-explorer-logo.svg`: Logotipo oficial do produto em SVG original, incorporado como asset vetorial publico.
 * `static/parliamentarians/ana-costa.svg`: Imagem local neutra usada no perfil com foto disponível.
 * `static/robots.txt`: Configuração inicial de indexação.
 * `workers/legislativeProxy.ts`: Worker opcional e isolado para proxy CORS seguro das APIs oficiais, limitado a `GET`, `OPTIONS`, allowlist estrita e cache temporário de borda.
