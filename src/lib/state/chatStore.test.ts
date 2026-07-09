@@ -9,9 +9,9 @@ import {
   goBack,
   initialChatContext,
   navigateTo,
+  officialParliamentarianSessionVotesCoverageMessage,
   officialParliamentarianVoteHistoryUnavailableMessage,
   officialSenadoAssociatedMattersUnavailableMessage,
-  officialSenadoProposalVotesUnavailableMessage,
   openParliamentarianBills,
   openParliamentarianVotes,
   reset,
@@ -271,6 +271,19 @@ describe('chatStore actions', () => {
       officialSummary: 'Ementa oficial retornada pela busca.',
       references: []
     };
+    const officialVote: RollCallVote = {
+      id: 'senado-votacao-5969',
+      source: 'senado',
+      sourceId: '5969',
+      proposalId: 'RQS 368/2026',
+      description: 'Votacao oficial do Senado controlada.',
+      individualVotes: []
+    };
+    const officialVotesLoader = vi.fn(async () => ({
+      status: 'fulfilled' as const,
+      data: [officialVote],
+      errors: []
+    }));
 
     await executeSearch('RQS 368/2026', {
       delayMs: 0,
@@ -283,12 +296,18 @@ describe('chatStore actions', () => {
         status: 'fulfilled',
         data: {
           ...proposal,
-          officialSummary: 'Detalhe moderno oficial da matÃ©ria.'
+          officialSummary: 'Detalhe moderno oficial da materia.'
         },
         errors: []
-      })
+      }),
+      getOfficialVotesByProposal: officialVotesLoader
     });
 
+    expect(officialVotesLoader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'senado-processo-9046221'
+      })
+    );
     expect(get(chatStore)).toMatchObject({
       currentState: 'BILL_DETAIL',
       historyStack: [],
@@ -302,9 +321,14 @@ describe('chatStore actions', () => {
       selectedParliamentarian: null,
       selectedProposal: {
         id: 'senado-processo-9046221',
-        officialSummary: 'Detalhe moderno oficial da matÃ©ria.'
+        officialSummary: 'Detalhe moderno oficial da materia.'
       },
-      voteHistory: [],
+      voteHistory: [
+        {
+          id: 'senado-votacao-5969',
+          proposalId: 'RQS 368/2026'
+        }
+      ],
       errorMessage: ''
     });
   });
@@ -956,7 +980,7 @@ describe('chatStore actions', () => {
           proposalId: 'PL 2/2024'
         }
       ],
-      errorMessage: officialParliamentarianVoteHistoryUnavailableMessage
+      errorMessage: `${officialParliamentarianVoteHistoryUnavailableMessage} ${officialParliamentarianSessionVotesCoverageMessage}`
     });
 
     const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('unused-fixture-detail'));
@@ -975,7 +999,7 @@ describe('chatStore actions', () => {
     });
   });
 
-  it('represents official Senado votes as unavailable without loading fixture votes', async () => {
+  it('represents official Senado parliamentarian vote history as not loaded without fixture fallback', async () => {
     await executeSearch('maria', {
       delayMs: 0,
       search: () => ({
@@ -1010,7 +1034,7 @@ describe('chatStore actions', () => {
     expect(get(chatStore)).toMatchObject({
       currentState: 'PARLIAMENTARIAN_VOTES',
       voteHistory: [],
-      errorMessage: officialSenadoProposalVotesUnavailableMessage
+      errorMessage: officialParliamentarianVoteHistoryUnavailableMessage
     });
 
     const fixtureVoteDetailLoader = vi.fn(() => createControlledVote('fixture-senado-detail'));

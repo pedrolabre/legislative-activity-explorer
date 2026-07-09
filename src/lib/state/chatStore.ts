@@ -19,7 +19,9 @@ import {
   officialParliamentarianStaticCoverageDescription,
   officialParliamentarianVoteHistoryUnavailableMessage,
   officialSenadoAssociatedMattersUnavailableDescription,
+  officialSenadoAssociatedMattersEmptyMessage,
   officialSenadoAssociatedMattersUnavailableMessage,
+  officialSenadoProposalVotesEmptyMessage,
   officialSenadoProposalVotesUnavailableMessage,
   officialSenadoStaticCoverageDescription
 } from '$lib/ui/officialMessages';
@@ -115,7 +117,9 @@ export {
   officialParliamentarianStaticCoverageDescription,
   officialParliamentarianVoteHistoryUnavailableMessage,
   officialSenadoAssociatedMattersUnavailableDescription,
+  officialSenadoAssociatedMattersEmptyMessage,
   officialSenadoAssociatedMattersUnavailableMessage,
+  officialSenadoProposalVotesEmptyMessage,
   officialSenadoProposalVotesUnavailableMessage,
   officialSenadoStaticCoverageDescription
 };
@@ -265,10 +269,6 @@ function hasOfficialProposalIdPattern(id: string) {
   );
 }
 
-function isOfficialCamaraProposal(proposal: LegislativeProposal) {
-  return proposal.source === 'camara' && isOfficialProposal(proposal);
-}
-
 function mergeDefinedFields<T extends object>(base: T, detail: T): T {
   const merged = { ...base };
 
@@ -344,7 +344,7 @@ async function loadProposalOfficialDetail(
   const proposalNotice = getOfficialDetailNotice(officialResult.status, 'proposição');
   let proposalVotesNotice = '';
 
-  if (includeOfficialVotes && isOfficialCamaraProposal(proposal)) {
+  if (includeOfficialVotes && isOfficialProposal(proposal)) {
     const officialVoteResult = await (options.getOfficialVotesByProposal ??
       loadOfficialVotesByProposal)(proposal);
 
@@ -612,17 +612,13 @@ export function openParliamentarianVotes(options: OpenParliamentarianVotesOption
     voteHistory = context.voteHistory.filter(
       (vote) => vote.source === context.selectedParliamentarian?.source
     );
-    if (context.selectedParliamentarian.source === 'senado') {
-      errorMessage =
-        voteHistory.length > 0
-          ? joinRecoverableNotices(
-              officialSenadoProposalVotesUnavailableMessage,
-              officialParliamentarianSessionVotesCoverageMessage
-            )
-          : officialSenadoProposalVotesUnavailableMessage;
-    } else {
-      errorMessage = officialParliamentarianVoteHistoryUnavailableMessage;
-    }
+    errorMessage =
+      voteHistory.length > 0
+        ? joinRecoverableNotices(
+            officialParliamentarianVoteHistoryUnavailableMessage,
+            officialParliamentarianSessionVotesCoverageMessage
+          )
+        : officialParliamentarianVoteHistoryUnavailableMessage;
   } else {
     const fixtureLoader =
       options.getFixtureVotesByParliamentarianId ?? getVotesByParliamentarianId;

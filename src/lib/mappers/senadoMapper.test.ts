@@ -5,7 +5,9 @@ import {
   mapSenadoMateriasToLegislativeProposals,
   mapSenadoProcessoToLegislativeProposal,
   mapSenadoProcessosToLegislativeProposals,
-  mapSenadoSenadorToParliamentarian
+  mapSenadoRelatoriaToLegislativeProposal,
+  mapSenadoSenadorToParliamentarian,
+  mapSenadoVotacaoToRollCallVote
 } from './senadoMapper';
 
 describe('mapSenadoSenadorToParliamentarian', () => {
@@ -380,6 +382,45 @@ describe('mapSenadoProcessoToLegislativeProposal', () => {
     });
   });
 
+  it('normalizes official Senado process detail authorship, subject and current stage', () => {
+    const proposal = mapSenadoProcessoToLegislativeProposal({
+      id: 7761651,
+      codigoMateria: 137178,
+      identificacao: 'PEC 91/2019',
+      sigla: 'PEC',
+      numero: '91',
+      ano: 2019,
+      conteudo: {
+        ementa: 'Altera o procedimento de apreciacao das medidas provisorias.',
+        assuntoEspecifico: 'Processo legislativo',
+        assuntoGeral: 'Juridico'
+      },
+      documento: {
+        dataApresentacao: '2019-06-05',
+        resumoAutoria: 'Camara dos Deputados',
+        url: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=7962422'
+      },
+      deliberacao: {
+        data: '2019-06-12',
+        tipoDeliberacao: 'Aprovada pelo Plenario',
+        destino: 'A promulgacao'
+      },
+      situacaoAtual: 'APROVADA'
+    });
+
+    expect(proposal).toMatchObject({
+      id: 'senado-processo-7761651',
+      title: 'PEC 91/2019',
+      status: 'APROVADA',
+      currentStage: 'Aprovada pelo Plenario',
+      subject: 'Processo legislativo',
+      authorship: 'Camara dos Deputados',
+      presentedAt: '2019-06-05',
+      officialSummary: 'Altera o procedimento de apreciacao das medidas provisorias.',
+      officialFullTextUrl: 'https://legis.senado.gov.br/sdleg-getter/documento?dm=7962422'
+    });
+  });
+
   it('keeps missing optional process fields undefined without using legacy matter ids', () => {
     const proposal = mapSenadoProcessoToLegislativeProposal({
       id: 9046221
@@ -420,6 +461,132 @@ describe('mapSenadoProcessoToLegislativeProposal', () => {
       mapSenadoProcessoToLegislativeProposal({
         identificacao: 'RQS 368/2026'
       })
+    ).toThrow(SenadoMapperError);
+  });
+});
+
+describe('mapSenadoRelatoriaToLegislativeProposal', () => {
+  it('normalizes a modern Senado rapporteur payload to an associated proposal', () => {
+    const proposal = mapSenadoRelatoriaToLegislativeProposal({
+      id: 9907428,
+      idProcesso: 8751337,
+      codigoMateria: 166176,
+      identificacaoProcesso: 'PL 4438/2024',
+      ementaProcesso: 'Dispensa atletas profissionais de estagio obrigatorio.',
+      autoriaProcesso: 'Senadora Leila Barros (PDT/DF)',
+      tramitando: 'S',
+      dataApresentacaoProcesso: '2024-11-19 11:49:50',
+      descricaoTipoRelator: 'Relator',
+      nomeColegiado: 'Comissao de Esporte'
+    });
+
+    expect(proposal).toEqual({
+      id: 'senado-processo-8751337',
+      source: 'senado',
+      sourceId: '8751337',
+      title: 'PL 4438/2024',
+      type: 'PL',
+      number: '4438',
+      year: 2024,
+      status: 'Em tramitação',
+      relationship: 'Relator',
+      subject: 'Comissao de Esporte',
+      authorship: 'Senadora Leila Barros (PDT/DF)',
+      presentedAt: '2024-11-19',
+      officialSummary: 'Dispensa atletas profissionais de estagio obrigatorio.',
+      officialUrl: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/166176',
+      references: [
+        {
+          id: 'senado-processo-8751337-fonte-oficial',
+          type: 'official',
+          title: 'Fonte oficial do processo legislativo',
+          publisher: 'Senado Federal',
+          url: 'https://www25.senado.leg.br/web/atividade/materias/-/materia/166176'
+        }
+      ]
+    });
+  });
+
+  it('represents a missing relatoria process id as a mapper error', () => {
+    expect(() =>
+      mapSenadoRelatoriaToLegislativeProposal({
+        identificacaoProcesso: 'PL 4438/2024'
+      })
+    ).toThrow(SenadoMapperError);
+  });
+});
+
+describe('mapSenadoVotacaoToRollCallVote', () => {
+  it('normalizes a modern Senado vote payload with supported nominal votes', () => {
+    const vote = mapSenadoVotacaoToRollCallVote(
+      {
+        codigoSessaoVotacao: 5969,
+        dataSessao: '2019-06-12',
+        identificacao: 'PEC 91/2019',
+        descricaoVotacao: 'Proposta de Emenda a Constituicao n. 91, de 2019.',
+        resultadoVotacao: 'A',
+        votos: [
+          {
+            codigoParlamentar: 825,
+            nomeParlamentar: 'Paulo Paim',
+            siglaPartidoParlamentar: 'PT',
+            siglaUFParlamentar: 'RS',
+            siglaVotoParlamentar: 'Sim'
+          },
+          {
+            codigoParlamentar: 900,
+            nomeParlamentar: 'Senadora Controlada',
+            siglaVotoParlamentar: 'Nao'
+          },
+          {
+            codigoParlamentar: 901,
+            nomeParlamentar: 'Presidente',
+            siglaVotoParlamentar: 'P-NRV'
+          }
+        ]
+      },
+      {
+        proposalIdentification: 'PEC 91/2019'
+      }
+    );
+
+    expect(vote).toEqual({
+      id: 'senado-votacao-5969',
+      source: 'senado',
+      sourceId: '5969',
+      proposalId: 'PEC 91/2019',
+      votedAt: '2019-06-12',
+      description: 'Proposta de Emenda a Constituicao n. 91, de 2019.',
+      result: 'A',
+      individualVotes: [
+        {
+          parliamentarianId: 'senado-825',
+          parliamentarianName: 'Paulo Paim',
+          party: 'PT',
+          state: 'RS',
+          vote: 'SIM'
+        },
+        {
+          parliamentarianId: 'senado-900',
+          parliamentarianName: 'Senadora Controlada',
+          party: undefined,
+          state: undefined,
+          vote: 'NAO'
+        }
+      ]
+    });
+  });
+
+  it('represents a missing Senado vote id as a mapper error', () => {
+    expect(() =>
+      mapSenadoVotacaoToRollCallVote(
+        {
+          descricaoVotacao: 'Sem identificador'
+        },
+        {
+          proposalIdentification: 'PEC 91/2019'
+        }
+      )
     ).toThrow(SenadoMapperError);
   });
 });

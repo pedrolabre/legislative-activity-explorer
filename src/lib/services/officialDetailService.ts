@@ -5,6 +5,8 @@ import {
 import {
   SenadoApiClient,
   type SenadoMandatoPayload,
+  type SenadoProcessoPayload,
+  type SenadoRelatoriaPayload,
   type SenadoSenadorPayload
 } from '$lib/api/senadoClient';
 import type { LegislativeProposal, LegislativeSource, Parliamentarian } from '$lib/domain';
@@ -16,9 +18,10 @@ import {
 import {
   mapSenadoMateriaToLegislativeProposal,
   mapSenadoProcessoToLegislativeProposal,
+  mapSenadoRelatoriaToLegislativeProposal,
   mapSenadoSenadorToParliamentarian
 } from '$lib/mappers/senadoMapper';
-import { officialSenadoAssociatedMattersUnavailableMessage } from '$lib/ui/officialMessages';
+import { backendFutureRequiredMessage } from '$lib/ui/officialMessages';
 import { attachReviewedFactualSummaryToProposal } from './factualSummaryService';
 import {
   createOfficialApiClients,
@@ -38,10 +41,7 @@ import { attachEditorialReferencesToProposal } from './referenceService';
 
 export type OfficialDetailEntity = 'parliamentarian' | 'parliamentarian-proposals' | 'proposal';
 export type OfficialDetailStatus = 'fulfilled' | 'partial' | 'unavailable' | 'failed';
-export type OfficialDetailErrorKind = Exclude<
-  OfficialRecoverableErrorKind,
-  'pagination-limit'
->;
+export type OfficialDetailErrorKind = OfficialRecoverableErrorKind;
 
 export interface OfficialDetailRecoverableError {
   source: LegislativeSource;
@@ -73,16 +73,22 @@ export type OfficialCamaraDetailClient = Pick<
 
 export type OfficialSenadoDetailClient = Pick<
   SenadoApiClient,
-  'getSenadorById' | 'getSenadorMandatosById' | 'getMateriaById' | 'getProcessoById'
+  | 'getSenadorById'
+  | 'getSenadorMandatosById'
+  | 'getMateriaById'
+  | 'getProcessoById'
+  | 'searchProcessos'
+  | 'searchRelatorias'
 >;
 
 export interface OfficialDetailServiceOptions extends OfficialApiClientFactoryOptions {
   camaraClient?: OfficialCamaraDetailClient;
   senadoClient?: OfficialSenadoDetailClient;
+  maxSenadoAssociatedProcesses?: number;
 }
 
 function getErrorKind(error: unknown): OfficialDetailErrorKind {
-  return getOfficialErrorKind(error) as Exclude<OfficialRecoverableErrorKind, 'pagination-limit'>;
+  return getOfficialErrorKind(error);
 }
 
 function getEntityLabel(entity: OfficialDetailEntity) {
@@ -116,7 +122,7 @@ function getErrorMessage(
   return `Falha temporária ao processar dados oficiais de ${entityLabel}.`;
 }
 
-export { officialSenadoAssociatedMattersUnavailableMessage };
+const defaultMaxSenadoAssociatedProcesses = 40;
 
 function toRecoverableError(
   source: LegislativeSource,
@@ -131,19 +137,6 @@ function toRecoverableError(
     kind: getErrorKind(error),
     message: getErrorMessage(source, entity, error),
     ...(status !== undefined ? { status } : {})
-  };
-}
-
-function toUnavailableError(
-  source: LegislativeSource,
-  entity: OfficialDetailEntity,
-  message: string
-): OfficialDetailRecoverableError {
-  return {
-    source,
-    entity,
-    kind: 'unsupported-source',
-    message
   };
 }
 
@@ -186,6 +179,161 @@ function mapCamaraAuthorProposals(payloads: CamaraProposicaoPayload[]) {
 
   return {
     proposals,
+    errors
+  };
+}
+
+interface SenadoAssociatedGroupResult {
+  proposals: LegislativeProposal[];
+  errors: OfficialDetailRecoverableError[];
+  succeeded: boolean;
+}
+
+function createSenadoAssociatedLimitError(
+  maxSenadoAssociatedProcesses: number
+): OfficialDetailRecoverableError {
+  const limitLabel =
+    maxSenadoAssociatedProcesses === 1
+      ? '1 registro'
+      : `${maxSenadoAssociatedProcesses} registros`;
+
+  return {
+    source: 'senado',
+    entity: 'parliamentarian-proposals',
+    kind: 'pagination-limit',
+    message: `A fonte oficial do Senado retornou mais autorias ou relatorias do que o limite local desta consulta. Limite maximo: ${limitLabel}. ${backendFutureRequiredMessage}`
+  };
+}
+
+function sortAssociatedProposals(proposals: LegislativeProposal[]) {
+  return [...proposals].sort((left, right) =>
+    left.title.localeCompare(right.title, 'pt-BR', {
+      numeric: true,
+      sensitivity: 'base'
+    })
+  );
+}
+
+function joinProposalRelationships(
+  left: string | undefined,
+  right: string | undefined
+): string | undefined {
+  const relationships = [left, right]
+    .map((relationship) => relationship?.trim())
+    .filter((relationship): relationship is string => Boolean(relationship));
+  const uniqueRelationships = [...new Set(relationships)];
+
+  return uniqueRelationships.length > 0 ? uniqueRelationships.join('; ') : undefined;
+}
+
+function deduplicateAssociatedProposals(proposals: LegislativeProposal[]) {
+  const byId = new Map<string, LegislativeProposal>();
+
+  for (const proposal of proposals) {
+    const existingProposal = byId.get(proposal.id);
+
+    if (!existingProposal) {
+      byId.set(proposal.id, proposal);
+      continue;
+    }
+
+    byId.set(proposal.id, {
+      ...existingProposal,
+      ...proposal,
+      relationship: joinProposalRelationships(
+        existingProposal.relationship,
+        proposal.relationship
+      ),
+      officialSummary: existingProposal.officialSummary ?? proposal.officialSummary,
+      authorship: existingProposal.authorship ?? proposal.authorship,
+      subject: existingProposal.subject ?? proposal.subject,
+      status: existingProposal.status ?? proposal.status,
+      presentedAt: existingProposal.presentedAt ?? proposal.presentedAt
+    });
+  }
+
+  return [...byId.values()];
+}
+
+async function loadSenadoAssociatedGroup<TPayload>(
+  load: () => Promise<TPayload[]>,
+  map: (payload: TPayload) => LegislativeProposal
+): Promise<SenadoAssociatedGroupResult> {
+  const proposals: LegislativeProposal[] = [];
+  const errors: OfficialDetailRecoverableError[] = [];
+
+  try {
+    for (const payload of await load()) {
+      try {
+        proposals.push(map(payload));
+      } catch (error) {
+        errors.push(toRecoverableError('senado', 'parliamentarian-proposals', error));
+      }
+    }
+
+    return {
+      proposals,
+      errors,
+      succeeded: true
+    };
+  } catch (error) {
+    return {
+      proposals,
+      errors: [toRecoverableError('senado', 'parliamentarian-proposals', error)],
+      succeeded: false
+    };
+  }
+}
+
+async function getOfficialSenadoAssociatedProposals(
+  parliamentarian: Parliamentarian,
+  client: OfficialSenadoDetailClient,
+  maxSenadoAssociatedProcesses: number
+): Promise<OfficialDetailListResult<LegislativeProposal>> {
+  const [authorResult, rapporteurResult] = await Promise.all([
+    loadSenadoAssociatedGroup<SenadoProcessoPayload>(
+      () =>
+        client.searchProcessos({
+          codigoParlamentarAutor: parliamentarian.sourceId
+        }),
+      (payload) => ({
+        ...attachEditorialReferencesToProposal(
+          attachReviewedFactualSummaryToProposal(mapSenadoProcessoToLegislativeProposal(payload))
+        ),
+        relationship: 'Autoria'
+      })
+    ),
+    loadSenadoAssociatedGroup<SenadoRelatoriaPayload>(
+      () =>
+        client.searchRelatorias({
+          codigoParlamentar: parliamentarian.sourceId
+        }),
+      (payload) =>
+        attachEditorialReferencesToProposal(
+          attachReviewedFactualSummaryToProposal(mapSenadoRelatoriaToLegislativeProposal(payload))
+        )
+    )
+  ]);
+  const errors = [...authorResult.errors, ...rapporteurResult.errors];
+  const succeededGroups = Number(authorResult.succeeded) + Number(rapporteurResult.succeeded);
+  const proposals = sortAssociatedProposals(
+    deduplicateAssociatedProposals([
+      ...authorResult.proposals,
+      ...rapporteurResult.proposals
+    ])
+  );
+  const limitedProposals = proposals.slice(0, maxSenadoAssociatedProcesses);
+
+  if (limitedProposals.length < proposals.length) {
+    errors.push(createSenadoAssociatedLimitError(maxSenadoAssociatedProcesses));
+  }
+
+  const status: OfficialDetailStatus =
+    errors.length === 0 ? 'fulfilled' : succeededGroups > 0 ? 'partial' : 'failed';
+
+  return {
+    status,
+    data: limitedProposals,
     errors
   };
 }
@@ -320,17 +468,11 @@ export async function getOfficialProposalsByParliamentarian(
   options: OfficialDetailServiceOptions = {}
 ): Promise<OfficialDetailListResult<LegislativeProposal>> {
   if (parliamentarian.source === 'senado') {
-    return {
-      status: 'unavailable',
-      data: [],
-      errors: [
-        toUnavailableError(
-          'senado',
-          'parliamentarian-proposals',
-          officialSenadoAssociatedMattersUnavailableMessage
-        )
-      ]
-    };
+    return getOfficialSenadoAssociatedProposals(
+      parliamentarian,
+      getConfiguredSenadoDetailClient(options),
+      options.maxSenadoAssociatedProcesses ?? defaultMaxSenadoAssociatedProcesses
+    );
   }
 
   try {

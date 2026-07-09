@@ -10,16 +10,22 @@ export const officialSenadoCoverageUnavailableMessage =
   'Cobertura oficial do Senado ainda não conectada nesta versão.';
 
 export const officialSenadoStaticCoverageDescription =
-  `${unavailableVersionFieldLabel} ${backendFutureRequiredMessage}`;
+  `Consulta completa por parlamentar ${backendFutureRequiredMessage.toLocaleLowerCase('pt-BR')}`;
 
 export const officialSenadoAssociatedMattersUnavailableMessage =
-  'Matérias associadas a senador ainda não conectadas nesta versão.';
+  'Matérias associadas a senador não puderam ser carregadas nesta consulta.';
+
+export const officialSenadoAssociatedMattersEmptyMessage =
+  'Nenhuma autoria ou relatoria foi retornada pelo Senado para este senador nesta consulta.';
 
 export const officialSenadoAssociatedMattersUnavailableDescription =
-  `${unavailableVersionFieldLabel} A consulta completa por senador ${backendFutureRequiredMessage.toLocaleLowerCase('pt-BR')}`;
+  `A fonte oficial retornou lista vazia para autoria e relatoria nesta consulta. Consulta completa por senador ${backendFutureRequiredMessage.toLocaleLowerCase('pt-BR')}`;
 
 export const officialSenadoProposalVotesUnavailableMessage =
-  'Votações nominais do Senado ainda não conectadas nesta versão.';
+  'Votações do Senado não puderam ser carregadas nesta consulta.';
+
+export const officialSenadoProposalVotesEmptyMessage =
+  'A fonte oficial do Senado retornou lista vazia de votações para esta proposição.';
 
 export const officialParliamentarianVoteHistoryUnavailableMessage =
   `Histórico completo por parlamentar ${backendFutureRequiredMessage.toLocaleLowerCase('pt-BR')}`;
@@ -31,7 +37,7 @@ export const officialParliamentarianSessionVotesEmptyMessage =
   'Nenhuma votação de proposição aberta foi carregada nesta sessão.';
 
 export const officialParliamentarianStaticCoverageDescription =
-  `Ao abrir uma proposição da Câmara com votações oficiais, os votos ficam disponíveis nesta sessão. ${officialParliamentarianVoteHistoryUnavailableMessage}`;
+  `Ao abrir uma proposição com votações oficiais, os votos ficam disponíveis nesta sessão. ${officialParliamentarianVoteHistoryUnavailableMessage}`;
 
 export const officialCamaraProposalVotesEmptyMessage =
   'A fonte oficial da Câmara retornou lista vazia de votações para esta proposição.';

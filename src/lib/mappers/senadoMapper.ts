@@ -1,4 +1,4 @@
-import type { LegislativeProposal, Parliamentarian } from '$lib/domain';
+import type { IndividualVote, LegislativeProposal, Parliamentarian, RollCallVote } from '$lib/domain';
 import {
   normalizeComparisonToken,
   normalizeDate,
@@ -10,7 +10,10 @@ import type {
   SenadoMandatoPayload,
   SenadoMateriaPayload,
   SenadoProcessoPayload,
-  SenadoSenadorPayload
+  SenadoRelatoriaPayload,
+  SenadoSenadorPayload,
+  SenadoVotacaoPayload,
+  SenadoVotoPayload
 } from '$lib/api/senadoClient';
 import { OfficialMapperError } from './officialMapperError';
 
@@ -212,15 +215,151 @@ function mapMateriaStatus(payload: SenadoMateriaPayload) {
     return decision;
   }
 
-  if (inProgressFlag === 'sim') {
+  if (inProgressFlag === 'sim' || inProgressFlag === 's') {
     return 'Em tramitação';
   }
 
-  if (inProgressFlag === 'nao') {
+  if (inProgressFlag === 'nao' || inProgressFlag === 'n') {
     return 'Não tramita';
   }
 
   return undefined;
+}
+
+function normalizeVoteLabel(value: string | null | undefined) {
+  return normalizeString(value)
+    ?.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleUpperCase('pt-BR');
+}
+
+function mapSenadoTipoVoto(value: string | null | undefined): IndividualVote['vote'] | undefined {
+  const normalized = normalizeVoteLabel(value);
+
+  if (normalized === 'SIM') {
+    return 'SIM';
+  }
+
+  if (normalized === 'NAO') {
+    return 'NAO';
+  }
+
+  if (normalized === 'ABSTENCAO') {
+    return 'ABSTENCAO';
+  }
+
+  if (normalized === 'AUSENTE') {
+    return 'AUSENTE';
+  }
+
+  return undefined;
+}
+
+function mapProcessoStatus(payload: SenadoProcessoPayload) {
+  const currentSituation = normalizeString(payload.situacaoAtual);
+
+  if (currentSituation) {
+    return currentSituation;
+  }
+
+  return mapMateriaStatus({
+    IdentificacaoMateria: {
+      IndicadorTramitando: payload.tramitando
+    }
+  });
+}
+
+function mapProcessoSubject(payload: SenadoProcessoPayload) {
+  return (
+    normalizeString(payload.conteudo?.assuntoEspecifico) ??
+    normalizeString(payload.conteudo?.assuntoGeral) ??
+    normalizeString(payload.conteudo?.tipo) ??
+    normalizeString(payload.tipoConteudo)
+  );
+}
+
+function mapProcessoCurrentStage(payload: SenadoProcessoPayload) {
+  const deliberation =
+    normalizeString(payload.deliberacao?.tipoDeliberacao) ??
+    normalizeString(payload.deliberacao?.destino);
+
+  if (deliberation) {
+    return deliberation;
+  }
+
+  const dispatches = toArray(payload.despachos).filter(
+    (dispatch) => normalizeComparisonToken(dispatch.cancelado) !== 'sim'
+  );
+  const sortedDispatches = [...dispatches].sort((left, right) =>
+    (normalizeDate(right.data) ?? '').localeCompare(normalizeDate(left.data) ?? '')
+  );
+
+  return normalizeString(sortedDispatches[0]?.tipoMotivacao);
+}
+
+function joinUniqueTexts(values: Array<string | undefined>) {
+  const seen = new Set<string>();
+  const texts: string[] = [];
+
+  for (const value of values) {
+    const normalized = normalizeString(value);
+
+    if (!normalized) {
+      continue;
+    }
+
+    const key = normalized.toLocaleLowerCase('pt-BR');
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    texts.push(normalized);
+  }
+
+  return texts.length > 0 ? texts.join('; ') : undefined;
+}
+
+function mapProcessoAuthorship(payload: SenadoProcessoPayload) {
+  return joinUniqueTexts([
+    normalizeString(payload.documento?.resumoAutoria),
+    normalizeString(payload.autoria),
+    ...toArray(payload.autoriaIniciativa).map((author) => normalizeString(author.autor)),
+    ...toArray(payload.documento?.autoria).map((author) => normalizeString(author.autor))
+  ]);
+}
+
+function buildRelatoriaTitle(payload: SenadoRelatoriaPayload, sourceId: string) {
+  const identification = normalizeString(payload.identificacaoProcesso);
+
+  if (identification) {
+    return identification;
+  }
+
+  return `Processo ${sourceId}`;
+}
+
+function mapRelatoriaStatus(payload: SenadoRelatoriaPayload) {
+  return mapMateriaStatus({
+    IdentificacaoMateria: {
+      IndicadorTramitando: payload.tramitando
+    }
+  });
+}
+
+function requireVoteSourceId(payload: SenadoVotacaoPayload) {
+  const sessionCode = normalizeString(payload.codigoSessao);
+  const voteSequence = normalizeString(payload.sequencialVotacao);
+  const sourceId =
+    normalizeString(payload.codigoSessaoVotacao) ??
+    (sessionCode && voteSequence ? `${sessionCode}-${voteSequence}` : undefined);
+
+  if (!sourceId) {
+    throw new SenadoMapperError('votacao', 'id');
+  }
+
+  return sourceId;
 }
 
 export function mapSenadoSenadorToParliamentarian(
@@ -300,6 +439,9 @@ export function mapSenadoProcessoToLegislativeProposal(
   const sourceId = requireSourceId('processo', payload.id);
   const codigoMateria = normalizeString(payload.codigoMateria);
   const parsedIdentification = parseProcessoIdentification(payload.identificacao);
+  const currentStage = mapProcessoCurrentStage(payload);
+  const subject = mapProcessoSubject(payload);
+  const authorship = mapProcessoAuthorship(payload);
   const type =
     normalizeString(payload.sigla) ??
     parsedIdentification.type ??
@@ -325,14 +467,10 @@ export function mapSenadoProcessoToLegislativeProposal(
     type,
     number,
     year,
-    status:
-      normalizeString(payload.situacaoAtual) ??
-      mapMateriaStatus({
-        IdentificacaoMateria: {
-          IndicadorTramitando: payload.tramitando
-        }
-      }),
-    subject: normalizeString(payload.conteudo?.tipo) ?? normalizeString(payload.tipoConteudo),
+    status: mapProcessoStatus(payload),
+    ...(currentStage ? { currentStage } : {}),
+    ...(subject ? { subject } : {}),
+    ...(authorship ? { authorship } : {}),
     presentedAt:
       normalizeDate(payload.dataApresentacao) ??
       normalizeDate(payload.documento?.dataApresentacao) ??
@@ -349,6 +487,93 @@ export function mapSenadoProcessoToLegislativeProposal(
         url: officialUrl
       }
     ]
+  };
+}
+
+export function mapSenadoRelatoriaToLegislativeProposal(
+  payload: SenadoRelatoriaPayload
+): LegislativeProposal {
+  const sourceId = requireSourceId('processo', payload.idProcesso);
+  const codigoMateria = normalizeString(payload.codigoMateria);
+  const parsedIdentification = parseProcessoIdentification(payload.identificacaoProcesso);
+  const type = parsedIdentification.type ?? 'Processo';
+  const officialUrl = codigoMateria
+    ? `${senadoMateriaOfficialUrl}/${codigoMateria}`
+    : `${senadoProcessoOfficialApiUrl}/${sourceId}`;
+
+  return {
+    id: `senado-processo-${sourceId}`,
+    source: 'senado',
+    sourceId,
+    title: buildRelatoriaTitle(payload, sourceId),
+    type,
+    number: parsedIdentification.number,
+    year: parsedIdentification.year,
+    status: mapRelatoriaStatus(payload),
+    relationship: normalizeString(payload.descricaoTipoRelator) ?? 'Relatoria',
+    subject: normalizeString(payload.nomeColegiado) ?? normalizeString(payload.siglaColegiado),
+    authorship: normalizeString(payload.autoriaProcesso),
+    presentedAt: normalizeDate(payload.dataApresentacaoProcesso),
+    officialSummary: normalizeString(payload.ementaProcesso),
+    officialUrl,
+    references: [
+      {
+        id: `senado-processo-${sourceId}-fonte-oficial`,
+        type: 'official',
+        title: 'Fonte oficial do processo legislativo',
+        publisher: senadoPublisher,
+        url: officialUrl
+      }
+    ]
+  };
+}
+
+export function mapSenadoVotosToIndividualVotes(payloads: SenadoVotoPayload[]): IndividualVote[] {
+  const votes: IndividualVote[] = [];
+
+  for (const payload of payloads) {
+    const vote = mapSenadoTipoVoto(payload.siglaVotoParlamentar);
+    const parliamentarianName = normalizeString(payload.nomeParlamentar);
+
+    if (!vote || !parliamentarianName) {
+      continue;
+    }
+
+    const sourceId = normalizeString(payload.codigoParlamentar);
+
+    votes.push({
+      parliamentarianId: sourceId ? `senado-${sourceId}` : undefined,
+      parliamentarianName,
+      party: normalizeString(payload.siglaPartidoParlamentar),
+      state: normalizeString(payload.siglaUFParlamentar),
+      vote
+    });
+  }
+
+  return votes;
+}
+
+export function mapSenadoVotacaoToRollCallVote(
+  payload: SenadoVotacaoPayload,
+  options: {
+    proposalIdentification: string;
+  }
+): RollCallVote {
+  const sourceId = requireVoteSourceId(payload);
+  const description =
+    normalizeString(payload.descricaoVotacao) ??
+    normalizeString(payload.identificacao) ??
+    `Votacao oficial ${sourceId}`;
+
+  return {
+    id: `senado-votacao-${sourceId}`,
+    source: 'senado',
+    sourceId,
+    proposalId: normalizeString(payload.identificacao) ?? options.proposalIdentification,
+    votedAt: normalizeDate(payload.dataSessao),
+    description,
+    result: normalizeString(payload.resultadoVotacao),
+    individualVotes: mapSenadoVotosToIndividualVotes(toArray(payload.votos))
   };
 }
 

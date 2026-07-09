@@ -33,10 +33,9 @@
     officialParliamentarianSessionVotesEmptyMessage,
     officialParliamentarianSessionVotesCoverageMessage,
     officialParliamentarianStaticCoverageDescription,
+    officialSenadoAssociatedMattersEmptyMessage,
     officialSenadoAssociatedMattersUnavailableDescription,
-    officialSenadoAssociatedMattersUnavailableMessage,
-    officialSenadoProposalVotesUnavailableMessage,
-    officialSenadoStaticCoverageDescription,
+    officialSenadoProposalVotesEmptyMessage,
     openParliamentarianBills,
     openParliamentarianVotes,
     reset,
@@ -98,6 +97,7 @@
     currentStageLabel?: string;
     currentStage?: string;
     relationship: string;
+    authorship?: string;
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
@@ -206,11 +206,17 @@
       subjectLabel: getSubjectLabel(proposal),
       subject: proposal.subject,
       status: proposal.status ?? unavailableOfficialFieldLabel,
-      currentStageLabel: proposal.source === 'camara' ? 'Tramitação atual' : undefined,
+      currentStageLabel:
+        proposal.source === 'camara'
+          ? 'Tramitação atual'
+          : proposal.currentStage
+            ? 'Tramitação ou decisão'
+            : undefined,
       currentStage: proposal.currentStage,
       relationship: parliamentarianId
         ? proposal.relationship ?? unavailableVersionFieldLabel
         : proposal.relationship ?? '',
+      authorship: proposal.authorship,
       presentedAt: proposal.presentedAt,
       officialSummary: proposal.officialSummary ?? unavailableOfficialFieldLabel,
       factualSummary: hasReviewedFactualSummary ? proposal.simplifiedSummary : undefined,
@@ -406,7 +412,7 @@
   );
   let selectedParliamentarianBillsEmptyTitle = $derived(
     selectedParliamentarianIsOfficialSenado
-      ? officialSenadoAssociatedMattersUnavailableMessage
+      ? officialSenadoAssociatedMattersEmptyMessage
       : undefined
   );
   let selectedParliamentarianBillsEmptyDescription = $derived(
@@ -420,16 +426,12 @@
       : undefined
   );
   let selectedParliamentarianVotesEmptyTitle = $derived(
-    selectedParliamentarianIsOfficialSenado
-      ? officialSenadoProposalVotesUnavailableMessage
-      : selectedParliamentarianIsOfficial
+    selectedParliamentarianIsOfficial
       ? officialParliamentarianSessionVotesEmptyMessage
       : undefined
   );
   let selectedParliamentarianVotesEmptyDescription = $derived(
-    selectedParliamentarianIsOfficialSenado
-      ? officialSenadoStaticCoverageDescription
-      : selectedParliamentarianIsOfficial
+    selectedParliamentarianIsOfficial
       ? officialParliamentarianStaticCoverageDescription
       : undefined
   );
@@ -441,16 +443,19 @@
       : []
   );
   let selectedBillShowsOfficialVotes = $derived(
-    chatContext.selectedProposal ? isOfficialCamaraProposal(chatContext.selectedProposal) : false
+    chatContext.selectedProposal
+      ? isOfficialCamaraProposal(chatContext.selectedProposal) ||
+        isOfficialSenadoProposal(chatContext.selectedProposal)
+      : false
   );
-  let selectedBillUnavailableVotesTitle = $derived(
+  let selectedBillOfficialVotesTitle = $derived(
     chatContext.selectedProposal && isOfficialSenadoProposal(chatContext.selectedProposal)
-      ? officialSenadoProposalVotesUnavailableMessage
-      : undefined
+      ? 'Votações do Senado'
+      : 'Votações da Câmara'
   );
-  let selectedBillUnavailableVotesDescription = $derived(
+  let selectedBillOfficialVotesEmptyMessage = $derived(
     chatContext.selectedProposal && isOfficialSenadoProposal(chatContext.selectedProposal)
-      ? officialSenadoStaticCoverageDescription
+      ? officialSenadoProposalVotesEmptyMessage
       : undefined
   );
   let recoverableNotice = $derived(chatContext.errorMessage.trim());
@@ -803,8 +808,8 @@
                 parliamentarianName={selectedParliamentarian?.name}
                 associatedVotes={selectedBillVotes}
                 showOfficialVotes={selectedBillShowsOfficialVotes}
-                unavailableVotesTitle={selectedBillUnavailableVotesTitle}
-                unavailableVotesDescription={selectedBillUnavailableVotesDescription}
+                officialVotesTitle={selectedBillOfficialVotesTitle}
+                officialVotesEmptyMessage={selectedBillOfficialVotesEmptyMessage}
                 onSelectVote={handleSelectVote}
                 onBackToBills={handleBackToBills}
                 onBackToParliamentarian={handleBackToParliamentarian}

@@ -73,6 +73,16 @@ describe('BillDetail', () => {
     expect(html).toContain('rel="noopener noreferrer"');
   });
 
+  it('renders official authorship when provided by the source', () => {
+    const html = renderBillDetail({
+      chamber: 'Senado Federal',
+      authorship: 'Senadora Controlada (ABC/DF)'
+    });
+
+    expect(html).toContain('Autoria');
+    expect(html).toContain('Senadora Controlada (ABC/DF)');
+  });
+
   it('renders direct proposal detail without a parliamentarian association', () => {
     const html = renderBillDetail(
       {
@@ -187,6 +197,37 @@ describe('BillDetail', () => {
     expect(html).toContain('Votação nominal do texto-base.');
     expect(html).toContain('SIM');
     expect(html).toContain('Aprovado');
+  });
+
+  it('renders official Senado votes when provided', () => {
+    const html = renderBillDetail(
+      {
+        chamber: 'Senado Federal'
+      },
+      {
+        showOfficialVotes: true,
+        officialVotesTitle: 'Votacoes do Senado',
+        officialVotesEmptyMessage:
+          'A fonte oficial do Senado retornou lista vazia de votacoes para esta proposicao.',
+        associatedVotes: [
+          {
+            id: 'senado-votacao-5969',
+            billIdentification: 'PEC 91/2019',
+            chamber: 'Senado Federal',
+            description: 'Proposta de Emenda a Constituicao n. 91, de 2019.',
+            parliamentarianVote: 'SIM',
+            votedAt: '2019-06-12',
+            officialResult: 'A'
+          }
+        ],
+        onSelectVote: () => undefined
+      }
+    );
+
+    expect(html).toContain('Votacoes do Senado');
+    expect(html).toContain('Proposta de Emenda a Constituicao n. 91, de 2019.');
+    expect(html).toContain('SIM');
+    expect(html).toContain('A');
   });
 
   it('renders the specific empty message when the official source returns no Camara votes', () => {

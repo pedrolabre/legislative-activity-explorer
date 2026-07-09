@@ -309,6 +309,127 @@ describe('SenadoApiClient', () => {
     expect(url.searchParams.get('ano')).toBe('2026');
   });
 
+  it('searches modern legislative processes by official author filter', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+
+        return jsonResponse([
+          {
+            id: 575578,
+            codigoMateria: 123814,
+            identificacao: 'PLS 703/2015',
+            autoria: 'Senador Romario (PSB/RJ)'
+          }
+        ]);
+      }
+    });
+
+    const processos = await client.searchProcessos({
+      codigoParlamentarAutor: '5322'
+    });
+    const url = new URL(calls[0]);
+
+    expect(processos).toEqual([
+      {
+        id: 575578,
+        codigoMateria: 123814,
+        identificacao: 'PLS 703/2015',
+        autoria: 'Senador Romario (PSB/RJ)'
+      }
+    ]);
+    expect(url.origin + url.pathname).toBe('https://senado.example/dadosabertos/processo.json');
+    expect(url.searchParams.get('codigoParlamentarAutor')).toBe('5322');
+  });
+
+  it('searches modern legislative rapporteur records by parliamentarian', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+
+        return jsonResponse([
+          {
+            id: 9907428,
+            idProcesso: 8751337,
+            identificacaoProcesso: 'PL 4438/2024',
+            descricaoTipoRelator: 'Relator'
+          }
+        ]);
+      }
+    });
+
+    const relatorias = await client.searchRelatorias({
+      codigoParlamentar: '5322'
+    });
+    const url = new URL(calls[0]);
+
+    expect(relatorias).toEqual([
+      {
+        id: 9907428,
+        idProcesso: 8751337,
+        identificacaoProcesso: 'PL 4438/2024',
+        descricaoTipoRelator: 'Relator'
+      }
+    ]);
+    expect(url.origin + url.pathname).toBe(
+      'https://senado.example/dadosabertos/processo/relatoria.json'
+    );
+    expect(url.searchParams.get('codigoParlamentar')).toBe('5322');
+  });
+
+  it('fetches modern Senate votes by process id', async () => {
+    const calls: string[] = [];
+    const client = new SenadoApiClient({
+      baseUrl: 'https://senado.example/dadosabertos',
+      fetch: async (input) => {
+        calls.push(input);
+
+        return jsonResponse([
+          {
+            codigoSessaoVotacao: 5969,
+            idProcesso: 7761651,
+            identificacao: 'PEC 91/2019',
+            descricaoVotacao: 'Votacao nominal da materia.',
+            votos: [
+              {
+                codigoParlamentar: 825,
+                nomeParlamentar: 'Paulo Paim',
+                siglaVotoParlamentar: 'Sim'
+              }
+            ]
+          }
+        ]);
+      }
+    });
+
+    const votacoes = await client.getVotacoes({
+      idProcesso: '7761651'
+    });
+    const url = new URL(calls[0]);
+
+    expect(votacoes).toEqual([
+      {
+        codigoSessaoVotacao: 5969,
+        idProcesso: 7761651,
+        identificacao: 'PEC 91/2019',
+        descricaoVotacao: 'Votacao nominal da materia.',
+        votos: [
+          {
+            codigoParlamentar: 825,
+            nomeParlamentar: 'Paulo Paim',
+            siglaVotoParlamentar: 'Sim'
+          }
+        ]
+      }
+    ]);
+    expect(url.origin + url.pathname).toBe('https://senado.example/dadosabertos/votacao.json');
+    expect(url.searchParams.get('idProcesso')).toBe('7761651');
+  });
+
   it('keeps the deprecated matter search endpoint available as legacy compatibility', async () => {
     const calls: string[] = [];
     const client = new SenadoApiClient({

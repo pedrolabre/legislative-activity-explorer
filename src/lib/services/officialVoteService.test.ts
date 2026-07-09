@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CamaraApiClientError } from '$lib/api/camaraClient';
+import { SenadoApiClientError } from '$lib/api/senadoClient';
 import type { LegislativeProposal } from '$lib/domain';
 import {
   getOfficialVotesByProposal,
-  officialSenadoProposalVotesUnavailableMessage,
-  type OfficialCamaraVoteClient
+  type OfficialCamaraVoteClient,
+  type OfficialSenadoVoteClient
 } from './officialVoteService';
 
 function createCamaraProposal(): LegislativeProposal {
@@ -270,36 +271,183 @@ describe('getOfficialVotesByProposal', () => {
     });
   });
 
-  it('keeps Senado votes unavailable in this Camara block', async () => {
+  it('loads Senado votes associated with an official process proposal', async () => {
     const proposal: LegislativeProposal = {
-      id: 'senado-materia-300',
+      id: 'senado-processo-7761651',
       source: 'senado',
-      sourceId: '300',
-      title: 'PLS 3/2024',
-      type: 'PLS',
+      sourceId: '7761651',
+      title: 'PEC 91/2019',
+      type: 'PEC',
+      number: '91',
+      year: 2019,
       references: []
     };
-    const client = {
-      ...createEmptyCamaraVoteClient(),
-      getProposicaoVotacoesByIdPage: vi.fn()
+    const requestedOptions: unknown[] = [];
+    const senadoClient: OfficialSenadoVoteClient = {
+      getVotacoes: async (options) => {
+        requestedOptions.push(options);
+
+        return [
+          {
+            codigoSessaoVotacao: 5969,
+            dataSessao: '2019-06-12',
+            identificacao: 'PEC 91/2019',
+            descricaoVotacao: 'Proposta de Emenda a Constituicao n. 91, de 2019.',
+            resultadoVotacao: 'A',
+            votos: [
+              {
+                codigoParlamentar: 825,
+                nomeParlamentar: 'Paulo Paim',
+                siglaPartidoParlamentar: 'PT',
+                siglaUFParlamentar: 'RS',
+                siglaVotoParlamentar: 'Sim'
+              }
+            ]
+          }
+        ];
+      }
+    };
+
+    const result = await getOfficialVotesByProposal(proposal, {
+      camaraClient: createEmptyCamaraVoteClient(),
+      senadoClient
+    });
+
+    expect(requestedOptions).toEqual([
+      {
+        idProcesso: '7761651'
+      }
+    ]);
+    expect(result).toEqual({
+      status: 'fulfilled',
+      errors: [],
+      data: [
+        {
+          id: 'senado-votacao-5969',
+          source: 'senado',
+          sourceId: '5969',
+          proposalId: 'PEC 91/2019',
+          votedAt: '2019-06-12',
+          description: 'Proposta de Emenda a Constituicao n. 91, de 2019.',
+          result: 'A',
+          individualVotes: [
+            {
+              parliamentarianId: 'senado-825',
+              parliamentarianName: 'Paulo Paim',
+              party: 'PT',
+              state: 'RS',
+              vote: 'SIM'
+            }
+          ]
+        }
+      ]
+    });
+  });
+
+  it('loads Senado votes by legacy matter code when the selected proposal is a matter', async () => {
+    const proposal: LegislativeProposal = {
+      id: 'senado-materia-137178',
+      source: 'senado',
+      sourceId: '137178',
+      title: 'PEC 91/2019',
+      type: 'PEC',
+      references: []
+    };
+    const requestedOptions: unknown[] = [];
+
+    await getOfficialVotesByProposal(proposal, {
+      camaraClient: createEmptyCamaraVoteClient(),
+      senadoClient: {
+        getVotacoes: async (options) => {
+          requestedOptions.push(options);
+
+          return [];
+        }
+      }
+    });
+
+    expect(requestedOptions).toEqual([
+      {
+        codigoMateria: '137178'
+      }
+    ]);
+  });
+
+  it('represents Senado vote endpoint failures without fixture fallback', async () => {
+    const proposal: LegislativeProposal = {
+      id: 'senado-processo-7761651',
+      source: 'senado',
+      sourceId: '7761651',
+      title: 'PEC 91/2019',
+      type: 'PEC',
+      references: []
     };
 
     await expect(
       getOfficialVotesByProposal(proposal, {
-        camaraClient: client
+        camaraClient: createEmptyCamaraVoteClient(),
+        senadoClient: {
+          getVotacoes: async () => {
+            throw new SenadoApiClientError('A API do Senado retornou uma falha HTTP.', {
+              kind: 'http',
+              status: 503
+            });
+          }
+        }
       })
     ).resolves.toEqual({
-      status: 'unavailable',
+      status: 'failed',
       data: [],
       errors: [
         {
           source: 'senado',
           entity: 'proposal-votes',
-          kind: 'unsupported-source',
-          message: officialSenadoProposalVotesUnavailableMessage
+          kind: 'official-unavailable',
+          message:
+            'A fonte oficial do Senado Federal informou indisponibilidade temporária. A consulta pode ser repetida mais tarde.',
+          status: 503
         }
       ]
     });
-    expect(client.getProposicaoVotacoesByIdPage).not.toHaveBeenCalled();
+  });
+
+  it('applies a local Senado vote limit without sending unsupported pagination parameters', async () => {
+    const proposal: LegislativeProposal = {
+      id: 'senado-processo-7761651',
+      source: 'senado',
+      sourceId: '7761651',
+      title: 'PEC 91/2019',
+      type: 'PEC',
+      references: []
+    };
+
+    const result = await getOfficialVotesByProposal(proposal, {
+      camaraClient: createEmptyCamaraVoteClient(),
+      senadoClient: {
+        getVotacoes: async () => [
+          {
+            codigoSessaoVotacao: 5969,
+            descricaoVotacao: 'Primeira votacao.'
+          },
+          {
+            codigoSessaoVotacao: 5970,
+            descricaoVotacao: 'Segunda votacao.'
+          }
+        ]
+      },
+      maxVotesPerProposal: 1
+    });
+
+    expect(result.status).toBe('partial');
+    expect(result.data.map((vote) => vote.id)).toEqual(['senado-votacao-5969']);
+    expect(result.errors).toEqual([
+      {
+        source: 'senado',
+        entity: 'proposal-votes',
+        kind: 'pagination-limit',
+        message:
+          'A fonte oficial do Senado retornou mais votações do que o limite local desta consulta. Limite máximo: 1 votação por proposição. Exige backend futuro para consulta completa.'
+      }
+    ]);
   });
 });

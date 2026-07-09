@@ -3,16 +3,15 @@ import {
   type CamaraApiLink,
   type CamaraVotacaoPayload
 } from '$lib/api/camaraClient';
+import { SenadoApiClient, type SenadoVotacaoPayload } from '$lib/api/senadoClient';
 import type { LegislativeProposal, LegislativeSource, RollCallVote } from '$lib/domain';
-import {
-  backendFutureRequiredMessage,
-  officialSenadoProposalVotesUnavailableMessage
-} from '$lib/ui/officialMessages';
+import { backendFutureRequiredMessage } from '$lib/ui/officialMessages';
 import {
   CamaraMapperError,
   mapCamaraVotacaoToRollCallVote,
   mapCamaraVotosToIndividualVotes
 } from '$lib/mappers/camaraMapper';
+import { mapSenadoVotacaoToRollCallVote } from '$lib/mappers/senadoMapper';
 import {
   createOfficialApiClients,
   type OfficialApiClientFactoryOptions
@@ -22,6 +21,7 @@ import {
   getOfficialErrorKind,
   getOfficialErrorStatus,
   getOfficialMapperErrorMessage,
+  getSourceReference,
   isOfficialClientError,
   isOfficialMapperError,
   type OfficialRecoverableErrorKind
@@ -49,9 +49,11 @@ export type OfficialCamaraVoteClient = Pick<
   CamaraApiClient,
   'getProposicaoVotacoesByIdPage' | 'getVotacaoById' | 'getVotacaoVotosById'
 >;
+export type OfficialSenadoVoteClient = Pick<SenadoApiClient, 'getVotacoes'>;
 
 export interface OfficialVoteServiceOptions extends OfficialApiClientFactoryOptions {
   camaraClient?: OfficialCamaraVoteClient;
+  senadoClient?: OfficialSenadoVoteClient;
   maxVotesPerProposal?: number;
 }
 
@@ -59,6 +61,10 @@ const defaultMaxVotesPerProposal = 50;
 
 function getConfiguredCamaraVoteClient(options: OfficialVoteServiceOptions) {
   return options.camaraClient ?? createOfficialApiClients(options).camaraClient;
+}
+
+function getConfiguredSenadoVoteClient(options: OfficialVoteServiceOptions) {
+  return options.senadoClient ?? createOfficialApiClients(options).senadoClient;
 }
 
 function getErrorKind(error: unknown): OfficialVoteErrorKind {
@@ -77,9 +83,9 @@ function getEntityLabel(entity: OfficialVoteEntity) {
   return 'lista nominal de votação';
 }
 
-function getErrorMessage(entity: OfficialVoteEntity, error: unknown) {
+function getErrorMessage(source: LegislativeSource, entity: OfficialVoteEntity, error: unknown) {
   const entityLabel = getEntityLabel(entity);
-  const sourceReference = 'da Câmara dos Deputados';
+  const sourceReference = getSourceReference(source);
 
   if (isOfficialClientError(error)) {
     return getOfficialClientErrorMessage(sourceReference, entityLabel, error);
@@ -93,16 +99,17 @@ function getErrorMessage(entity: OfficialVoteEntity, error: unknown) {
 }
 
 function toRecoverableError(
+  source: LegislativeSource,
   entity: OfficialVoteEntity,
   error: unknown
 ): OfficialVoteRecoverableError {
   const status = getOfficialErrorStatus(error);
 
   return {
-    source: 'camara',
+    source,
     entity,
     kind: getErrorKind(error),
-    message: getErrorMessage(entity, error),
+    message: getErrorMessage(source, entity, error),
     ...(status !== undefined ? { status } : {})
   };
 }
@@ -123,15 +130,26 @@ function createPaginationLimitError(maxVotesPerProposal: number): OfficialVoteRe
   };
 }
 
+function createSenadoPaginationLimitError(
+  maxVotesPerProposal: number
+): OfficialVoteRecoverableError {
+  const voteLimitLabel =
+    maxVotesPerProposal === 1 ? '1 votação' : `${maxVotesPerProposal} votações`;
+
+  return {
+    source: 'senado',
+    entity: 'proposal-votes',
+    kind: 'pagination-limit',
+    message: `A fonte oficial do Senado retornou mais votações do que o limite local desta consulta. Limite máximo: ${voteLimitLabel} por proposição. ${backendFutureRequiredMessage}`
+  };
+}
+
 function createUnsupportedSourceError(source: LegislativeSource): OfficialVoteRecoverableError {
   return {
     source,
     entity: 'proposal-votes',
     kind: 'unsupported-source',
-    message:
-      source === 'senado'
-        ? officialSenadoProposalVotesUnavailableMessage
-        : 'Votações oficiais desta fonte ainda não conectadas nesta versão.'
+    message: 'Votações oficiais desta fonte ainda não conectadas nesta versão.'
   };
 }
 
@@ -205,7 +223,7 @@ async function loadOfficialCamaraVote(
       proposalIdentification
     });
   } catch (error) {
-    errors.push(toRecoverableError('vote-detail', error));
+    errors.push(toRecoverableError('camara', 'vote-detail', error));
   }
 
   try {
@@ -219,7 +237,7 @@ async function loadOfficialCamaraVote(
       individualVotes
     });
   } catch (error) {
-    errors.push(toRecoverableError('individual-votes', error));
+    errors.push(toRecoverableError('camara', 'individual-votes', error));
   }
 
   return {
@@ -232,6 +250,14 @@ export async function getOfficialVotesByProposal(
   proposal: LegislativeProposal,
   options: OfficialVoteServiceOptions = {}
 ): Promise<OfficialVoteListResult<RollCallVote>> {
+  if (proposal.source === 'senado') {
+    return getOfficialSenadoVotesByProposal(
+      proposal,
+      getConfiguredSenadoVoteClient(options),
+      options.maxVotesPerProposal ?? defaultMaxVotesPerProposal
+    );
+  }
+
   if (proposal.source !== 'camara') {
     return {
       status: 'unavailable',
@@ -256,7 +282,7 @@ export async function getOfficialVotesByProposal(
     return {
       status: 'failed',
       data: [],
-      errors: [toRecoverableError('proposal-votes', error)]
+      errors: [toRecoverableError('camara', 'proposal-votes', error)]
     };
   }
 
@@ -273,7 +299,7 @@ export async function getOfficialVotesByProposal(
       votes.push(voteResult.vote);
       errors.push(...voteResult.errors);
     } catch (error) {
-      errors.push(toRecoverableError('proposal-votes', error));
+      errors.push(toRecoverableError('camara', 'proposal-votes', error));
     }
   }
 
@@ -284,4 +310,78 @@ export async function getOfficialVotesByProposal(
   };
 }
 
-export { officialSenadoProposalVotesUnavailableMessage };
+function getSenadoVoteSearchOptions(proposal: LegislativeProposal) {
+  if (proposal.id === `senado-processo-${proposal.sourceId}`) {
+    return {
+      idProcesso: proposal.sourceId
+    };
+  }
+
+  if (proposal.id === `senado-materia-${proposal.sourceId}`) {
+    return {
+      codigoMateria: proposal.sourceId
+    };
+  }
+
+  return {
+    sigla: proposal.type,
+    numero: proposal.number,
+    ano: proposal.year
+  };
+}
+
+function mapSenadoVotePayloads(
+  payloads: SenadoVotacaoPayload[],
+  proposal: LegislativeProposal
+) {
+  const votes: RollCallVote[] = [];
+  const errors: OfficialVoteRecoverableError[] = [];
+
+  for (const payload of payloads) {
+    try {
+      votes.push(
+        mapSenadoVotacaoToRollCallVote(payload, {
+          proposalIdentification: proposal.title
+        })
+      );
+    } catch (error) {
+      errors.push(toRecoverableError('senado', 'proposal-votes', error));
+    }
+  }
+
+  return {
+    votes,
+    errors
+  };
+}
+
+async function getOfficialSenadoVotesByProposal(
+  proposal: LegislativeProposal,
+  client: OfficialSenadoVoteClient,
+  maxVotesPerProposal: number
+): Promise<OfficialVoteListResult<RollCallVote>> {
+  let payloads: SenadoVotacaoPayload[];
+
+  try {
+    payloads = await client.getVotacoes(getSenadoVoteSearchOptions(proposal));
+  } catch (error) {
+    return {
+      status: 'failed',
+      data: [],
+      errors: [toRecoverableError('senado', 'proposal-votes', error)]
+    };
+  }
+
+  const selectedPayloads = payloads.slice(0, maxVotesPerProposal);
+  const { votes, errors } = mapSenadoVotePayloads(selectedPayloads, proposal);
+
+  if (selectedPayloads.length < payloads.length) {
+    errors.push(createSenadoPaginationLimitError(maxVotesPerProposal));
+  }
+
+  return {
+    status: getListStatus(votes, errors),
+    data: sortVotesByDateDesc(votes),
+    errors
+  };
+}

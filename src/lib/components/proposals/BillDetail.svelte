@@ -22,6 +22,7 @@
     currentStageLabel?: string;
     currentStage?: string;
     relationship?: string;
+    authorship?: string;
     presentedAt?: string;
     officialSummary: string;
     factualSummary?: string;
@@ -42,6 +43,8 @@
     parliamentarianName,
     associatedVotes = [],
     showOfficialVotes = false,
+    officialVotesTitle = 'Votações da Câmara',
+    officialVotesEmptyMessage = officialCamaraProposalVotesEmptyMessage,
     unavailableVotesTitle,
     unavailableVotesDescription,
     onSelectVote = () => undefined,
@@ -54,6 +57,8 @@
     parliamentarianName?: string;
     associatedVotes?: ParliamentarianVoteView[];
     showOfficialVotes?: boolean;
+    officialVotesTitle?: string;
+    officialVotesEmptyMessage?: string;
     unavailableVotesTitle?: string;
     unavailableVotesDescription?: string;
     onSelectVote?: (id: string) => void;
@@ -131,6 +136,12 @@
         <div>
           <dt class="font-bold text-ink">Vínculo</dt>
           <dd>{bill.relationship}</dd>
+        </div>
+      {/if}
+      {#if bill.authorship}
+        <div>
+          <dt class="font-bold text-ink">Autoria</dt>
+          <dd>{bill.authorship}</dd>
         </div>
       {/if}
       <div>
@@ -234,7 +245,7 @@
   {#if showOfficialVotes}
     <section class="border-t border-border pt-5" aria-labelledby="bill-votes-title">
       <h4 id="bill-votes-title" class="text-sm font-bold leading-6 text-ink">
-        Votações da Câmara
+        {officialVotesTitle}
       </h4>
       {#if associatedVotes.length > 0}
         <p class="mt-1 text-xs font-bold uppercase leading-5 tracking-normal text-ink-muted">
@@ -295,7 +306,7 @@
       {:else}
         <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
           <p class="text-sm leading-6 text-ink-muted">
-            {officialCamaraProposalVotesEmptyMessage}
+            {officialVotesEmptyMessage}
           </p>
         </div>
       {/if}

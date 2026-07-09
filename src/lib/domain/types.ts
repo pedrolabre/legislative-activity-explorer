@@ -31,6 +31,7 @@ export interface LegislativeProposal {
   status?: string;
   currentStage?: string;
   relationship?: string;
+  authorship?: string;
   presentedAt?: string;
   officialSummary?: string;
   simplifiedSummary?: string;

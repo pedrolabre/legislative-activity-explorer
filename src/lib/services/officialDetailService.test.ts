@@ -5,7 +5,6 @@ import {
   getOfficialParliamentarianDetail,
   getOfficialProposalDetail,
   getOfficialProposalsByParliamentarian,
-  officialSenadoAssociatedMattersUnavailableMessage,
   type OfficialCamaraDetailClient,
   type OfficialSenadoDetailClient
 } from './officialDetailService';
@@ -39,7 +38,9 @@ function createEmptySenadoClient(): OfficialSenadoDetailClient {
       IdentificacaoMateria: {
         CodigoMateria: '300'
       }
-    })
+    }),
+    searchProcessos: async () => [],
+    searchRelatorias: async () => []
   };
 }
 
@@ -338,13 +339,32 @@ describe('getOfficialProposalsByParliamentarian', () => {
     ]);
   });
 
-  it('represents Senado associated matters as unavailable in this block', async () => {
+  it('loads Senado associated matters from modern authorship and rapporteur endpoints', async () => {
     const camaraAuthorLoader = vi.fn(async () => []);
-    const senadoMatterLoader = vi.fn(async () => ({
-      IdentificacaoMateria: {
-        CodigoMateria: '300'
+    const senadoAuthorLoader = vi.fn(async () => [
+      {
+        id: 575578,
+        codigoMateria: 123814,
+        identificacao: 'PLS 703/2015',
+        ementa: 'Altera regras do FGTS.',
+        autoria: 'Senador Romario (PSB/RJ)',
+        dataApresentacao: '2015-10-28',
+        situacaoAtual: 'MATERIA COM A RELATORIA'
       }
-    }));
+    ]);
+    const senadoRapporteurLoader = vi.fn(async () => [
+      {
+        id: 9907428,
+        idProcesso: 8751337,
+        codigoMateria: 166176,
+        identificacaoProcesso: 'PL 4438/2024',
+        ementaProcesso: 'Dispensa atletas profissionais de estagio obrigatorio.',
+        autoriaProcesso: 'Senadora Leila Barros (PDT/DF)',
+        tramitando: 'S',
+        descricaoTipoRelator: 'Relator',
+        nomeColegiado: 'Comissao de Esporte'
+      }
+    ]);
 
     const result = await getOfficialProposalsByParliamentarian(
       {
@@ -361,25 +381,79 @@ describe('getOfficialProposalsByParliamentarian', () => {
         },
         senadoClient: {
           ...createEmptySenadoClient(),
-          getMateriaById: senadoMatterLoader
+          searchProcessos: senadoAuthorLoader,
+          searchRelatorias: senadoRapporteurLoader
         }
       }
     );
 
     expect(camaraAuthorLoader).not.toHaveBeenCalled();
-    expect(senadoMatterLoader).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      status: 'unavailable',
-      data: [],
-      errors: [
-        {
-          source: 'senado',
-          entity: 'parliamentarian-proposals',
-          kind: 'unsupported-source',
-          message: officialSenadoAssociatedMattersUnavailableMessage
-        }
-      ]
+    expect(senadoAuthorLoader).toHaveBeenCalledWith({
+      codigoParlamentarAutor: '20'
     });
+    expect(senadoRapporteurLoader).toHaveBeenCalledWith({
+      codigoParlamentar: '20'
+    });
+    expect(result.status).toBe('fulfilled');
+    expect(result.errors).toEqual([]);
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        id: 'senado-processo-8751337',
+        title: 'PL 4438/2024',
+        relationship: 'Relator',
+        authorship: 'Senadora Leila Barros (PDT/DF)'
+      }),
+      expect.objectContaining({
+        id: 'senado-processo-575578',
+        title: 'PLS 703/2015',
+        relationship: 'Autoria',
+        authorship: 'Senador Romario (PSB/RJ)'
+      })
+    ]);
+  });
+
+  it('keeps Senado author records when rapporteur endpoint fails', async () => {
+    const result = await getOfficialProposalsByParliamentarian(
+      {
+        id: 'senado-20',
+        source: 'senado',
+        sourceId: '20',
+        name: 'Maria Souza',
+        office: 'Senador'
+      },
+      {
+        camaraClient: createEmptyCamaraClient(),
+        senadoClient: {
+          ...createEmptySenadoClient(),
+          searchProcessos: async () => [
+            {
+              id: 575578,
+              codigoMateria: 123814,
+              identificacao: 'PLS 703/2015'
+            }
+          ],
+          searchRelatorias: async () => {
+            throw new SenadoApiClientError('A API do Senado retornou uma falha HTTP.', {
+              kind: 'http',
+              status: 503
+            });
+          }
+        }
+      }
+    );
+
+    expect(result.status).toBe('partial');
+    expect(result.data.map((proposal) => proposal.id)).toEqual(['senado-processo-575578']);
+    expect(result.errors).toEqual([
+      {
+        source: 'senado',
+        entity: 'parliamentarian-proposals',
+        kind: 'official-unavailable',
+        message:
+          'A fonte oficial do Senado Federal informou indisponibilidade temporária. A consulta pode ser repetida mais tarde.',
+        status: 503
+      }
+    ]);
   });
 });
 
