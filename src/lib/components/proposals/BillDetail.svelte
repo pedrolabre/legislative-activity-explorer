@@ -45,8 +45,6 @@
     showOfficialVotes = false,
     officialVotesTitle = 'Votações da Câmara',
     officialVotesEmptyMessage = officialCamaraProposalVotesEmptyMessage,
-    unavailableVotesTitle,
-    unavailableVotesDescription,
     onSelectVote = () => undefined,
     onBackToBills,
     onBackToParliamentarian,
@@ -59,8 +57,6 @@
     showOfficialVotes?: boolean;
     officialVotesTitle?: string;
     officialVotesEmptyMessage?: string;
-    unavailableVotesTitle?: string;
-    unavailableVotesDescription?: string;
     onSelectVote?: (id: string) => void;
     onBackToBills: () => void;
     onBackToParliamentarian: () => void;
@@ -310,22 +306,6 @@
           </p>
         </div>
       {/if}
-    </section>
-  {:else if unavailableVotesTitle}
-    <section class="border-t border-border pt-5" aria-labelledby="bill-unavailable-votes-title">
-      <h4 id="bill-unavailable-votes-title" class="text-sm font-bold leading-6 text-ink">
-        Votações do Senado
-      </h4>
-      <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
-        <p class="text-sm font-semibold leading-6 text-ink">
-          {unavailableVotesTitle}
-        </p>
-        {#if unavailableVotesDescription}
-          <p class="mt-2 text-sm leading-6 text-ink-muted">
-            {unavailableVotesDescription}
-          </p>
-        {/if}
-      </div>
     </section>
   {/if}
 

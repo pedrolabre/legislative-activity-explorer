@@ -264,24 +264,4 @@ describe('BillDetail', () => {
 
     expect(html).not.toContain('Votações da Câmara');
   });
-
-  it('renders a specific Senado votes unavailable message when provided', () => {
-    const html = renderBillDetail(
-      {
-        chamber: 'Senado Federal'
-      },
-      {
-        unavailableVotesTitle: 'Votações nominais do Senado ainda não conectadas nesta versão.',
-        unavailableVotesDescription:
-          'Ainda não conectado nesta versão. Exige backend futuro para consulta completa.'
-      }
-    );
-
-    expect(html).toContain('Votações do Senado');
-    expect(html).toContain('Votações nominais do Senado ainda não conectadas nesta versão.');
-    expect(html).toContain(
-      'Ainda não conectado nesta versão. Exige backend futuro para consulta completa.'
-    );
-    expect(html).not.toContain('Votações da Câmara');
-  });
 });
