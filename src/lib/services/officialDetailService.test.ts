@@ -70,6 +70,7 @@ describe('getOfficialParliamentarianDetail', () => {
     const result = await getOfficialParliamentarianDetail(
       {
         id: 'camara-10',
+        origin: 'official',
         source: 'camara',
         sourceId: '10',
         name: 'Ana Costa',
@@ -101,6 +102,7 @@ describe('getOfficialParliamentarianDetail', () => {
     const result = await getOfficialParliamentarianDetail(
       {
         id: 'senado-20',
+        origin: 'official',
         source: 'senado',
         sourceId: '20',
         name: 'Maria Souza',
@@ -159,6 +161,7 @@ describe('getOfficialParliamentarianDetail', () => {
     const result = await getOfficialParliamentarianDetail(
       {
         id: 'senado-20',
+        origin: 'official',
         source: 'senado',
         sourceId: '20',
         name: 'Maria Souza',
@@ -210,6 +213,7 @@ describe('getOfficialParliamentarianDetail', () => {
     const result = await getOfficialParliamentarianDetail(
       {
         id: 'camara-10',
+        origin: 'official',
         source: 'camara',
         sourceId: '10',
         name: 'Ana Costa',
@@ -252,6 +256,7 @@ describe('getOfficialProposalsByParliamentarian', () => {
     const result = await getOfficialProposalsByParliamentarian(
       {
         id: 'camara-10',
+        origin: 'official',
         source: 'camara',
         sourceId: '10',
         name: 'Ana Costa',
@@ -302,6 +307,7 @@ describe('getOfficialProposalsByParliamentarian', () => {
     const result = await getOfficialProposalsByParliamentarian(
       {
         id: 'camara-10',
+        origin: 'official',
         source: 'camara',
         sourceId: '10',
         name: 'Ana Costa',
@@ -369,6 +375,7 @@ describe('getOfficialProposalsByParliamentarian', () => {
     const result = await getOfficialProposalsByParliamentarian(
       {
         id: 'senado-20',
+        origin: 'official',
         source: 'senado',
         sourceId: '20',
         name: 'Maria Souza',
@@ -416,6 +423,7 @@ describe('getOfficialProposalsByParliamentarian', () => {
     const result = await getOfficialProposalsByParliamentarian(
       {
         id: 'senado-20',
+        origin: 'official',
         source: 'senado',
         sourceId: '20',
         name: 'Maria Souza',
@@ -462,6 +470,7 @@ describe('getOfficialProposalDetail', () => {
     const result = await getOfficialProposalDetail(
       {
         id: 'camara-proposicao-100',
+        origin: 'official',
         source: 'camara',
         sourceId: '100',
         title: 'PL 2/2024',
@@ -521,6 +530,7 @@ describe('getOfficialProposalDetail', () => {
     const result = await getOfficialProposalDetail(
       {
         id: 'camara-proposicao-100',
+        origin: 'official',
         source: 'camara',
         sourceId: '100',
         title: 'PL 2/2024',
@@ -579,6 +589,7 @@ describe('getOfficialProposalDetail', () => {
     const result = await getOfficialProposalDetail(
       {
         id: 'camara-proposicao-100',
+        origin: 'official',
         source: 'camara',
         sourceId: '100',
         title: 'PL 2/2024',
@@ -628,6 +639,7 @@ describe('getOfficialProposalDetail', () => {
     const result = await getOfficialProposalDetail(
       {
         id: 'bill-pl-220-2025',
+        origin: 'official',
         source: 'camara',
         sourceId: '220',
         title: 'PL 220/2025',
@@ -661,6 +673,7 @@ describe('getOfficialProposalDetail', () => {
     const result = await getOfficialProposalDetail(
       {
         id: 'bill-pl-1234-2024',
+        origin: 'official',
         source: 'camara',
         sourceId: '1234',
         title: 'PL 1234/2024',
@@ -694,6 +707,7 @@ describe('getOfficialProposalDetail', () => {
     const result = await getOfficialProposalDetail(
       {
         id: 'senado-materia-300',
+        origin: 'official',
         source: 'senado',
         sourceId: '300',
         title: 'PLS 3/2024',
@@ -743,6 +757,7 @@ describe('getOfficialProposalDetail', () => {
     const result = await getOfficialProposalDetail(
       {
         id: 'senado-processo-9046221',
+        origin: 'official',
         source: 'senado',
         sourceId: '9046221',
         title: 'RQS 368/2026',
@@ -804,6 +819,7 @@ describe('getOfficialProposalDetail', () => {
     const result = await getOfficialProposalDetail(
       {
         id: 'senado-materia-300',
+        origin: 'official',
         source: 'senado',
         sourceId: '300',
         title: 'PLS 3/2024',

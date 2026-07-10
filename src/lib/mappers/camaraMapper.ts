@@ -170,6 +170,7 @@ export function mapCamaraDeputadoToParliamentarian(
 
   return {
     id: `camara-${sourceId}`,
+    origin: 'official',
     source: 'camara',
     sourceId,
     name,
@@ -200,6 +201,7 @@ export function mapCamaraProposicaoToLegislativeProposal(
 
   return {
     id: `camara-proposicao-${sourceId}`,
+    origin: 'official',
     source: 'camara',
     sourceId,
     title,

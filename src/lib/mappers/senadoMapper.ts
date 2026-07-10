@@ -379,6 +379,7 @@ export function mapSenadoSenadorToParliamentarian(
 
   return {
     id: `senado-${sourceId}`,
+    origin: 'official',
     source: 'senado',
     sourceId,
     name,
@@ -407,6 +408,7 @@ export function mapSenadoMateriaToLegislativeProposal(
 
   return {
     id: `senado-materia-${sourceId}`,
+    origin: 'official',
     source: 'senado',
     sourceId,
     title,
@@ -461,6 +463,7 @@ export function mapSenadoProcessoToLegislativeProposal(
 
   return {
     id: `senado-processo-${sourceId}`,
+    origin: 'official',
     source: 'senado',
     sourceId,
     title,
@@ -503,6 +506,7 @@ export function mapSenadoRelatoriaToLegislativeProposal(
 
   return {
     id: `senado-processo-${sourceId}`,
+    origin: 'official',
     source: 'senado',
     sourceId,
     title: buildRelatoriaTitle(payload, sourceId),

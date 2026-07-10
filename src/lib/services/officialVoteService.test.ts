@@ -11,6 +11,7 @@ import {
 function createCamaraProposal(): LegislativeProposal {
   return {
     id: 'camara-proposicao-100',
+    origin: 'official',
     source: 'camara',
     sourceId: '100',
     title: 'PL 2/2024',
@@ -274,6 +275,7 @@ describe('getOfficialVotesByProposal', () => {
   it('loads Senado votes associated with an official process proposal', async () => {
     const proposal: LegislativeProposal = {
       id: 'senado-processo-7761651',
+      origin: 'official',
       source: 'senado',
       sourceId: '7761651',
       title: 'PEC 91/2019',
@@ -347,6 +349,7 @@ describe('getOfficialVotesByProposal', () => {
   it('loads Senado votes by legacy matter code when the selected proposal is a matter', async () => {
     const proposal: LegislativeProposal = {
       id: 'senado-materia-137178',
+      origin: 'official',
       source: 'senado',
       sourceId: '137178',
       title: 'PEC 91/2019',
@@ -376,6 +379,7 @@ describe('getOfficialVotesByProposal', () => {
   it('represents Senado vote endpoint failures without fixture fallback', async () => {
     const proposal: LegislativeProposal = {
       id: 'senado-processo-7761651',
+      origin: 'official',
       source: 'senado',
       sourceId: '7761651',
       title: 'PEC 91/2019',
@@ -414,6 +418,7 @@ describe('getOfficialVotesByProposal', () => {
   it('applies a local Senado vote limit without sending unsupported pagination parameters', async () => {
     const proposal: LegislativeProposal = {
       id: 'senado-processo-7761651',
+      origin: 'official',
       source: 'senado',
       sourceId: '7761651',
       title: 'PEC 91/2019',

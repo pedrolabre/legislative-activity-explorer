@@ -13,6 +13,7 @@ function createProposal(
 ): LegislativeProposal {
   return {
     id: 'bill-pl-1234-2024',
+    origin: 'fixture',
     source: 'camara',
     sourceId: 'bill-pl-1234-2024',
     title: 'PL 1234/2024',

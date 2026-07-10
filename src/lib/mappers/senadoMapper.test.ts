@@ -45,6 +45,7 @@ describe('mapSenadoSenadorToParliamentarian', () => {
 
     expect(parliamentarian).toEqual({
       id: 'senado-5672',
+      origin: 'official',
       source: 'senado',
       sourceId: '5672',
       name: 'Alan Rick',
@@ -211,6 +212,7 @@ describe('mapSenadoMateriaToLegislativeProposal', () => {
 
     expect(proposal).toEqual({
       id: 'senado-materia-45',
+      origin: 'official',
       source: 'senado',
       sourceId: '45',
       title: 'DIV 7/1999',
@@ -325,6 +327,7 @@ describe('mapSenadoProcessoToLegislativeProposal', () => {
 
     expect(proposal).toEqual({
       id: 'senado-processo-9046221',
+      origin: 'official',
       source: 'senado',
       sourceId: '9046221',
       title: 'RQS 368/2026',
@@ -482,6 +485,7 @@ describe('mapSenadoRelatoriaToLegislativeProposal', () => {
 
     expect(proposal).toEqual({
       id: 'senado-processo-8751337',
+      origin: 'official',
       source: 'senado',
       sourceId: '8751337',
       title: 'PL 4438/2024',

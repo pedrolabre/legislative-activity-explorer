@@ -35,6 +35,7 @@ describe('mapCamaraDeputadoToParliamentarian', () => {
 
     expect(parliamentarian).toEqual({
       id: 'camara-204556',
+      origin: 'official',
       source: 'camara',
       sourceId: '204556',
       name: 'Pedro Silva',
@@ -137,6 +138,7 @@ describe('mapCamaraProposicaoToLegislativeProposal', () => {
 
     expect(proposal).toEqual({
       id: 'camara-proposicao-9876',
+      origin: 'official',
       source: 'camara',
       sourceId: '9876',
       title: 'PL 1234/2024',

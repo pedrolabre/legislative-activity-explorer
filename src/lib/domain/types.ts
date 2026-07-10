@@ -2,8 +2,11 @@ import type { LegislativeSource } from './legislativeSource';
 import type { ExternalReferenceType } from './references';
 import type { DisplayVotePosition, VoteCounts, VotePosition } from './votes';
 
+export type DataOrigin = 'official' | 'fixture';
+
 export interface Parliamentarian {
   id: string;
+  origin: DataOrigin;
   source: LegislativeSource;
   sourceId: string;
   name: string;
@@ -21,6 +24,7 @@ export interface Parliamentarian {
 
 export interface LegislativeProposal {
   id: string;
+  origin: DataOrigin;
   source: LegislativeSource;
   sourceId: string;
   title: string;

@@ -69,6 +69,7 @@ export function mapSearchParliamentarianToDomain(
 ): Parliamentarian {
   return {
     id: result.id,
+    origin: 'fixture',
     source: inferLegislativeSource(result.office),
     sourceId: result.id,
     name: result.name,
@@ -84,6 +85,7 @@ export function mapSearchProposalToDomain(result: InitialSearchProposalResult): 
 
   return {
     id: result.id,
+    origin: 'fixture',
     source: inferLegislativeSource(result.chamber),
     sourceId: result.id,
     title: result.title,
@@ -101,6 +103,7 @@ export function mapParliamentarianDetailToDomain(
 ): Parliamentarian {
   return {
     id: parliamentarian.id,
+    origin: 'fixture',
     source: inferLegislativeSource(parliamentarian.chamber),
     sourceId: parliamentarian.id,
     name: parliamentarian.name,
@@ -131,6 +134,7 @@ export function mapBillToDomain(bill: ParliamentarianBill): LegislativeProposal 
 
   return {
     id: bill.id,
+    origin: 'fixture',
     source: inferLegislativeSource(bill.chamber),
     sourceId: bill.id,
     title: bill.identification,

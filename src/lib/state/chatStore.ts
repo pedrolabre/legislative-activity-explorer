@@ -243,25 +243,18 @@ function applyDirectProposalSearchResult(
 }
 
 function isOfficialParliamentarian(parliamentarian: Parliamentarian) {
-  return parliamentarian.id === `${parliamentarian.source}-${parliamentarian.sourceId}`;
+  return parliamentarian.origin === 'official';
 }
 
-function hasOfficialParliamentarianIdPattern(id: string) {
-  return /^camara-(?!proposicao-).+/.test(id) || /^senado-(?!materia-).+/.test(id);
+export function hasOfficialParliamentarianIdPattern(id: string) {
+  return /^camara-(?!proposicao-).+/.test(id) || /^senado-(?!materia-|processo-).+/.test(id);
 }
 
 function isOfficialProposal(proposal: LegislativeProposal) {
-  if (proposal.source === 'camara') {
-    return proposal.id === `camara-proposicao-${proposal.sourceId}`;
-  }
-
-  return (
-    proposal.id === `senado-materia-${proposal.sourceId}` ||
-    proposal.id === `senado-processo-${proposal.sourceId}`
-  );
+  return proposal.origin === 'official';
 }
 
-function hasOfficialProposalIdPattern(id: string) {
+export function hasOfficialProposalIdPattern(id: string) {
   return (
     /^camara-proposicao-.+/.test(id) ||
     /^senado-materia-.+/.test(id) ||

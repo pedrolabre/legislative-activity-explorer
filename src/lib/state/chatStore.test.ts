@@ -7,6 +7,8 @@ import {
   chatStore,
   executeSearch,
   goBack,
+  hasOfficialParliamentarianIdPattern,
+  hasOfficialProposalIdPattern,
   initialChatContext,
   navigateTo,
   officialParliamentarianSessionVotesCoverageMessage,
@@ -85,6 +87,7 @@ describe('chatStore actions', () => {
       parliamentarians: [
         {
           id: 'camara-10',
+          origin: 'official',
           source: 'camara',
           sourceId: '10',
           name: 'Ana Costa',
@@ -110,6 +113,18 @@ describe('chatStore actions', () => {
       proposalsFound: [],
       errorMessage: 'Parte das fontes oficiais não respondeu nesta consulta.'
     });
+  });
+
+  it('classifies official parliamentarian and proposal id patterns without mixing Senado process proposals', () => {
+    expect(hasOfficialParliamentarianIdPattern('camara-10')).toBe(true);
+    expect(hasOfficialParliamentarianIdPattern('senado-20')).toBe(true);
+    expect(hasOfficialParliamentarianIdPattern('camara-proposicao-2630')).toBe(false);
+    expect(hasOfficialParliamentarianIdPattern('senado-materia-300')).toBe(false);
+    expect(hasOfficialParliamentarianIdPattern('senado-processo-9046221')).toBe(false);
+
+    expect(hasOfficialProposalIdPattern('camara-proposicao-2630')).toBe(true);
+    expect(hasOfficialProposalIdPattern('senado-materia-300')).toBe(true);
+    expect(hasOfficialProposalIdPattern('senado-processo-9046221')).toBe(true);
   });
 
   it('routes a search with no matches to an empty result state', async () => {
@@ -175,6 +190,7 @@ describe('chatStore actions', () => {
   it('opens a single direct official proposal search immediately without a parliamentarian', async () => {
     const directProposal = {
       id: 'camara-proposicao-2630',
+      origin: 'official' as const,
       source: 'camara' as const,
       sourceId: '2630',
       title: 'PL 2630/2020',
@@ -262,6 +278,7 @@ describe('chatStore actions', () => {
   it('opens a single direct official Senado process search immediately without a parliamentarian', async () => {
     const directProposal = {
       id: 'senado-processo-9046221',
+      origin: 'official' as const,
       source: 'senado' as const,
       sourceId: '9046221',
       title: 'RQS 368/2026',
@@ -341,6 +358,7 @@ describe('chatStore actions', () => {
         proposals: [
           {
             id: 'camara-proposicao-451',
+            origin: 'official',
             source: 'camara',
             sourceId: '451',
             title: 'PEC 45/2019',
@@ -507,6 +525,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'camara-10',
+            origin: 'official',
             source: 'camara',
             sourceId: '10',
             name: 'Ana Costa',
@@ -527,6 +546,7 @@ describe('chatStore actions', () => {
           status: 'fulfilled',
           data: {
             id: parliamentarian.id,
+            origin: 'official',
             source: parliamentarian.source,
             sourceId: parliamentarian.sourceId,
             name: parliamentarian.name,
@@ -562,6 +582,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'senado-20',
+            origin: 'official',
             source: 'senado',
             sourceId: '20',
             name: 'Maria Souza',
@@ -610,6 +631,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'camara-10',
+            origin: 'official',
             source: 'camara',
             sourceId: '10',
             name: 'Ana Costa',
@@ -637,6 +659,7 @@ describe('chatStore actions', () => {
           data: [
             {
               id: 'camara-proposicao-100',
+              origin: 'official',
               source: 'camara',
               sourceId: '100',
               title: 'PL 2/2024',
@@ -685,6 +708,7 @@ describe('chatStore actions', () => {
           status: 'fulfilled',
           data: {
             id: proposal.id,
+            origin: 'official',
             source: proposal.source,
             sourceId: proposal.sourceId,
             title: proposal.title,
@@ -747,6 +771,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'camara-10',
+            origin: 'official',
             source: 'camara',
             sourceId: '10',
             name: 'Ana Costa',
@@ -769,6 +794,7 @@ describe('chatStore actions', () => {
         data: [
           {
             id: 'camara-proposicao-100',
+            origin: 'official',
             source: 'camara',
             sourceId: '100',
             title: 'PL 2/2024',
@@ -838,6 +864,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'camara-10',
+            origin: 'official',
             source: 'camara',
             sourceId: '10',
             name: 'Ana Costa',
@@ -890,6 +917,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'camara-10',
+            origin: 'official',
             source: 'camara',
             sourceId: '10',
             name: 'Ana Costa',
@@ -912,6 +940,7 @@ describe('chatStore actions', () => {
         data: [
           {
             id: 'camara-proposicao-100',
+            origin: 'official',
             source: 'camara',
             sourceId: '100',
             title: 'PL 2/2024',
@@ -1006,6 +1035,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'senado-20',
+            origin: 'official',
             source: 'senado',
             sourceId: '20',
             name: 'Maria Souza',
@@ -1058,6 +1088,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'camara-10',
+            origin: 'official',
             source: 'camara',
             sourceId: '10',
             name: 'Ana Costa',
@@ -1085,6 +1116,7 @@ describe('chatStore actions', () => {
           data: [
             {
               id: 'camara-proposicao-100',
+              origin: 'official',
               source: 'camara',
               sourceId: '100',
               title: 'PL 2/2024',
@@ -1126,6 +1158,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'camara-10',
+            origin: 'official',
             source: 'camara',
             sourceId: '10',
             name: 'Ana Costa',
@@ -1179,6 +1212,7 @@ describe('chatStore actions', () => {
         parliamentarians: [
           {
             id: 'senado-20',
+            origin: 'official',
             source: 'senado',
             sourceId: '20',
             name: 'Maria Souza',
