@@ -49,7 +49,7 @@ Escolhi SvelteKit porque queria sair da zona de conforto do React e explorar uma
 
 ## Estrutura atual
 
-O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, busca pública oficial como comportamento padrão, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, estados de votações indisponíveis no fluxo oficial, services internos de fixtures controladas para testes, clients e mappers isolados da Câmara dos Deputados e do Senado Federal, área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade e um Worker opcional isolado para proxy CORS das APIs oficiais.
+O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, busca pública oficial como comportamento padrão, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, estados de votações indisponíveis no fluxo oficial, contratos compartilhados de busca, clients e mappers isolados da Câmara dos Deputados e do Senado Federal, área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade e um Worker opcional isolado para proxy CORS das APIs oficiais.
 
 * `vite.config.ts`: Configuração do Vite, SvelteKit, Tailwind CSS e Vitest, incluindo testes unitários em `src/` e `workers/`.
 * `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
@@ -77,14 +77,6 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/components/votes/VoteBadge.svelte`: Rótulo visual neutro e acessível para votos `SIM`, `NÃO`, `ABSTENÇÃO` e `AUSENTE`.
 * `src/lib/components/votes/votePresentation.ts`: Politica visual auditada para labels e classes neutras de votos.
 * `src/lib/components/votes/votePresentation.test.ts`: Testes unitarios da politica visual de votos, cobrindo labels oficiais e ausencia de tokens verde/vermelho.
-* `src/lib/data/initialSearchFixtures.ts`: Dados de exemplo controlados para validar a busca inicial sem APIs oficiais.
-* `src/lib/data/initialSearchFixtures.test.ts`: Testes unitários da busca inicial local.
-* `src/lib/data/parliamentarianBillFixtures.ts`: Dados de exemplo controlados para proposições associadas e detalhe de proposição.
-* `src/lib/data/parliamentarianBillFixtures.test.ts`: Testes unitários da lista e do detalhe local de proposições.
-* `src/lib/data/parliamentarianDetailFixtures.ts`: Dados de exemplo controlados para o detalhe factual de parlamentar.
-* `src/lib/data/parliamentarianDetailFixtures.test.ts`: Testes unitários do detalhe local de parlamentar.
-* `src/lib/data/parliamentarianVoteFixtures.ts`: Dados de exemplo controlados para votações associadas e detalhe de votação.
-* `src/lib/data/parliamentarianVoteFixtures.test.ts`: Testes unitários da lista e do detalhe local de votações.
 * `src/lib/data/factualSummaryCatalog.ts`: Catalogo versionado e revisavel de resumos factuais revisados para proposicoes legislativas controladas.
 * `src/lib/data/factualSummaryCatalog.test.ts`: Testes unitarios do catalogo de resumos factuais, cobrindo contrato, datas de revisao e ausencia de linguagem valorativa conhecida.
 * `src/lib/data/referenceCatalog.ts`: Catalogo versionado e revisavel de referencias externas para proposicoes legislativas controladas.
@@ -101,11 +93,6 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/mappers/senadoMapper.test.ts`: Testes unitários do mapper do Senado com payloads modernos, legados, autoria, relatoria, votações nominais, dados aninhados, parciais e inválidos.
 * `src/lib/services/factualSummaryService.ts`: Service interno para aplicar resumos factuais revisados ao detalhe de proposicao sem geracao dinamica.
 * `src/lib/services/factualSummaryService.test.ts`: Testes unitarios do service de resumos factuais, cobrindo aplicacao revisada, descarte de resumo nao catalogado e ausencia de inferencia pela ementa oficial.
-* `src/lib/services/fixtureAdapters.ts`: Adaptadores internos que convertem fixtures controladas para contratos de domínio.
-* `src/lib/services/parliamentarianService.ts`: Service interno para detalhe de parlamentar baseado nas fixtures existentes.
-* `src/lib/services/parliamentarianService.test.ts`: Testes unitários do service interno de parlamentar.
-* `src/lib/services/proposalService.ts`: Service interno para proposições associadas e detalhe de proposição baseado nas fixtures existentes, com combinação de referências editoriais revisadas.
-* `src/lib/services/proposalService.test.ts`: Testes unitários do service interno de proposições e das referências associadas.
 * `src/lib/services/officialApiClientFactory.ts`: Factory testável dos clients oficiais, conectando chamadas diretas ou roteamento por proxy público opcional sem segredos no frontend.
 * `src/lib/services/officialApiClientFactory.test.ts`: Testes unitários da factory de clients oficiais com `fetch` injetado, modo direto, modo proxy e sem rede real.
 * `src/lib/services/legislativeIdentifierParser.ts`: Parser legislativo nacional para identificadores de proposições, com tipos explícitos, formatos compactos, hifenizados ou com ano e falhas explicáveis sem heurística sobre nomes de parlamentares.
@@ -114,25 +101,21 @@ O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e bui
 * `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeout, falha HTTP, indisponibilidade oficial, payload inválido, dados parciais por fonte, clients configurados por direct/proxy, busca direta baseada no parser legislativo nacional e filtros modernos de processos do Senado.
 * `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha HTTP, indisponibilidade oficial, payload inválido, falha parcial, ordenação neutra, deduplicação objetiva, parser legislativo nacional, busca moderna do Senado e sem rede real.
 * `src/lib/services/publicSearchService.ts`: Adapter da busca pública padrão, convertendo `officialSearchService` para o contrato da store e preservando mensagens recuperáveis específicas para falhas oficiais parciais, falhas completas, busca direta ambígua, identificador inválido ou proposição oficial não encontrada.
-* `src/lib/services/publicSearchService.test.ts`: Testes unitários do adapter de busca pública oficial com clients controlados, falha parcial, falha HTTP, indisponibilidade oficial, falha completa, busca direta de proposição, identificador inválido e sem fallback para fixtures.
+* `src/lib/services/publicSearchService.test.ts`: Testes unitários do adapter de busca pública oficial com clients controlados, falha parcial, falha HTTP, indisponibilidade oficial, falha completa, busca direta de proposição, identificador inválido e sem fallback para dados de exemplo.
+* `src/lib/services/searchResults.ts`: Contrato compartilhado e vazio seguro para resultados de busca consumidos pela store e pelo adapter público oficial.
 * `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição, processo legislativo moderno do Senado ou matéria legada, com autoria e relatoria oficiais do Senado, clients configurados por direct/proxy e estados recuperáveis de indisponibilidade oficial, timeout, falha HTTP, payload inválido, limite local ou falha parcial.
 * `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, detalhe moderno do Senado, autoria e relatoria do Senado, falha parcial recuperável e sem rede real.
-* `src/lib/services/officialVoteService.ts`: Service isolado para votações oficiais da Câmara e do Senado associadas à proposição aberta, com detalhe de votação, lista nominal quando disponível, ordenação oficial, limite de processamento leve, diferenciação entre lista vazia oficial, timeout, falha HTTP, payload inválido, limite de paginação/local e indisponibilidade, e sem fallback para fixtures.
+* `src/lib/services/officialVoteService.ts`: Service isolado para votações oficiais da Câmara e do Senado associadas à proposição aberta, com detalhe de votação, lista nominal quando disponível, ordenação oficial, limite de processamento leve, diferenciação entre lista vazia oficial, timeout, falha HTTP, payload inválido, limite de paginação/local e indisponibilidade, e sem fallback para dados de exemplo.
 * `src/lib/services/officialVoteService.test.ts`: Testes unitários das votações oficiais da Câmara e do Senado com clients controlados, falhas parciais, paginação ou limite local, indisponibilidade oficial, lista vazia oficial e sem rede real.
 * `src/lib/services/referenceService.ts`: Service interno para combinar referências existentes da proposição com o catálogo revisado e identificar cobertura editorial incompleta.
 * `src/lib/services/referenceService.test.ts`: Testes unitários da combinação de referências, prioridade do catálogo e fallback de cobertura revisada incompleta.
-* `src/lib/services/searchService.ts`: Service interno de busca inicial por fixtures, mantido como caminho explícito e injetável para testes ou desenvolvimento controlado.
-* `src/lib/services/searchService.test.ts`: Testes unitários do service interno de busca inicial.
-* `src/lib/services/voteService.ts`: Service interno para votações associadas e detalhe de votação baseado nas fixtures existentes.
-* `src/lib/services/voteService.test.ts`: Testes unitários do service interno de votações.
-* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com busca pública oficial como caminho padrão, fixtures apenas por injeção explícita, seleção gradual de detalhes oficiais, abertura direta de proposição oficial confiável, fluxo independente de proposição com votações oficiais da Câmara e do Senado quando disponíveis e mensagens recuperáveis quando fontes oficiais retornam dados parciais ou falham.
-* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo busca oficial padrão mockada, fixtures injetadas explicitamente, detalhes oficiais, fluxo independente de proposição com votação, dado parcial controlado e sem rede real.
+* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com busca pública oficial como caminho padrão, seleção gradual de detalhes oficiais, abertura direta de proposição oficial confiável, fluxo independente de proposição com votações oficiais da Câmara e do Senado quando disponíveis e mensagens recuperáveis quando fontes oficiais retornam dados parciais ou falham.
+* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo busca oficial padrão mockada, detalhes oficiais, fluxo independente de proposição com votação, dado parcial controlado e sem rede real.
 * `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
 * `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
 * `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial oficial, avisos recuperáveis mínimos, detalhe direto de proposição, autoria oficial quando disponível, votações por proposição sem parlamentar obrigatório e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
 * `static/_headers`: Cabeçalhos estáticos mínimos para Cloudflare Pages, sem CSP dependente de domínio futuro e sem cache persistente de navegador criado pela aplicação.
 * `static/brand/legislative-activity-explorer-logo.svg`: Logotipo oficial do produto em SVG original, incorporado como asset vetorial publico.
-* `static/parliamentarians/ana-costa.svg`: Imagem local neutra usada no perfil com foto disponível.
 * `static/robots.txt`: Configuração inicial de indexação.
 * `workers/legislativeProxy.ts`: Worker opcional e isolado para proxy CORS seguro das APIs oficiais, limitado a `GET`, `OPTIONS`, allowlist estrita e cache temporário de borda.
 * `workers/legislativeProxy.test.ts`: Testes unitários do Worker com `fetch` e cache injetados, sem rede real.

@@ -240,7 +240,7 @@ describe('getOfficialVotesByProposal', () => {
     ]);
   });
 
-  it('represents proposal vote endpoint failures without fixture fallback', async () => {
+  it('represents proposal vote endpoint failures without example data fallback', async () => {
     const detailLoader = vi.fn();
     const nominalLoader = vi.fn();
     const result = await getOfficialVotesByProposal(createCamaraProposal(), {
@@ -376,7 +376,7 @@ describe('getOfficialVotesByProposal', () => {
     ]);
   });
 
-  it('represents Senado vote endpoint failures without fixture fallback', async () => {
+  it('represents Senado vote endpoint failures without example data fallback', async () => {
     const proposal: LegislativeProposal = {
       id: 'senado-processo-7761651',
       origin: 'official',

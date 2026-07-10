@@ -9,7 +9,7 @@ import {
 function createProposal(overrides: Partial<LegislativeProposal> = {}): LegislativeProposal {
   return {
     id: 'bill-pl-1234-2024',
-    origin: 'fixture',
+    origin: 'official',
     source: 'camara',
     sourceId: 'bill-pl-1234-2024',
     title: 'PL 1234/2024',

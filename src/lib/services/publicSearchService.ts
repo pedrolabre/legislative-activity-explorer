@@ -6,7 +6,7 @@ import {
   type OfficialSearchSourceReport
 } from './officialSearchService';
 import { getSourceReference } from './officialNotices';
-import type { SearchResults } from './searchService';
+import type { SearchResults } from './searchResults';
 
 function formatReferenceList(references: string[]) {
   if (references.length <= 1) {

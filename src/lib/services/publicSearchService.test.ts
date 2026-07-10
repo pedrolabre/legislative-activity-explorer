@@ -164,7 +164,7 @@ describe('searchPublicRecords', () => {
     );
   });
 
-  it('exposes complete official source failures without fixture fallback', async () => {
+  it('exposes complete official source failures without example data fallback', async () => {
     const camaraClient: OfficialCamaraSearchClient = {
       getDeputados: async () => {
         throw new CamaraApiClientError('indisponivel', {

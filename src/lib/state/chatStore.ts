@@ -26,17 +26,8 @@ import {
   officialSenadoStaticCoverageDescription
 } from '$lib/ui/officialMessages';
 import { getRecoverableStatusNotice, joinRecoverableNotices } from '$lib/services/officialNotices';
-import { getParliamentarianById } from '$lib/services/parliamentarianService';
-import {
-  getProposalByIdForParliamentarian,
-  getProposalsByParliamentarianId
-} from '$lib/services/proposalService';
 import { searchPublicRecords } from '$lib/services/publicSearchService';
-import { emptySearchResults, type SearchResults } from '$lib/services/searchService';
-import {
-  getVoteByIdForParliamentarian,
-  getVotesByParliamentarianId
-} from '$lib/services/voteService';
+import { emptySearchResults, type SearchResults } from '$lib/services/searchResults';
 
 export interface ChatContext {
   currentState: UIState;
@@ -71,41 +62,24 @@ export interface ExecuteSearchOptions {
 }
 
 export interface SelectParliamentarianByIdOptions {
-  getFixtureParliamentarianById?: (id: string) => Parliamentarian | null;
   getOfficialParliamentarianDetail?: (
     parliamentarian: Parliamentarian
   ) => Promise<OfficialDetailResult<Parliamentarian>>;
 }
 
 export interface OpenParliamentarianBillsOptions {
-  getFixtureProposalsByParliamentarianId?: (parliamentarianId: string) => LegislativeProposal[];
   getOfficialProposalsByParliamentarian?: (
     parliamentarian: Parliamentarian
   ) => Promise<OfficialDetailListResult<LegislativeProposal>>;
 }
 
-export interface OpenParliamentarianVotesOptions {
-  getFixtureVotesByParliamentarianId?: (parliamentarianId: string) => RollCallVote[];
-}
-
 export interface SelectProposalByIdOptions {
-  getFixtureProposalByIdForParliamentarian?: (
-    id: string,
-    parliamentarianId: string
-  ) => LegislativeProposal | null;
   getOfficialProposalDetail?: (
     proposal: LegislativeProposal
   ) => Promise<OfficialDetailResult<LegislativeProposal>>;
   getOfficialVotesByProposal?: (
     proposal: LegislativeProposal
   ) => Promise<OfficialVoteListResult<RollCallVote>>;
-}
-
-export interface SelectVoteByIdOptions {
-  getFixtureVoteByIdForParliamentarian?: (
-    id: string,
-    parliamentarianId: string
-  ) => RollCallVote | null;
 }
 
 const defaultSearchDelayMs = 450;
@@ -504,38 +478,18 @@ export async function selectParliamentarianById(
 ) {
   const context = get(chatStore);
   const contextParliamentarian = findParliamentarianInContext(context, id);
-  const baseParliamentarian =
-    contextParliamentarian && isOfficialParliamentarian(contextParliamentarian)
-      ? contextParliamentarian
-      : null;
 
-  if (!baseParliamentarian) {
-    if (hasOfficialParliamentarianIdPattern(id)) {
-      return false;
-    }
-  }
-
-  const controlledParliamentarian =
-    baseParliamentarian ??
-    (options.getFixtureParliamentarianById ?? getParliamentarianById)(id) ??
-    contextParliamentarian;
-
-  if (!controlledParliamentarian) {
+  if (!contextParliamentarian || !isOfficialParliamentarian(contextParliamentarian)) {
     return false;
   }
 
-  let parliamentarian = controlledParliamentarian;
-  let errorMessage = '';
+  const officialResult = await (options.getOfficialParliamentarianDetail ??
+    loadOfficialParliamentarianDetail)(contextParliamentarian);
 
-  if (isOfficialParliamentarian(controlledParliamentarian)) {
-    const officialResult = await (options.getOfficialParliamentarianDetail ??
-      loadOfficialParliamentarianDetail)(controlledParliamentarian);
-
-    parliamentarian = officialResult.data
-      ? mergeDefinedFields(controlledParliamentarian, officialResult.data)
-      : controlledParliamentarian;
-    errorMessage = getOfficialDetailNotice(officialResult.status, 'parlamentar');
-  }
+  const parliamentarian = officialResult.data
+    ? mergeDefinedFields(contextParliamentarian, officialResult.data)
+    : contextParliamentarian;
+  const errorMessage = getOfficialDetailNotice(officialResult.status, 'parlamentar');
 
   navigateTo('PARLIAMENTARIAN_DETAIL', {
     updates: {
@@ -561,22 +515,19 @@ export async function openParliamentarianBills(options: OpenParliamentarianBills
   let parliamentarianProposals: LegislativeProposal[];
   let errorMessage = '';
 
-  if (isOfficialParliamentarian(context.selectedParliamentarian)) {
-    const officialResult = await (options.getOfficialProposalsByParliamentarian ??
-      loadOfficialProposalsByParliamentarian)(context.selectedParliamentarian);
-
-    parliamentarianProposals = officialResult.data;
-    errorMessage = getOfficialDetailNotice(
-      officialResult.status,
-      'proposições associadas',
-      officialResult.errors
-    );
-  } else {
-    const fixtureLoader =
-      options.getFixtureProposalsByParliamentarianId ?? getProposalsByParliamentarianId;
-
-    parliamentarianProposals = fixtureLoader(context.selectedParliamentarian.id);
+  if (!isOfficialParliamentarian(context.selectedParliamentarian)) {
+    return false;
   }
+
+  const officialResult = await (options.getOfficialProposalsByParliamentarian ??
+    loadOfficialProposalsByParliamentarian)(context.selectedParliamentarian);
+
+  parliamentarianProposals = officialResult.data;
+  errorMessage = getOfficialDetailNotice(
+    officialResult.status,
+    'proposições associadas',
+    officialResult.errors
+  );
 
   navigateTo('PARLIAMENTARIAN_BILLS', {
     updates: {
@@ -590,34 +541,27 @@ export async function openParliamentarianBills(options: OpenParliamentarianBills
   return true;
 }
 
-export function openParliamentarianVotes(options: OpenParliamentarianVotesOptions = {}) {
+export function openParliamentarianVotes() {
   const context = get(chatStore);
 
   if (!context.selectedParliamentarian) {
     return false;
   }
 
-  const isOfficialSelection = isOfficialParliamentarian(context.selectedParliamentarian);
-  let voteHistory: RollCallVote[];
-  let errorMessage = '';
-
-  if (isOfficialSelection) {
-    voteHistory = context.voteHistory.filter(
-      (vote) => vote.source === context.selectedParliamentarian?.source
-    );
-    errorMessage =
-      voteHistory.length > 0
-        ? joinRecoverableNotices(
-            officialParliamentarianVoteHistoryUnavailableMessage,
-            officialParliamentarianSessionVotesCoverageMessage
-          )
-        : officialParliamentarianVoteHistoryUnavailableMessage;
-  } else {
-    const fixtureLoader =
-      options.getFixtureVotesByParliamentarianId ?? getVotesByParliamentarianId;
-
-    voteHistory = fixtureLoader(context.selectedParliamentarian.id);
+  if (!isOfficialParliamentarian(context.selectedParliamentarian)) {
+    return false;
   }
+
+  const voteHistory = context.voteHistory.filter(
+    (vote) => vote.source === context.selectedParliamentarian?.source
+  );
+  const errorMessage =
+    voteHistory.length > 0
+      ? joinRecoverableNotices(
+          officialParliamentarianVoteHistoryUnavailableMessage,
+          officialParliamentarianSessionVotesCoverageMessage
+        )
+      : officialParliamentarianVoteHistoryUnavailableMessage;
 
   navigateTo('PARLIAMENTARIAN_VOTES', {
     updates: {
@@ -633,54 +577,16 @@ export function openParliamentarianVotes(options: OpenParliamentarianVotesOption
 
 export async function selectProposalById(id: string, options: SelectProposalByIdOptions = {}) {
   const context = get(chatStore);
-  const selectedParliamentarian = context.selectedParliamentarian;
-  const selectedParliamentarianId = selectedParliamentarian?.id;
-
   const contextProposal = findProposalInContext(context, id);
-  const baseProposal =
-    contextProposal && isOfficialProposal(contextProposal)
-      ? contextProposal
-      : null;
 
-  if (!baseProposal) {
-    if (
-      !selectedParliamentarian ||
-      isOfficialParliamentarian(selectedParliamentarian) ||
-      hasOfficialProposalIdPattern(id)
-    ) {
-      return false;
-    }
-  }
-
-  const controlledProposal =
-    baseProposal ??
-    (selectedParliamentarianId
-      ? (options.getFixtureProposalByIdForParliamentarian ?? getProposalByIdForParliamentarian)(
-          id,
-          selectedParliamentarianId
-        )
-      : null) ??
-    contextProposal;
-
-  if (!controlledProposal) {
+  if (!contextProposal || !isOfficialProposal(contextProposal)) {
     return false;
   }
 
-  let proposal = controlledProposal;
-  let errorMessage = '';
-  let voteHistory = isOfficialProposal(controlledProposal) ? [] : context.voteHistory;
-
-  if (isOfficialProposal(controlledProposal)) {
-    const proposalDetail = await loadProposalOfficialDetail(
-      controlledProposal,
-      options,
-      true
-    );
-
-    proposal = proposalDetail.proposal;
-    errorMessage = proposalDetail.errorMessage;
-    voteHistory = proposalDetail.voteHistory;
-  }
+  const proposalDetail = await loadProposalOfficialDetail(contextProposal, options, true);
+  const proposal = proposalDetail.proposal;
+  const errorMessage = proposalDetail.errorMessage;
+  const voteHistory = proposalDetail.voteHistory;
 
   navigateTo('BILL_DETAIL', {
     updates: {
@@ -694,10 +600,9 @@ export async function selectProposalById(id: string, options: SelectProposalById
   return true;
 }
 
-export function selectVoteById(id: string, options: SelectVoteByIdOptions = {}) {
+export function selectVoteById(id: string) {
   const context = get(chatStore);
   const selectedParliamentarian = context.selectedParliamentarian;
-  const selectedParliamentarianId = selectedParliamentarian?.id;
   const selectedProposal = context.selectedProposal;
   const contextVote = findVoteInContext(context, id);
 
@@ -721,40 +626,17 @@ export function selectVoteById(id: string, options: SelectVoteByIdOptions = {}) 
     return true;
   }
 
-  if (!selectedParliamentarianId) {
+  if (!isOfficialParliamentarian(selectedParliamentarian)) {
     return false;
   }
 
-  if (isOfficialParliamentarian(selectedParliamentarian)) {
-    if (!contextVote || contextVote.source !== selectedParliamentarian.source) {
-      return false;
-    }
-
-    navigateTo('BILL_VOTES', {
-      updates: {
-        selectedVote: contextVote,
-        errorMessage: ''
-      }
-    });
-
-    return true;
-  }
-
-  const vote =
-    contextVote ??
-    (options.getFixtureVoteByIdForParliamentarian ?? getVoteByIdForParliamentarian)(
-      id,
-      selectedParliamentarianId
-    );
-
-  if (!vote) {
+  if (!contextVote || contextVote.source !== selectedParliamentarian.source) {
     return false;
   }
 
   navigateTo('BILL_VOTES', {
     updates: {
-      selectedProposal: null,
-      selectedVote: vote,
+      selectedVote: contextVote,
       errorMessage: ''
     }
   });
