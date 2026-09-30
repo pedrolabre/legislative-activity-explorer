@@ -1,12 +1,11 @@
 <script lang="ts">
-  import VoteBadge from '$lib/components/votes/VoteBadge.svelte';
   import type { ParliamentarianVoteView } from '$lib/domain';
   import { hasCompleteReviewedReferenceSet } from '$lib/services/referenceService';
-  import { formatCheckedAt, formatPresentedAt, formatVotedAt } from '$lib/ui/dateFormatters';
-  import {
-    officialCamaraProposalVotesEmptyMessage,
-    unavailableOfficialFieldLabel as unavailableLabel
-  } from '$lib/ui/officialMessages';
+  import { officialCamaraProposalVotesEmptyMessage } from '$lib/ui/officialMessages';
+  import BillFactsTab from './tabs/BillFactsTab.svelte';
+  import BillSourcesTab from './tabs/BillSourcesTab.svelte';
+  import BillSummaryTab from './tabs/BillSummaryTab.svelte';
+  import BillVotesTab from './tabs/BillVotesTab.svelte';
 
   interface ParliamentarianBillView {
     id: string;
@@ -38,6 +37,8 @@
     }[];
   }
 
+  type DetailTabId = 'facts' | 'summary' | 'sources' | 'votes';
+
   let {
     bill,
     parliamentarianName,
@@ -64,263 +65,145 @@
     onStartOver: () => void;
   } = $props();
 
-  const unavailableOfficialSourceMessage =
-    'Fonte oficial da proposição não foi retornada no dado disponível nesta consulta.';
-  const noReviewedReferencesMessage =
-    'Conjunto completo de referências externas revisadas ainda não foi adicionado para esta proposição.';
-  const unavailableReviewedFactualSummaryMessage =
-    'Resumo factual revisado ainda não foi adicionado para esta proposição.';
+  let activeTab = $state<DetailTabId>('facts');
 
   let hasCompleteReviewedReferences = $derived(hasCompleteReviewedReferenceSet(bill.sources));
+
+  let tabs = $derived<{ id: DetailTabId; label: string }[]>([
+    { id: 'facts', label: 'Dados' },
+    { id: 'summary', label: 'Resumo' },
+    { id: 'sources', label: 'Fontes' },
+    ...(showOfficialVotes ? [{ id: 'votes' as const, label: officialVotesTitle }] : [])
+  ]);
+
+  function handleTabKeydown(e: KeyboardEvent, currentId: DetailTabId) {
+    const currentIndex = tabs.findIndex((t) => t.id === currentId);
+    if (currentIndex === -1) return;
+
+    let targetIndex = -1;
+    if (e.key === 'ArrowRight') {
+      targetIndex = (currentIndex + 1) % tabs.length;
+    } else if (e.key === 'ArrowLeft') {
+      targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    } else if (e.key === 'Home') {
+      targetIndex = 0;
+    } else if (e.key === 'End') {
+      targetIndex = tabs.length - 1;
+    }
+
+    if (targetIndex >= 0) {
+      e.preventDefault();
+      activeTab = tabs[targetIndex].id;
+      const targetButton = document.getElementById(`tab-${tabs[targetIndex].id}`);
+      targetButton?.focus();
+    }
+  }
 </script>
 
-<div class="space-y-6">
-  <header>
-    <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">
-      Detalhe da proposição
-    </p>
-    <h3 class="mt-2 break-words text-2xl font-semibold leading-8 text-ink">
-      {bill.identification}
-    </h3>
-    <p class="mt-3 text-sm leading-6 text-ink-muted">
+<div class="detail-view">
+  <header class="detail-header">
+    <p class="header-pre">Detalhe da proposição</p>
+    <h3 class="header-title">{bill.identification}</h3>
+    <p class="header-sub">
       {#if parliamentarianName}
-        Registro associado a <span class="font-medium text-ink">{parliamentarianName}</span>.
+        Registro associado a <span class="sub-name">{parliamentarianName}</span>.
       {:else}
         Registro oficial consultado diretamente.
       {/if}
     </p>
   </header>
 
-  <section class="border-t border-border pt-5" aria-labelledby="bill-facts-title">
-    <h4 id="bill-facts-title" class="text-sm font-bold leading-6 text-ink">Dados factuais</h4>
-    <dl class="mt-3 grid gap-3 text-sm leading-6 text-ink-muted sm:grid-cols-2">
-      <div>
-        <dt class="font-bold text-ink">Identificação</dt>
-        <dd>{bill.identification}</dd>
-      </div>
-      <div>
-        <dt class="font-bold text-ink">Casa legislativa</dt>
-        <dd>{bill.chamber}</dd>
-      </div>
-      <div>
-        <dt class="font-bold text-ink">Tipo</dt>
-        <dd>{bill.type}</dd>
-      </div>
-      <div>
-        <dt class="font-bold text-ink">Número</dt>
-        <dd class:text-ink-muted={!bill.number}>{bill.number ?? unavailableLabel}</dd>
-      </div>
-      <div>
-        <dt class="font-bold text-ink">Ano</dt>
-        <dd class:text-ink-muted={!bill.year}>{bill.year ?? unavailableLabel}</dd>
-      </div>
-      <div>
-        <dt class="font-bold text-ink">{bill.subjectLabel ?? 'Tema'}</dt>
-        <dd class:text-ink-muted={!bill.subject}>{bill.subject ?? unavailableLabel}</dd>
-      </div>
-      {#if bill.currentStageLabel}
-        <div>
-          <dt class="font-bold text-ink">{bill.currentStageLabel}</dt>
-          <dd class:text-ink-muted={!bill.currentStage}>{bill.currentStage ?? unavailableLabel}</dd>
-        </div>
-      {/if}
-      <div>
-        <dt class="font-bold text-ink">Situação</dt>
-        <dd>{bill.status}</dd>
-      </div>
-      {#if bill.relationship}
-        <div>
-          <dt class="font-bold text-ink">Vínculo</dt>
-          <dd>{bill.relationship}</dd>
-        </div>
-      {/if}
-      {#if bill.authorship}
-        <div>
-          <dt class="font-bold text-ink">Autoria</dt>
-          <dd>{bill.authorship}</dd>
-        </div>
-      {/if}
-      <div>
-        <dt class="font-bold text-ink">Apresentação</dt>
-        <dd class:text-ink-muted={!bill.presentedAt}>{formatPresentedAt(bill.presentedAt)}</dd>
-      </div>
-      {#if bill.officialFullTextUrl}
-        <div class="sm:col-span-2">
-          <dt class="font-bold text-ink">Inteiro teor oficial</dt>
-          <dd>
-            <a
-              class="break-words font-bold text-accent underline-offset-4 hover:underline"
-              href={bill.officialFullTextUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Abrir inteiro teor<span class="sr-only"> abre em nova aba</span>
-            </a>
-          </dd>
-        </div>
-      {/if}
-    </dl>
-  </section>
+  <div class="detail-tabs" role="tablist" aria-label="Seções do detalhe da proposição">
+    {#each tabs as tab}
+      <button
+        type="button"
+        role="tab"
+        id={`tab-${tab.id}`}
+        aria-controls={`panel-${tab.id}`}
+        aria-selected={activeTab === tab.id}
+        tabindex={activeTab === tab.id ? 0 : -1}
+        class={`detail-tab ${activeTab === tab.id ? 'active' : ''}`}
+        onclick={() => (activeTab = tab.id)}
+        onkeydown={(e) => handleTabKeydown(e, tab.id)}
+      >
+        {tab.label}
+      </button>
+    {/each}
+  </div>
 
-  <section class="border-t border-border pt-5" aria-labelledby="official-summary-title">
-    <h4 id="official-summary-title" class="text-sm font-bold leading-6 text-ink">
-      Ementa oficial
-    </h4>
-    <p class="mt-3 text-sm leading-6 text-ink-muted">{bill.officialSummary}</p>
-  </section>
-
-  {#if bill.factualSummary}
-    <section class="border-t border-border pt-5" aria-labelledby="factual-summary-title">
-      <h4 id="factual-summary-title" class="text-sm font-bold leading-6 text-ink">
-        Resumo factual revisado
-      </h4>
-      <p class="mt-3 text-sm leading-6 text-ink-muted">{bill.factualSummary}</p>
-    </section>
-  {:else}
-    <div class="border-t border-border pt-5">
-      <div class="rounded-ui border border-border bg-surface-raised p-4" role="status">
-        <p class="text-sm leading-6 text-ink-muted">
-          {unavailableReviewedFactualSummaryMessage}
-        </p>
-      </div>
+  <div class="detail-pane">
+    <div
+      role="tabpanel"
+      id="panel-facts"
+      aria-labelledby="tab-facts"
+      hidden={activeTab !== 'facts'}
+      tabindex="0"
+      class="tab-panel"
+    >
+      <BillFactsTab {bill} />
     </div>
-  {/if}
 
-  <section class="border-t border-border pt-5" aria-labelledby="bill-sources-title">
-    <h4 id="bill-sources-title" class="text-sm font-bold leading-6 text-ink">
-      Fontes e referências
-    </h4>
-    {#if bill.sources.length > 0}
-      <ul class="mt-3 grid gap-3">
-        {#each bill.sources as source (source.id)}
-          <li>
-            <article class="rounded-ui border border-border bg-surface-raised p-4">
-              <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">
-                Tipo: {source.label}
-              </p>
-              <a
-                class="mt-2 inline-block break-words text-sm font-bold leading-6 text-accent underline-offset-4 hover:underline"
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {source.title}<span class="sr-only"> abre em nova aba</span>
-              </a>
-              <dl class="mt-2 grid gap-1 text-sm leading-6 text-ink-muted">
-                <div>
-                  <dt class="font-bold text-ink">Publicador</dt>
-                  <dd>{source.publisher}</dd>
-                </div>
-                {#if formatCheckedAt(source.checkedAt)}
-                  <div>
-                    <dt class="font-bold text-ink">Data de revisão</dt>
-                    <dd>{formatCheckedAt(source.checkedAt)}</dd>
-                  </div>
-                {/if}
-              </dl>
-            </article>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
-        <p class="text-sm leading-6 text-ink-muted">
-          {unavailableOfficialSourceMessage}
-        </p>
+    <div
+      role="tabpanel"
+      id="panel-summary"
+      aria-labelledby="tab-summary"
+      hidden={activeTab !== 'summary'}
+      tabindex="0"
+      class="tab-panel"
+    >
+      <BillSummaryTab
+        officialSummary={bill.officialSummary}
+        factualSummary={bill.factualSummary}
+      />
+    </div>
+
+    <div
+      role="tabpanel"
+      id="panel-sources"
+      aria-labelledby="tab-sources"
+      hidden={activeTab !== 'sources'}
+      tabindex="0"
+      class="tab-panel"
+    >
+      <BillSourcesTab
+        sources={bill.sources}
+        {hasCompleteReviewedReferences}
+      />
+    </div>
+
+    {#if showOfficialVotes}
+      <div
+        role="tabpanel"
+        id="panel-votes"
+        aria-labelledby="tab-votes"
+        hidden={activeTab !== 'votes'}
+        tabindex="0"
+        class="tab-panel"
+      >
+        <BillVotesTab
+          {associatedVotes}
+          billIdentification={bill.identification}
+          {parliamentarianName}
+          {officialVotesTitle}
+          {officialVotesEmptyMessage}
+          {onSelectVote}
+        />
       </div>
     {/if}
-    {#if !hasCompleteReviewedReferences}
-      <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
-        <p class="text-sm leading-6 text-ink-muted">
-          {noReviewedReferencesMessage}
-        </p>
-      </div>
-    {/if}
-  </section>
+  </div>
 
-  {#if showOfficialVotes}
-    <section class="border-t border-border pt-5" aria-labelledby="bill-votes-title">
-      <h4 id="bill-votes-title" class="text-sm font-bold leading-6 text-ink">
-        {officialVotesTitle}
-      </h4>
-      {#if associatedVotes.length > 0}
-        <p class="mt-1 text-xs font-bold uppercase leading-5 tracking-normal text-ink-muted">
-          Registros oficiais associados à proposição aberta.
-        </p>
-        <ul class="mt-3 grid gap-3">
-          {#each associatedVotes as vote (vote.id)}
-            <li>
-              <article class="rounded-ui border border-border bg-surface-raised p-4">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div class="min-w-0">
-                    <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">
-                      Votação
-                    </p>
-                    <h5 class="mt-2 break-words text-base font-semibold leading-6 text-ink">
-                      {vote.description}
-                    </h5>
-                  </div>
-                  {#if parliamentarianName}
-                    <div class="shrink-0">
-                      {#if vote.parliamentarianVote}
-                        <p class="sr-only">Voto registrado</p>
-                        <VoteBadge vote={vote.parliamentarianVote} />
-                      {:else}
-                        <p class="max-w-52 text-sm leading-6 text-ink-muted" role="status">
-                          {vote.parliamentarianVoteNotice}
-                        </p>
-                      {/if}
-                    </div>
-                  {/if}
-                </div>
-
-                <dl class="mt-4 grid gap-3 text-sm leading-6 text-ink-muted sm:grid-cols-2">
-                  <div>
-                    <dt class="font-bold text-ink">Data</dt>
-                    <dd class:text-ink-muted={!vote.votedAt}>{formatVotedAt(vote.votedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt class="font-bold text-ink">Resultado oficial</dt>
-                    <dd class:text-ink-muted={!vote.officialResult}>
-                      {vote.officialResult ?? unavailableLabel}
-                    </dd>
-                  </div>
-                </dl>
-
-                <button
-                  type="button"
-                  class="mt-4 min-h-11 rounded-ui bg-accent px-4 py-2 text-sm font-bold text-white transition hover:bg-accent-strong"
-                  aria-label={`Ver votação de ${bill.identification}`}
-                  onclick={() => onSelectVote(vote.id)}
-                >
-                  Ver votação
-                </button>
-              </article>
-            </li>
-          {/each}
-        </ul>
-      {:else}
-        <div class="mt-3 rounded-ui border border-border bg-surface-raised p-4" role="status">
-          <p class="text-sm leading-6 text-ink-muted">
-            {officialVotesEmptyMessage}
-          </p>
-        </div>
-      {/if}
-    </section>
-  {/if}
-
-  <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:flex-wrap">
+  <div class="detail-actions">
     {#if parliamentarianName}
       <button
         type="button"
-        class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+        class="btn secondary"
         onclick={onBackToBills}
       >
-        Voltar às proposições
+        ← Proposições
       </button>
       <button
         type="button"
-        class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+        class="btn secondary"
         onclick={onBackToParliamentarian}
       >
         Voltar ao perfil
@@ -328,18 +211,138 @@
     {:else if onBackToResults}
       <button
         type="button"
-        class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
+        class="btn secondary"
         onclick={onBackToResults}
       >
-        Voltar aos resultados
+        ← Voltar aos resultados
       </button>
     {/if}
     <button
       type="button"
-      class="min-h-12 rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
+      class="btn primary"
       onclick={onStartOver}
     >
       Nova consulta
     </button>
   </div>
 </div>
+
+<style>
+  .detail-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .detail-header {
+    flex-shrink: 0;
+    margin-bottom: 8px;
+  }
+
+  .header-pre {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .header-title {
+    margin: 4px 0 0;
+    font-size: 20px;
+    font-weight: 650;
+    line-height: 1.2;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .header-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .sub-name {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .detail-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .detail-tab {
+    min-height: 28px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    padding: 0 10px;
+    font-size: 10px;
+    font-weight: 750;
+    transition: all 0.14s ease;
+    cursor: pointer;
+  }
+
+  .detail-tab:hover {
+    background: rgba(255, 255, 255, 0.65);
+    color: var(--ink);
+  }
+
+  .detail-tab.active {
+    background: #ffffff;
+    color: var(--accent2);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    font-weight: 850;
+  }
+
+  .detail-pane {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) rgba(204, 216, 211, 0.55);
+    padding-right: 3px;
+  }
+
+  .detail-pane::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .detail-pane::-webkit-scrollbar-track {
+    background: rgba(204, 216, 211, 0.35);
+    border-radius: 99px;
+  }
+
+  .detail-pane::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 99px;
+  }
+
+  .tab-panel {
+    display: block;
+    outline: none;
+  }
+
+  .tab-panel[hidden] {
+    display: none;
+  }
+
+  .detail-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(204, 216, 211, 0.55);
+    flex-shrink: 0;
+  }
+</style>

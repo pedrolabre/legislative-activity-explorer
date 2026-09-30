@@ -11,19 +11,7 @@
   import InitialSearchForm from '$lib/components/search/InitialSearchForm.svelte';
   import BillVotes from '$lib/components/votes/BillVotes.svelte';
   import ParliamentarianVotes from '$lib/components/votes/ParliamentarianVotes.svelte';
-  import {
-    toDisplayVotePosition,
-    type DisplayVotePosition,
-    type LegislativeProposal,
-    type Parliamentarian,
-    type ParliamentarianVoteView,
-    type RollCallVote
-  } from '$lib/domain';
-  import {
-    unavailableNominalVoteListLabel,
-    unavailableOfficialFieldLabel,
-    unavailableVersionFieldLabel
-  } from '$lib/ui/officialMessages';
+  import type { ParliamentarianVoteView } from '$lib/domain';
   import {
     chatStore,
     executeSearch,
@@ -44,77 +32,23 @@
     selectVoteById,
     type ChatContext
   } from '$lib/state/chatStore';
-
-  interface SearchResultsView {
-    parliamentarians: {
-      kind: 'parliamentarian';
-      id: string;
-      name: string;
-      office: string;
-      chamber?: string;
-      party: string;
-      state: string;
-      status: string;
-      term?: string;
-      searchTerms: string[];
-    }[];
-    proposals: {
-      kind: 'proposal';
-      id: string;
-      title: string;
-      chamber: string;
-      type?: string;
-      subjectLabel?: string;
-      subject?: string;
-      status: string;
-      searchTerms: string[];
-    }[];
-  }
-
-  interface ParliamentarianDetailView {
-    id: string;
-    name: string;
-    fullName?: string;
-    office: string;
-    chamber: string;
-    party: string;
-    state: string;
-    status: string;
-    term?: string;
-    termLabel?: string;
-    email?: string;
-    photoUrl?: string;
-  }
-
-  interface ParliamentarianBillView {
-    id: string;
-    parliamentarianId: string;
-    identification: string;
-    chamber: string;
-    type: string;
-    number?: string;
-    year?: number;
-    subjectLabel?: string;
-    subject?: string;
-    status: string;
-    currentStageLabel?: string;
-    currentStage?: string;
-    relationship: string;
-    authorship?: string;
-    presentedAt?: string;
-    officialSummary: string;
-    factualSummary?: string;
-    officialFullTextUrl?: string;
-    sources: {
-      id: string;
-      type: 'official' | 'press' | 'technical' | 'institutional';
-      label: string;
-      title: string;
-      publisher: string;
-      url: string;
-      checkedAt?: string;
-    }[];
-  }
+  import {
+    isOfficialCamaraProposal,
+    isOfficialParliamentarian,
+    isOfficialSenadoProposal,
+    toParliamentarianBillView,
+    toParliamentarianBillViews,
+    toParliamentarianDetailView,
+    toParliamentarianVoteView,
+    toParliamentarianVoteViews,
+    toProposalVoteView,
+    toProposalVoteViews,
+    toSearchParliamentarianResult,
+    toSearchProposalResult,
+    type ParliamentarianBillView,
+    type ParliamentarianDetailView,
+    type SearchResultsView
+  } from './pageViewModelMappers';
 
   let chatContext = $state<ChatContext>(initialChatContext);
   let searchRenderKey = $state(0);
@@ -123,253 +57,6 @@
     chatContext = context;
   });
 
-  function getChamberLabel(source: Parliamentarian['source'] | LegislativeProposal['source']) {
-    return source === 'senado' ? 'Senado Federal' : 'Câmara dos Deputados';
-  }
-
-  function getSubjectLabel(proposal: LegislativeProposal) {
-    return isOfficialSenadoProposal(proposal) ? 'Natureza' : 'Tema';
-  }
-
-  function toSearchParliamentarianResult(parliamentarian: Parliamentarian) {
-    return {
-      kind: 'parliamentarian' as const,
-      id: parliamentarian.id,
-      name: parliamentarian.name,
-      office: parliamentarian.office,
-      chamber: getChamberLabel(parliamentarian.source),
-      party: parliamentarian.party ?? unavailableOfficialFieldLabel,
-      state: parliamentarian.state ?? unavailableOfficialFieldLabel,
-      status: parliamentarian.status ?? unavailableOfficialFieldLabel,
-      term: parliamentarian.term,
-      searchTerms: []
-    };
-  }
-
-  function toSearchProposalResult(proposal: LegislativeProposal) {
-    return {
-      kind: 'proposal' as const,
-      id: proposal.id,
-      title: proposal.title,
-      chamber: getChamberLabel(proposal.source),
-      type: proposal.type,
-      subjectLabel: proposal.subject ? getSubjectLabel(proposal) : undefined,
-      subject: proposal.subject,
-      status: proposal.status ?? unavailableOfficialFieldLabel,
-      searchTerms: []
-    };
-  }
-
-  function toParliamentarianDetailView(
-    parliamentarian: Parliamentarian
-  ): ParliamentarianDetailView {
-    return {
-      id: parliamentarian.id,
-      name: parliamentarian.name,
-      fullName: parliamentarian.fullName,
-      office: parliamentarian.office,
-      chamber: getChamberLabel(parliamentarian.source),
-      party: parliamentarian.party ?? unavailableOfficialFieldLabel,
-      state: parliamentarian.state ?? unavailableOfficialFieldLabel,
-      status: parliamentarian.status ?? unavailableOfficialFieldLabel,
-      term: parliamentarian.term,
-      termLabel: parliamentarian.termLabel,
-      email: parliamentarian.email,
-      photoUrl: parliamentarian.photoUrl
-    };
-  }
-
-  function getReferenceLabel(reference: LegislativeProposal['references'][number]) {
-    if (reference.type === 'official') {
-      return 'Fonte oficial';
-    }
-
-    if (reference.type === 'press') {
-      return 'Cobertura de imprensa';
-    }
-
-    if (reference.type === 'institutional') {
-      return 'Fonte institucional';
-    }
-
-    return 'Referência técnica';
-  }
-
-  function toParliamentarianBillView(
-    proposal: LegislativeProposal,
-    parliamentarianId?: string
-  ): ParliamentarianBillView {
-    const hasReviewedFactualSummary = Boolean(proposal.simplifiedSummary?.trim());
-
-    return {
-      id: proposal.id,
-      parliamentarianId: parliamentarianId ?? '',
-      identification: proposal.title,
-      chamber: getChamberLabel(proposal.source),
-      type: proposal.type,
-      number: proposal.number,
-      year: proposal.year,
-      subjectLabel: getSubjectLabel(proposal),
-      subject: proposal.subject,
-      status: proposal.status ?? unavailableOfficialFieldLabel,
-      currentStageLabel:
-        proposal.source === 'camara'
-          ? 'Tramitação atual'
-          : proposal.currentStage
-            ? 'Tramitação ou decisão'
-            : undefined,
-      currentStage: proposal.currentStage,
-      relationship: parliamentarianId
-        ? proposal.relationship ?? unavailableVersionFieldLabel
-        : proposal.relationship ?? '',
-      authorship: proposal.authorship,
-      presentedAt: proposal.presentedAt,
-      officialSummary: proposal.officialSummary ?? unavailableOfficialFieldLabel,
-      factualSummary: hasReviewedFactualSummary ? proposal.simplifiedSummary : undefined,
-      officialFullTextUrl: proposal.officialFullTextUrl,
-      sources: proposal.references.map((reference) => ({
-        id: reference.id,
-        type: reference.type,
-        label: getReferenceLabel(reference),
-        title: reference.title,
-        publisher: reference.publisher,
-        url: reference.url,
-        checkedAt: reference.checkedAt
-      }))
-    };
-  }
-
-  function normalizeName(value: string) {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLocaleLowerCase('pt-BR');
-  }
-
-  function isOfficialCamaraProposal(proposal: LegislativeProposal) {
-    return proposal.source === 'camara' && proposal.id === `camara-proposicao-${proposal.sourceId}`;
-  }
-
-  function isOfficialSenadoProposal(proposal: LegislativeProposal) {
-    return (
-      proposal.source === 'senado' &&
-      (proposal.id === `senado-materia-${proposal.sourceId}` ||
-        proposal.id === `senado-processo-${proposal.sourceId}`)
-    );
-  }
-
-  function isOfficialParliamentarian(parliamentarian: Parliamentarian) {
-    return parliamentarian.id === `${parliamentarian.source}-${parliamentarian.sourceId}`;
-  }
-
-  function isIndividualVoteForParliamentarian(
-    individualVote: RollCallVote['individualVotes'][number],
-    parliamentarian: Parliamentarian
-  ) {
-    if (individualVote.parliamentarianId) {
-      return individualVote.parliamentarianId === parliamentarian.id;
-    }
-
-    return normalizeName(individualVote.parliamentarianName) === normalizeName(parliamentarian.name);
-  }
-
-  function getParliamentarianVote(
-    vote: RollCallVote,
-    parliamentarian: Parliamentarian
-  ): DisplayVotePosition | undefined {
-    const individualVote = vote.individualVotes.find(
-      (currentVote) => isIndividualVoteForParliamentarian(currentVote, parliamentarian)
-    );
-
-    return individualVote ? toDisplayVotePosition(individualVote.vote) : undefined;
-  }
-
-  function getParliamentarianVoteNotice(vote: RollCallVote, parliamentarianVote?: DisplayVotePosition) {
-    if (parliamentarianVote) {
-      return undefined;
-    }
-
-    if (vote.individualVotes.length > 0) {
-      return 'Voto individual do parlamentar não localizado na lista nominal oficial.';
-    }
-
-    return unavailableNominalVoteListLabel;
-  }
-
-  function toParliamentarianVoteView(
-    vote: RollCallVote,
-    parliamentarian: Parliamentarian
-  ): ParliamentarianVoteView {
-    const parliamentarianVote = getParliamentarianVote(vote, parliamentarian);
-
-    return {
-      id: vote.id,
-      parliamentarianId: parliamentarian.id,
-      billIdentification: vote.proposalId,
-      chamber: getChamberLabel(vote.source),
-      description: vote.description,
-      parliamentarianVote,
-      parliamentarianVoteNotice: getParliamentarianVoteNotice(vote, parliamentarianVote),
-      votedAt: vote.votedAt,
-      officialResult: vote.result,
-      counts: vote.counts,
-      individualVotes: vote.individualVotes.map((individualVote) => ({
-        parliamentarianName: individualVote.parliamentarianName,
-        party: individualVote.party ?? unavailableOfficialFieldLabel,
-        state: individualVote.state ?? unavailableOfficialFieldLabel,
-        vote: toDisplayVotePosition(individualVote.vote),
-        isSelectedParliamentarian: isIndividualVoteForParliamentarian(
-          individualVote,
-          parliamentarian
-        )
-      }))
-    };
-  }
-
-  function toProposalVoteView(vote: RollCallVote): ParliamentarianVoteView {
-    return {
-      id: vote.id,
-      parliamentarianId: '',
-      billIdentification: vote.proposalId,
-      chamber: getChamberLabel(vote.source),
-      description: vote.description,
-      votedAt: vote.votedAt,
-      officialResult: vote.result,
-      counts: vote.counts,
-      individualVotes: vote.individualVotes.map((individualVote) => ({
-        parliamentarianName: individualVote.parliamentarianName,
-        party: individualVote.party ?? unavailableOfficialFieldLabel,
-        state: individualVote.state ?? unavailableOfficialFieldLabel,
-        vote: toDisplayVotePosition(individualVote.vote)
-      }))
-    };
-  }
-
-  function toParliamentarianBillViews(
-    proposals: LegislativeProposal[],
-    parliamentarian: Parliamentarian | null
-  ) {
-    if (!parliamentarian) {
-      return [];
-    }
-
-    return proposals.map((proposal) => toParliamentarianBillView(proposal, parliamentarian.id));
-  }
-
-  function toParliamentarianVoteViews(
-    votes: RollCallVote[],
-    parliamentarian: Parliamentarian | null
-  ) {
-    if (!parliamentarian) {
-      return [];
-    }
-
-    return votes.map((vote) => toParliamentarianVoteView(vote, parliamentarian));
-  }
-
-  function toProposalVoteViews(votes: RollCallVote[]) {
-    return votes.map(toProposalVoteView);
-  }
 
   let submittedSearch = $derived(
     chatContext.lastQuery ? { id: searchRenderKey, query: chatContext.lastQuery } : null

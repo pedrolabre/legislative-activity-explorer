@@ -45,4 +45,55 @@ describe('ParliamentarianBills', () => {
 
     expect(html).toContain('Não informado pela fonte oficial consultada.');
   });
+
+  it('renders dense proposal rows with bill-id, bill-kind, chamber, and action link', () => {
+    const html = renderParliamentarianBills({
+      bills: [
+        {
+          id: 'camara-proposicao-100',
+          parliamentarianId: 'camara-10',
+          identification: 'PL 2630/2020',
+          chamber: 'Câmara dos Deputados',
+          status: 'Em tramitação',
+          relationship: 'Autoria',
+          presentedAt: '2020-07-03',
+          officialSummary: 'Institui a Lei Brasileira de Liberdade, Responsabilidade e Transparência na Internet.',
+          sources: []
+        }
+      ]
+    });
+
+    expect(html).toContain('Lista de proposições');
+    expect(html).toContain('1 carregadas');
+    expect(html).toContain('bill-id');
+    expect(html).toContain('PL 2630/2020');
+    expect(html).toContain('bill-kind');
+    expect(html).toContain('Autoria');
+    expect(html).toContain('Casa');
+    expect(html).toContain('Câmara dos Deputados');
+    expect(html).toContain('Apresentação');
+    expect(html).toContain('03/07/2020');
+    expect(html).toContain('Ver detalhes →');
+    expect(html).toContain('Voltar ao perfil');
+    expect(html).toContain('Nova consulta');
+  });
+
+  it('renders on-demand pagination load-more button when there are more than 10 bills', () => {
+    const fakeBills = Array.from({ length: 15 }, (_, i) => ({
+      id: `camara-proposicao-${i + 1}`,
+      parliamentarianId: 'camara-10',
+      identification: `PL ${i + 1}/2024`,
+      chamber: 'Câmara dos Deputados',
+      status: 'Em tramitação',
+      relationship: 'Relatoria',
+      officialSummary: `Ementa do projeto ${i + 1}.`,
+      sources: []
+    }));
+
+    const html = renderParliamentarianBills({ bills: fakeBills });
+
+    expect(html).toContain('10 carregadas');
+    expect(html).toContain('Carregar mais 5');
+    expect(html).toContain('5 restantes');
+  });
 });

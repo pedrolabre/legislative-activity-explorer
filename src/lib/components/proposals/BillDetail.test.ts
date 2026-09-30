@@ -264,4 +264,47 @@ describe('BillDetail', () => {
 
     expect(html).not.toContain('Votações da Câmara');
   });
+
+  it('renders accessible tab navigation with role tablist and tab controls', () => {
+    const html = renderBillDetail();
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('role="tab"');
+    expect(html).toContain('Dados');
+    expect(html).toContain('Resumo');
+    expect(html).toContain('Fontes');
+    expect(html).toContain('aria-controls="panel-facts"');
+    expect(html).toContain('aria-controls="panel-summary"');
+    expect(html).toContain('aria-controls="panel-sources"');
+    expect(html).toContain('id="panel-facts"');
+    expect(html).toContain('id="panel-summary"');
+    expect(html).toContain('id="panel-sources"');
+    expect(html).toContain('role="tabpanel"');
+  });
+
+  it('includes official votes tab when showOfficialVotes is true', () => {
+    const html = renderBillDetail(
+      {},
+      {
+        showOfficialVotes: true,
+        officialVotesTitle: 'Votações da Câmara'
+      }
+    );
+
+    expect(html).toContain('aria-controls="panel-votes"');
+    expect(html).toContain('id="panel-votes"');
+    expect(html).toContain('Votações da Câmara');
+  });
+
+  it('renders structured detail sheet with header badge and contextual action buttons', () => {
+    const html = renderBillDetail();
+
+    expect(html).toContain('sheet-header');
+    expect(html).toContain('badge');
+    expect(html).toContain('Em tramitação');
+    expect(html).toContain('← Proposições');
+    expect(html).toContain('Voltar ao perfil');
+    expect(html).toContain('Nova consulta');
+  });
 });
+
