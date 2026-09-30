@@ -80,7 +80,7 @@
   </div>
 
   {#if errorMessage}
-    <p id="initial-search-error" class="mt-2 text-xs font-semibold leading-5 text-civic" role="alert">
+    <p id="initial-search-error" class="search-error" role="alert">
       {errorMessage}
     </p>
   {/if}
@@ -116,12 +116,22 @@
     font-size: 12px;
     color: var(--ink);
     background: var(--white);
+    transition: border-color 0.15s ease;
   }
 
-  .input:focus {
-    outline: 0;
+  .input:focus,
+  .input:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(0, 95, 115, 0.11);
+  }
+
+  .search-error {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--gold);
   }
 
   @media (max-width: 700px) {
@@ -146,6 +156,12 @@
       padding: 0 8px;
     }
 
+    .row :global(.btn) {
+      min-height: 34px;
+      padding: 0 9px;
+      font-size: 10px;
+    }
+
     :global(.side.is-maximized) .form {
       display: block;
       margin-top: 12px;
@@ -168,6 +184,12 @@
       height: 38px;
       font-size: 12px;
       padding: 0 10px;
+    }
+
+    :global(.side.is-maximized) .row :global(.btn) {
+      min-height: 38px;
+      padding: 0 12px;
+      font-size: 11px;
     }
   }
 </style>
