@@ -400,16 +400,6 @@
   </aside>
 
   <ConversationLog title="Conversa de consulta" busy={searchState === 'SEARCHING'}>
-    <ConversationBubble>
-      <div class="empty">
-        <div>
-          <b>?</b>
-          <h3>Consulta pública de atividade parlamentar</h3>
-          <p>Informe um parlamentar ou uma proposição para iniciar a consulta.</p>
-        </div>
-      </div>
-    </ConversationBubble>
-
     {#if searchState === 'ABOUT'}
       <ConversationBubble tone="user">
         <small>Área informativa</small>
@@ -591,6 +581,16 @@
           </ConversationBubble>
         {/if}
       {/key}
+    {:else}
+      <ConversationBubble>
+        <div class="empty">
+          <div>
+            <b>?</b>
+            <h3>Consulta pública de atividade parlamentar</h3>
+            <p>Informe um parlamentar ou uma proposição para iniciar a consulta.</p>
+          </div>
+        </div>
+      </ConversationBubble>
     {/if}
   </ConversationLog>
 </main>
