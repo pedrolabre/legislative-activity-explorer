@@ -56,7 +56,6 @@ export interface RollCallVote {
   individualVotes: IndividualVote[];
 }
 
-// eslint-disable-next-line no-restricted-syntax
 export interface ParliamentarianVoteView {
   id: string;
   parliamentarianId: string;

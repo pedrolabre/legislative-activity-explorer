@@ -512,9 +512,6 @@ export async function openParliamentarianBills(options: OpenParliamentarianBills
     return false;
   }
 
-  let parliamentarianProposals: LegislativeProposal[];
-  let errorMessage = '';
-
   if (!isOfficialParliamentarian(context.selectedParliamentarian)) {
     return false;
   }
@@ -522,8 +519,8 @@ export async function openParliamentarianBills(options: OpenParliamentarianBills
   const officialResult = await (options.getOfficialProposalsByParliamentarian ??
     loadOfficialProposalsByParliamentarian)(context.selectedParliamentarian);
 
-  parliamentarianProposals = officialResult.data;
-  errorMessage = getOfficialDetailNotice(
+  const parliamentarianProposals = officialResult.data;
+  const errorMessage = getOfficialDetailNotice(
     officialResult.status,
     'proposições associadas',
     officialResult.errors

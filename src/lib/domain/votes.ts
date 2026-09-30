@@ -4,7 +4,6 @@ export type VotePosition = (typeof VOTE_POSITIONS)[number];
 
 export const DISPLAY_VOTE_POSITIONS = ['SIM', 'NÃO', 'ABSTENÇÃO', 'AUSENTE'] as const;
 
-// eslint-disable-next-line no-restricted-syntax
 export type DisplayVotePosition = (typeof DISPLAY_VOTE_POSITIONS)[number];
 
 export interface VoteCounts {

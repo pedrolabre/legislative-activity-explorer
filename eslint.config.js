@@ -42,6 +42,19 @@ export default [
         {
           selector: 'TSNonNullExpression',
           message: 'Evite non-null assertions; trate valores opcionais explicitamente.'
+        }
+      ]
+    }
+  },
+  {
+    files: ['src/**/*.{ts,svelte}', 'workers/**/*.ts'],
+    ignores: ['src/lib/domain/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'TSNonNullExpression',
+          message: 'Evite non-null assertions; trate valores opcionais explicitamente.'
         },
         {
           selector: "TSTypeAliasDeclaration[id.name='DisplayVotePosition']",

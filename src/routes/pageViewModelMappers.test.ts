@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   getChamberLabel,
-  getSubjectLabel,
   normalizeName,
   toSearchParliamentarianResult,
   toSearchProposalResult,
-  toParliamentarianDetailView,
-  getReferenceLabel,
-  toParliamentarianBillView,
-  toParliamentarianVoteView,
   isIndividualVoteForParliamentarian
 } from './pageViewModelMappers';
 import type { LegislativeProposal, Parliamentarian } from '$lib/domain';

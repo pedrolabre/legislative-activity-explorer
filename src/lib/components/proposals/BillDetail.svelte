@@ -114,7 +114,7 @@
   </header>
 
   <div class="detail-tabs" role="tablist" aria-label="Seções do detalhe da proposição">
-    {#each tabs as tab}
+    {#each tabs as tab (tab.id)}
       <button
         type="button"
         role="tab"
