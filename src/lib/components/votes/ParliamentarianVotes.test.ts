@@ -31,6 +31,8 @@ describe('ParliamentarianVotes', () => {
     expect(html).toContain(officialParliamentarianSessionVotesEmptyMessage);
     expect(html).toContain(officialParliamentarianVoteHistoryUnavailableMessage);
     expect(html).toContain(officialParliamentarianStaticCoverageDescription);
+    expect(html).toContain('Voltar ao perfil');
+    expect(html).toContain('Nova consulta');
     expect(html).not.toContain('Não há votações associadas nesta visualização.');
     expect(html).not.toContain('Nenhuma votação associada foi retornada pela fonte consultada.');
   });
@@ -56,5 +58,49 @@ describe('ParliamentarianVotes', () => {
     expect(html).toContain('1 votação disponível');
     expect(html).toContain('Votação nominal oficial.');
     expect(html).toContain('SIM');
+  });
+
+  it('renders compact vote row with proposal identification, description, metadata and action button', () => {
+    const html = renderParliamentarianVotes({
+      parliamentarianName: 'Erika Hilton',
+      votes: [
+        {
+          id: 'v2630',
+          parliamentarianId: 'hilton',
+          billIdentification: 'PL 2630/2020',
+          chamber: 'Câmara dos Deputados',
+          description: 'Requerimento de urgência da matéria.',
+          officialResult: 'Aprovado',
+          parliamentarianVote: 'SIM',
+          votedAt: '2024-06-12',
+          individualVotes: []
+        },
+        {
+          id: 'vh1',
+          parliamentarianId: 'hilton',
+          billIdentification: 'PLP 19/2023',
+          chamber: 'Câmara dos Deputados',
+          description: 'Votação nominal em sessão plenária.',
+          officialResult: 'Rejeitado',
+          parliamentarianVoteNotice: 'Voto individual não localizado.',
+          votedAt: '2024-06-20',
+          individualVotes: []
+        }
+      ]
+    });
+
+    expect(html).toContain('2 votações disponíveis');
+    expect(html).toContain('PL 2630/2020');
+    expect(html).toContain('Requerimento de urgência da matéria.');
+    expect(html).toContain('Aprovado');
+    expect(html).toContain('PLP 19/2023');
+    expect(html).toContain('Votação nominal em sessão plenária.');
+    expect(html).toContain('Rejeitado');
+    expect(html).toContain('Voto individual não localizado.');
+    expect(html).toContain('aria-label="Ver votação de PL 2630/2020"');
+    expect(html).toContain('aria-label="Ver votação de PLP 19/2023"');
+    expect(html).toContain('Ver votação');
+    expect(html).toContain('Voltar ao perfil');
+    expect(html).toContain('Nova consulta');
   });
 });
