@@ -1,5 +1,8 @@
 import type { ExternalReference, ExternalReferenceType, LegislativeProposal } from '$lib/domain';
-import { getReferencesByProposalId } from '$lib/data/referenceCatalog';
+import {
+  findReferencesForProposal,
+  getReferencesByProposalId
+} from '$lib/data/referenceCatalog';
 
 export const REQUIRED_EDITORIAL_REFERENCE_TYPES = [
   'official',
@@ -19,8 +22,22 @@ export function getEditorialReferencesForProposal(
   proposal: LegislativeProposal,
   catalogProposalId = proposal.id
 ): ExternalReference[] {
+  let catalogReferences: ExternalReference[] = [];
+
+  if (catalogProposalId && catalogProposalId !== proposal.id) {
+    catalogReferences = getReferencesByProposalId(catalogProposalId);
+  }
+
+  if (catalogReferences.length === 0) {
+    catalogReferences = findReferencesForProposal(proposal);
+  }
+
+  if (catalogReferences.length === 0 && catalogProposalId) {
+    catalogReferences = getReferencesByProposalId(catalogProposalId);
+  }
+
   const referencesByPriority = [
-    ...getReferencesByProposalId(catalogProposalId),
+    ...catalogReferences,
     ...proposal.references
   ];
 

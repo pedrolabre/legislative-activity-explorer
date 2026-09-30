@@ -1,13 +1,25 @@
 import type { ExternalReference, ExternalReferenceType } from '$lib/domain';
+import {
+  generateProposalLookupCandidates,
+  matchesCatalogEntry,
+  type ProposalLookupInput,
+  type ProposalLookupTarget
+} from './factualSummaryCatalog';
 
 export interface ReferenceCatalogEntry {
   proposalId: string;
+  canonicalId?: string;
+  aliases?: readonly string[];
   reference: ExternalReference;
 }
+
+export type { ProposalLookupInput, ProposalLookupTarget };
 
 export const referenceCatalog: ReferenceCatalogEntry[] = [
   {
     proposalId: 'bill-pl-1234-2024',
+    canonicalId: 'pl-1234-2024',
+    aliases: ['camara-proposicao-1234', 'PL 1234/2024', 'PL 1234'],
     reference: {
       id: 'bill-pl-1234-2024-official-camara',
       type: 'official',
@@ -19,6 +31,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
   },
   {
     proposalId: 'bill-pl-1234-2024',
+    canonicalId: 'pl-1234-2024',
+    aliases: ['camara-proposicao-1234', 'PL 1234/2024', 'PL 1234'],
     reference: {
       id: 'bill-pl-1234-2024-press-politica-g1',
       type: 'press',
@@ -30,6 +44,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
   },
   {
     proposalId: 'bill-pl-1234-2024',
+    canonicalId: 'pl-1234-2024',
+    aliases: ['camara-proposicao-1234', 'PL 1234/2024', 'PL 1234'],
     reference: {
       id: 'bill-pl-1234-2024-technical-estudos-camara',
       type: 'technical',
@@ -41,6 +57,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
   },
   {
     proposalId: 'bill-pl-220-2025',
+    canonicalId: 'pl-220-2025',
+    aliases: ['camara-proposicao-220', 'PL 220/2025', 'PL 220'],
     reference: {
       id: 'bill-pl-220-2025-official-camara',
       type: 'official',
@@ -52,6 +70,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
   },
   {
     proposalId: 'bill-pec-45-2023',
+    canonicalId: 'pec-45-2023',
+    aliases: ['senado-materia-45', 'senado-processo-45', 'PEC 45/2023', 'PEC 45'],
     reference: {
       id: 'bill-pec-45-2023-official-senado',
       type: 'official',
@@ -63,6 +83,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
   },
   {
     proposalId: 'bill-pec-45-2023',
+    canonicalId: 'pec-45-2023',
+    aliases: ['senado-materia-45', 'senado-processo-45', 'PEC 45/2023', 'PEC 45'],
     reference: {
       id: 'bill-pec-45-2023-press-agencia-senado',
       type: 'press',
@@ -74,6 +96,8 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
   },
   {
     proposalId: 'bill-pec-45-2023',
+    canonicalId: 'pec-45-2023',
+    aliases: ['senado-materia-45', 'senado-processo-45', 'PEC 45/2023', 'PEC 45'],
     reference: {
       id: 'bill-pec-45-2023-technical-estudos-senado',
       type: 'technical',
@@ -85,10 +109,22 @@ export const referenceCatalog: ReferenceCatalogEntry[] = [
   }
 ];
 
+export function findReferenceCatalogEntries(
+  lookup: ProposalLookupInput
+): ReferenceCatalogEntry[] {
+  const candidateTokens = new Set(generateProposalLookupCandidates(lookup));
+
+  return referenceCatalog.filter((entry) => matchesCatalogEntry(entry, candidateTokens));
+}
+
+export function findReferencesForProposal(
+  lookup: ProposalLookupInput
+): ExternalReference[] {
+  return findReferenceCatalogEntries(lookup).map((entry) => entry.reference);
+}
+
 export function getReferencesByProposalId(proposalId: string): ExternalReference[] {
-  return referenceCatalog
-    .filter((entry) => entry.proposalId === proposalId)
-    .map((entry) => entry.reference);
+  return findReferencesForProposal(proposalId);
 }
 
 export function getReferenceCatalogEntriesByType(

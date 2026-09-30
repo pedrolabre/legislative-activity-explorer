@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { EXTERNAL_REFERENCE_TYPES } from '$lib/domain';
 import {
+  findReferenceCatalogEntries,
+  findReferencesForProposal,
   getReferenceCatalogEntriesByType,
   getReferencesByProposalId,
   referenceCatalog
@@ -42,6 +44,19 @@ describe('referenceCatalog', () => {
     }
   });
 
+  it('keeps canonical IDs and aliases populated for all reference entries', () => {
+    for (const entry of referenceCatalog) {
+      expect(entry.canonicalId).toBeDefined();
+      expect(entry.canonicalId?.trim()).toBe(entry.canonicalId);
+      expect(entry.aliases).toBeDefined();
+      expect(entry.aliases?.length).toBeGreaterThan(0);
+      for (const alias of entry.aliases ?? []) {
+        expect(alias.trim()).toBe(alias);
+        expect(alias).not.toBe('');
+      }
+    }
+  });
+
   it('covers the required editorial catalog reference types', () => {
     const catalogTypes = new Set(referenceCatalog.map((entry) => entry.reference.type));
 
@@ -65,7 +80,7 @@ describe('referenceCatalog', () => {
     }
   });
 
-  it('returns references by proposal id without touching other proposals', () => {
+  it('returns references by legacy proposal id without touching other proposals', () => {
     const references = getReferencesByProposalId('bill-pl-1234-2024');
 
     expect(references.map((reference) => reference.type)).toEqual([
@@ -76,10 +91,75 @@ describe('referenceCatalog', () => {
     expect(getReferencesByProposalId('proposal-sem-referencia')).toEqual([]);
   });
 
+  it('resolves references by canonical slug and standard notation', () => {
+    const plCanonicalRefs = getReferencesByProposalId('pl-1234-2024');
+    expect(plCanonicalRefs.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+
+    const plFormattedRefs = getReferencesByProposalId('PL 1234/2024');
+    expect(plFormattedRefs.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+
+    const pecCanonicalRefs = getReferencesByProposalId('pec-45-2023');
+    expect(pecCanonicalRefs.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+
+    const pecFormattedRefs = getReferencesByProposalId('PEC 45/2023');
+    expect(pecFormattedRefs.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+  });
+
+  it('resolves references by official house aliases', () => {
+    const camaraRefs = getReferencesByProposalId('camara-proposicao-1234');
+    expect(camaraRefs.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+
+    const camaraPartialRefs = getReferencesByProposalId('camara-proposicao-220');
+    expect(camaraPartialRefs.map((ref) => ref.type)).toEqual(['official']);
+
+    const senadoRefs = getReferencesByProposalId('senado-materia-45');
+    expect(senadoRefs.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+
+    const senadoProcessoRefs = getReferencesByProposalId('senado-processo-45');
+    expect(senadoProcessoRefs.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+  });
+
+  it('resolves references for structured proposal objects', () => {
+    const structuredCamara = findReferencesForProposal({
+      id: 'camara-proposicao-1234',
+      type: 'PL',
+      number: '1234',
+      year: 2024
+    });
+    expect(structuredCamara.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+
+    const structuredSenado = findReferencesForProposal({
+      id: 'senado-materia-45',
+      type: 'PEC',
+      number: '45',
+      year: 2023
+    });
+    expect(structuredSenado.map((ref) => ref.type)).toEqual(['official', 'press', 'technical']);
+
+    const structuredUncataloged = findReferencesForProposal({
+      id: 'camara-proposicao-9999',
+      type: 'PL',
+      number: '9999',
+      year: 2099
+    });
+    expect(structuredUncataloged).toEqual([]);
+  });
+
   it('returns catalog entries by reference type', () => {
     const technicalEntries = getReferenceCatalogEntriesByType('technical');
 
     expect(technicalEntries.length).toBeGreaterThan(0);
     expect(technicalEntries.every((entry) => entry.reference.type === 'technical')).toBe(true);
+  });
+
+  it('finds catalog entries by structured lookup matching metadata', () => {
+    const entries = findReferenceCatalogEntries({
+      type: 'PL',
+      number: '220',
+      year: 2025
+    });
+
+    expect(entries.length).toBe(1);
+    expect(entries[0].reference.id).toBe('bill-pl-220-2025-official-camara');
   });
 });
