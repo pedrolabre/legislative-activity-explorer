@@ -48,47 +48,126 @@
 </script>
 
 <form
-  class="border-t border-border pt-4"
-  aria-labelledby="initial-search-title"
+  class="form"
+  id="form"
+  aria-labelledby="initial-search-label"
   onsubmit={handleSubmit}
 >
-  <div>
-    <h2 id="initial-search-title" class="text-base font-semibold leading-6 text-ink">
-      Consulta oficial
-    </h2>
-    <label for="initial-search" class="mt-3 block text-sm font-bold leading-6 text-ink">
-      Nome de parlamentar ou termo de proposição
-    </label>
-  </div>
+  <label id="initial-search-label" for="initial-search" class="search-label">
+    Nome de parlamentar ou termo de proposição
+  </label>
 
-  <div class="mt-3 flex flex-col gap-3 sm:flex-row">
+  <div class="row">
     <input
       id="initial-search"
       name="search"
       type="search"
+      placeholder="Nome de parlamentar ou proposição"
       autocomplete="off"
       enterkeyhint="search"
       bind:value={query}
       onkeydown={handleSearchKeydown}
-      aria-describedby={errorMessage ? 'initial-search-help initial-search-error' : 'initial-search-help'}
+      aria-describedby={errorMessage ? 'initial-search-error' : undefined}
       aria-invalid={errorMessage ? 'true' : undefined}
-      class="min-h-12 min-w-0 flex-1 rounded-ui border border-border bg-surface-raised px-4 py-3 text-base text-ink shadow-sm transition focus:border-focus"
+      class="input"
     />
     <button
       type="submit"
-      class="min-h-12 rounded-ui bg-accent px-5 py-3 text-base font-bold text-white transition hover:bg-accent-strong"
+      class="btn primary"
     >
       Buscar
     </button>
   </div>
 
-  <p id="initial-search-help" class="mt-2 text-sm leading-6 text-ink-muted">
-    A consulta fica somente nesta página aberta; os resultados vêm de fontes oficiais disponíveis.
-  </p>
-
   {#if errorMessage}
-    <p id="initial-search-error" class="mt-3 text-sm font-semibold leading-6 text-civic" role="alert">
+    <p id="initial-search-error" class="mt-2 text-xs font-semibold leading-5 text-civic" role="alert">
       {errorMessage}
     </p>
   {/if}
 </form>
+
+<style>
+  .form {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .search-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--ink);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+  }
+
+  .input {
+    min-width: 0;
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 12px;
+    color: var(--ink);
+    background: var(--white);
+  }
+
+  .input:focus {
+    outline: 0;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 95, 115, 0.11);
+  }
+
+  @media (max-width: 700px) {
+    .form {
+      grid-area: form;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .search-label {
+      display: none;
+    }
+
+    .row {
+      gap: 5px;
+    }
+
+    .input {
+      height: 34px;
+      font-size: 11px;
+      padding: 0 8px;
+    }
+
+    :global(.side.is-maximized) .form {
+      display: block;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    :global(.side.is-maximized) .search-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    :global(.side.is-maximized) .row {
+      gap: 6px;
+    }
+
+    :global(.side.is-maximized) .input {
+      height: 38px;
+      font-size: 12px;
+      padding: 0 10px;
+    }
+  }
+</style>

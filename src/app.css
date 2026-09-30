@@ -1,19 +1,36 @@
 @import "tailwindcss";
 
+:root {
+  --ink: #172027;
+  --muted: #465866;
+  --surface: #f7faf9;
+  --panel: #edf4f1;
+  --white: #ffffff;
+  --border: #ccd8d3;
+  --accent: #005f73;
+  --accent2: #09485a;
+  --gold: #916400;
+  --cream: #fff8e1;
+  --focus: #1d4ed8;
+}
+
 @theme {
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
 
-  --color-ink: #172027;
-  --color-ink-muted: #465866;
-  --color-surface: #f7faf9;
-  --color-surface-muted: #edf4f1;
-  --color-surface-raised: #ffffff;
-  --color-border: #ccd8d3;
-  --color-accent: #005f73;
-  --color-accent-strong: #09485a;
-  --color-civic: #916400;
-  --color-focus: #1d4ed8;
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--panel);
+  --color-surface-raised: var(--white);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent2);
+  --color-civic: var(--gold);
+  --color-focus: var(--focus);
+  --color-panel: var(--panel);
+  --color-cream: var(--cream);
+  --color-gold: var(--gold);
 
   --spacing-page: clamp(1.25rem, 4vw, 4rem);
   --spacing-section: clamp(3rem, 7vw, 6rem);
@@ -30,9 +47,21 @@
 }
 
 @layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
   html {
-    color: var(--color-ink);
-    background: var(--color-surface);
+    color: var(--ink);
+    background: var(--surface);
     color-scheme: light;
     font-family: var(--font-sans);
     font-synthesis: none;
@@ -41,10 +70,9 @@
 
   body {
     min-width: 320px;
-    min-height: 100dvh;
-    margin: 0;
-    color: var(--color-ink);
-    background: var(--color-surface);
+    height: 100dvh;
+    color: var(--ink);
+    background: var(--surface);
   }
 
   button,
@@ -54,14 +82,18 @@
     font: inherit;
   }
 
+  button {
+    cursor: pointer;
+  }
+
   :focus-visible {
-    outline: 3px solid var(--color-focus);
-    outline-offset: 3px;
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
   }
 
   ::selection {
-    color: var(--color-ink);
-    background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    color: var(--ink);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
   }
 }
 
@@ -74,7 +106,7 @@
     max-width: calc(100vw - 2rem);
     padding: 0.625rem 0.875rem;
     color: #ffffff;
-    background: var(--color-ink);
+    background: var(--ink);
     border-radius: var(--radius-ui);
     font-size: 0.875rem;
     font-weight: 700;
@@ -84,5 +116,73 @@
 
   .skip-link:focus-visible {
     transform: translateY(0);
+  }
+
+  /* Scrollbars contidas e discretas para as áreas de conteúdo interno */
+  .content,
+  .detail-pane {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) rgba(204, 216, 211, 0.55);
+    overscroll-behavior: contain;
+  }
+
+  .content::-webkit-scrollbar,
+  .detail-pane::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .content::-webkit-scrollbar-track,
+  .detail-pane::-webkit-scrollbar-track {
+    background: rgba(204, 216, 211, 0.35);
+    border-radius: 99px;
+  }
+
+  .content::-webkit-scrollbar-thumb,
+  .detail-pane::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 99px;
+  }
+
+  .content::-webkit-scrollbar-thumb:hover,
+  .detail-pane::-webkit-scrollbar-thumb:hover {
+    background: var(--accent2);
+  }
+
+  /* Botões compartilhados do design system */
+  .btn {
+    min-height: 38px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 0 11px;
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    color: #ffffff;
+  }
+
+  .btn.primary:hover {
+    background: var(--accent2);
+  }
+
+  .btn.secondary {
+    background: #ffffff;
+    border-color: var(--border);
+    color: var(--ink);
+  }
+
+  .btn.secondary:hover {
+    border-color: var(--accent);
+  }
+
+  .btn.wide {
+    width: 100%;
   }
 }
