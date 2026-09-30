@@ -51,9 +51,11 @@
       id: string;
       name: string;
       office: string;
+      chamber?: string;
       party: string;
       state: string;
       status: string;
+      term?: string;
       searchTerms: string[];
     }[];
     proposals: {
@@ -61,6 +63,7 @@
       id: string;
       title: string;
       chamber: string;
+      type?: string;
       subjectLabel?: string;
       subject?: string;
       status: string;
@@ -134,9 +137,11 @@
       id: parliamentarian.id,
       name: parliamentarian.name,
       office: parliamentarian.office,
+      chamber: getChamberLabel(parliamentarian.source),
       party: parliamentarian.party ?? unavailableOfficialFieldLabel,
       state: parliamentarian.state ?? unavailableOfficialFieldLabel,
       status: parliamentarian.status ?? unavailableOfficialFieldLabel,
+      term: parliamentarian.term,
       searchTerms: []
     };
   }
@@ -147,6 +152,7 @@
       id: proposal.id,
       title: proposal.title,
       chamber: getChamberLabel(proposal.source),
+      type: proposal.type,
       subjectLabel: proposal.subject ? getSubjectLabel(proposal) : undefined,
       subject: proposal.subject,
       status: proposal.status ?? unavailableOfficialFieldLabel,

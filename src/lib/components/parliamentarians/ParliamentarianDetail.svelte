@@ -1,7 +1,5 @@
 <script lang="ts">
-  import {
-    unavailableOfficialFieldLabel
-  } from '$lib/ui/officialMessages';
+  import { unavailableOfficialFieldLabel } from '$lib/ui/officialMessages';
 
   interface ParliamentarianDetailView {
     id: string;
@@ -49,136 +47,314 @@
   let initials = $derived(getInitials(parliamentarian.name));
   let hasTerm = $derived(Boolean(parliamentarian.term?.trim()));
   let termLabel = $derived(parliamentarian.termLabel ?? 'Mandato');
+  let identityText = $derived(
+    [
+      parliamentarian.office,
+      parliamentarian.party,
+      parliamentarian.state,
+      hasTerm ? parliamentarian.term : null
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  );
 </script>
 
-<div class="space-y-6">
-  <header class="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-start">
-    {#if parliamentarian.photoUrl}
-      <img
-        src={parliamentarian.photoUrl}
-        alt={`Foto de ${parliamentarian.name}`}
-        width="112"
-        height="112"
-        loading="lazy"
-        decoding="async"
-        class="h-28 w-28 rounded-ui border border-border bg-surface object-cover"
-      />
-    {:else}
-      <div
-        class="flex h-28 w-28 items-center justify-center rounded-ui border border-border bg-surface text-2xl font-bold text-accent"
-        role="img"
-        aria-label={`Foto não informada pela fonte oficial consultada para ${parliamentarian.name}`}
-      >
-        <span aria-hidden="true">{initials}</span>
-      </div>
-    {/if}
-
-    <div class="min-w-0">
-      <p class="text-xs font-bold uppercase leading-5 tracking-normal text-accent">
-        Perfil parlamentar
-      </p>
-      <h3 class="mt-2 break-words text-2xl font-semibold leading-8 text-ink">
-        {parliamentarian.name}
-      </h3>
-      <dl class="mt-4 grid gap-3 text-sm leading-6 text-ink-muted sm:grid-cols-3">
-        <div>
-          <dt class="font-bold text-ink">Partido</dt>
-          <dd>{parliamentarian.party}</dd>
-        </div>
-        <div>
-          <dt class="font-bold text-ink">UF</dt>
-          <dd>{parliamentarian.state}</dd>
-        </div>
-        <div>
-          <dt class="font-bold text-ink">Situação</dt>
-          <dd>{parliamentarian.status}</dd>
-        </div>
-      </dl>
-    </div>
-  </header>
-
-  <section class="border-t border-border pt-5" aria-labelledby="parliamentarian-facts-title">
-    <h4 id="parliamentarian-facts-title" class="text-sm font-bold leading-6 text-ink">
-      Dados factuais
-    </h4>
-    <dl class="mt-3 grid gap-3 text-sm leading-6 text-ink-muted sm:grid-cols-2">
-      <div>
-        <dt class="font-bold text-ink">Nome civil</dt>
-        <dd class:text-ink-muted={!parliamentarian.fullName}>
-          {formatOptional(parliamentarian.fullName)}
-        </dd>
-      </div>
-      <div>
-        <dt class="font-bold text-ink">Cargo</dt>
-        <dd>{parliamentarian.office}</dd>
-      </div>
-      <div>
-        <dt class="font-bold text-ink">Casa legislativa</dt>
-        <dd>{parliamentarian.chamber}</dd>
-      </div>
-      {#if hasTerm}
-        <div>
-          <dt class="font-bold text-ink">{termLabel}</dt>
-          <dd>{parliamentarian.term}</dd>
+<div class="profile-container">
+  <div class="profile">
+    <aside class="profile-left">
+      {#if parliamentarian.photoUrl}
+        <img
+          src={parliamentarian.photoUrl}
+          alt={`Foto de ${parliamentarian.name}`}
+          width="78"
+          height="78"
+          loading="lazy"
+          decoding="async"
+          class="photo"
+        />
+      {:else}
+        <div
+          class="photo photo-fallback"
+          role="img"
+          aria-label={`Foto não informada pela fonte oficial consultada para ${parliamentarian.name}`}
+        >
+          <span aria-hidden="true">{initials}</span>
         </div>
       {/if}
-      <div class="sm:col-span-2">
-        <dt class="font-bold text-ink">E-mail institucional</dt>
-        <dd class:text-ink-muted={!parliamentarian.email}>
-          {formatOptional(parliamentarian.email)}
-        </dd>
-      </div>
-    </dl>
-  </section>
 
-  <section class="border-t border-border pt-5" aria-labelledby="related-consultations-title">
-    <h4 id="related-consultations-title" class="text-sm font-bold leading-6 text-ink">
-      Consultas relacionadas
-    </h4>
-    <div class="mt-3 grid gap-3 sm:grid-cols-2">
-      <div>
-        <button
-          type="button"
-          class="min-h-12 w-full rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
-          aria-label={`Abrir proposições associadas de ${parliamentarian.name}`}
-          onclick={onOpenBills}
-        >
-          Proposições
-        </button>
-        <p class="mt-2 text-sm leading-6 text-ink-muted">
-          Abrir lista associada ao parlamentar.
-        </p>
+      <button
+        type="button"
+        class="btn primary profile-btn"
+        onclick={onStartOver}
+      >
+        Nova consulta
+      </button>
+
+      <button
+        type="button"
+        class="btn secondary profile-btn"
+        onclick={onBackToResults}
+      >
+        ← Voltar aos resultados
+      </button>
+    </aside>
+
+    <div class="profile-main">
+      <div class="profile-heading">
+        <h2 class="name">{parliamentarian.name}</h2>
+        <p class="identity">{identityText}</p>
       </div>
-      <div>
-        <button
-          type="button"
-          class="min-h-12 w-full rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
-          aria-label={`Abrir votações disponíveis de ${parliamentarian.name}`}
-          onclick={onOpenVotes}
-        >
-          Votações disponíveis
-        </button>
-        <p class="mt-2 text-sm leading-6 text-ink-muted">
-          Abrir votos oficiais já disponíveis nesta consulta.
-        </p>
+
+      <dl class="facts">
+        <div class="fact">
+          <dt>Nome civil</dt>
+          <dd class:fact-muted={!parliamentarian.fullName}>
+            {formatOptional(parliamentarian.fullName)}
+          </dd>
+        </div>
+        <div class="fact">
+          <dt>Casa</dt>
+          <dd>{parliamentarian.chamber}</dd>
+        </div>
+        {#if hasTerm}
+          <div class="fact">
+            <dt>{termLabel}</dt>
+            <dd>{parliamentarian.term}</dd>
+          </div>
+        {/if}
+        <div class="fact">
+          <dt>Situação</dt>
+          <dd>{parliamentarian.status}</dd>
+        </div>
+        <div class="fact">
+          <dt>E-mail</dt>
+          <dd class:fact-muted={!parliamentarian.email}>
+            {formatOptional(parliamentarian.email)}
+          </dd>
+        </div>
+      </dl>
+
+      <div class="actions">
+        <div class="action">
+          <strong>Proposições do parlamentar</strong>
+          <p>Abrir lista associada ao parlamentar.</p>
+          <button
+            type="button"
+            class="btn primary"
+            aria-label={`Abrir proposições associadas de ${parliamentarian.name}`}
+            onclick={onOpenBills}
+          >
+            Abrir proposições
+          </button>
+        </div>
+        <div class="action">
+          <strong>Votações disponíveis</strong>
+          <p>Abrir votos oficiais já disponíveis nesta consulta.</p>
+          <button
+            type="button"
+            class="btn primary"
+            aria-label={`Abrir votações disponíveis de ${parliamentarian.name}`}
+            onclick={onOpenVotes}
+          >
+            Abrir votações
+          </button>
+        </div>
       </div>
     </div>
-  </section>
-
-  <div class="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:flex-wrap">
-    <button
-      type="button"
-      class="min-h-12 rounded-ui border border-border bg-surface-raised px-4 py-3 text-sm font-bold text-ink transition hover:border-accent"
-      onclick={onBackToResults}
-    >
-      Voltar aos resultados
-    </button>
-    <button
-      type="button"
-      class="min-h-12 rounded-ui bg-accent px-4 py-3 text-sm font-bold text-white transition hover:bg-accent-strong"
-      onclick={onStartOver}
-    >
-      Nova consulta
-    </button>
   </div>
 </div>
+
+<style>
+  .profile-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .profile {
+    display: grid;
+    grid-template-columns: 105px 1fr;
+    gap: 14px;
+    align-items: start;
+    height: 100%;
+  }
+
+  .profile-left {
+    border-right: 1px solid var(--border);
+    padding-right: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .photo {
+    width: 78px;
+    height: 78px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--surface);
+    display: block;
+  }
+
+  .photo-fallback {
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 20px;
+  }
+
+  .profile-left .btn {
+    width: 100%;
+    min-height: 30px;
+    padding: 0 7px;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .profile-main {
+    min-width: 0;
+    display: grid;
+    grid-template-rows: auto auto auto;
+    align-content: start;
+    gap: 10px;
+  }
+
+  .profile-heading {
+    min-width: 0;
+  }
+
+  .name {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.05;
+    font-weight: 650;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .identity {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .fact {
+    min-width: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 7px;
+  }
+
+  .fact dt {
+    font-size: 8px;
+    text-transform: uppercase;
+    font-weight: 850;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  .fact dd {
+    margin: 3px 0 0;
+    font-size: 10px;
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .fact-muted {
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 2px;
+  }
+
+  .action {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 9px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .action strong {
+    font-size: 11px;
+    font-weight: 750;
+    color: var(--ink);
+  }
+
+  .action p {
+    margin: 2px 0 6px;
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.25;
+    flex: 1;
+  }
+
+  .action .btn {
+    width: 100%;
+    min-height: 28px;
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  @media (max-width: 900px) {
+    .facts {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .profile {
+      grid-template-columns: 85px 1fr;
+      gap: 10px;
+    }
+
+    .profile-left {
+      padding-right: 8px;
+      gap: 6px;
+    }
+
+    .photo {
+      width: 64px;
+      height: 64px;
+    }
+
+    .photo-fallback {
+      font-size: 16px;
+    }
+
+    .facts {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .name {
+      font-size: 18px;
+    }
+
+    .actions {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
