@@ -1,14 +1,13 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
+  import AppSidebar from './AppSidebar.svelte';
   import AboutPrivacyInfo from '$lib/components/about/AboutPrivacyInfo.svelte';
-  import ProductLogo from '$lib/components/brand/ProductLogo.svelte';
   import ConversationBubble from '$lib/components/conversation/ConversationBubble.svelte';
   import ConversationLog from '$lib/components/conversation/ConversationLog.svelte';
   import ParliamentarianDetail from '$lib/components/parliamentarians/ParliamentarianDetail.svelte';
   import BillDetail from '$lib/components/proposals/BillDetail.svelte';
   import ParliamentarianBills from '$lib/components/proposals/ParliamentarianBills.svelte';
   import SearchResults from '$lib/components/search/SearchResults.svelte';
-  import InitialSearchForm from '$lib/components/search/InitialSearchForm.svelte';
   import BillVotes from '$lib/components/votes/BillVotes.svelte';
   import ParliamentarianVotes from '$lib/components/votes/ParliamentarianVotes.svelte';
   import type { ParliamentarianVoteView } from '$lib/domain';
@@ -16,7 +15,6 @@
     chatStore,
     executeSearch,
     goBack,
-    initialChatContext,
     navigateTo,
     officialParliamentarianSessionVotesEmptyMessage,
     officialParliamentarianSessionVotesCoverageMessage,
@@ -29,8 +27,7 @@
     reset,
     selectParliamentarianById,
     selectProposalById,
-    selectVoteById,
-    type ChatContext
+    selectVoteById
   } from '$lib/state/chatStore';
   import {
     isOfficialCamaraProposal,
@@ -50,58 +47,53 @@
     type SearchResultsView
   } from './pageViewModelMappers';
 
-  let chatContext = $state<ChatContext>(initialChatContext);
   let searchRenderKey = $state(0);
   let searchFormResetToken = $state(0);
-  const unsubscribeChatStore = chatStore.subscribe((context) => {
-    chatContext = context;
-  });
-
 
   let submittedSearch = $derived(
-    chatContext.lastQuery ? { id: searchRenderKey, query: chatContext.lastQuery } : null
+    chatStore.lastQuery ? { id: searchRenderKey, query: chatStore.lastQuery } : null
   );
-  let searchState = $derived(chatContext.currentState);
+  let searchState = $derived(chatStore.currentState);
   let searchResults: SearchResultsView = $derived({
-    parliamentarians: chatContext.parliamentariansFound.map(toSearchParliamentarianResult),
-    proposals: chatContext.proposalsFound.map(toSearchProposalResult)
+    parliamentarians: chatStore.parliamentariansFound.map(toSearchParliamentarianResult),
+    proposals: chatStore.proposalsFound.map(toSearchProposalResult)
   });
   let selectedParliamentarian: ParliamentarianDetailView | null = $derived(
-    chatContext.selectedParliamentarian
-      ? toParliamentarianDetailView(chatContext.selectedParliamentarian)
+    chatStore.selectedParliamentarian
+      ? toParliamentarianDetailView(chatStore.selectedParliamentarian)
       : null
   );
   let selectedBill: ParliamentarianBillView | null = $derived(
-    chatContext.selectedProposal
+    chatStore.selectedProposal
       ? toParliamentarianBillView(
-          chatContext.selectedProposal,
-          chatContext.selectedParliamentarian?.id
+          chatStore.selectedProposal,
+          chatStore.selectedParliamentarian?.id
         )
       : null
   );
   let selectedVote: ParliamentarianVoteView | null = $derived(
-    chatContext.selectedVote
-      ? chatContext.selectedParliamentarian
-        ? toParliamentarianVoteView(chatContext.selectedVote, chatContext.selectedParliamentarian)
-        : toProposalVoteView(chatContext.selectedVote)
+    chatStore.selectedVote
+      ? chatStore.selectedParliamentarian
+        ? toParliamentarianVoteView(chatStore.selectedVote, chatStore.selectedParliamentarian)
+        : toProposalVoteView(chatStore.selectedVote)
       : null
   );
   let selectedParliamentarianBills: ParliamentarianBillView[] = $derived(
     toParliamentarianBillViews(
-      chatContext.parliamentarianProposals,
-      chatContext.selectedParliamentarian
+      chatStore.parliamentarianProposals,
+      chatStore.selectedParliamentarian
     )
   );
   let selectedParliamentarianVotes: ParliamentarianVoteView[] = $derived(
-    toParliamentarianVoteViews(chatContext.voteHistory, chatContext.selectedParliamentarian)
+    toParliamentarianVoteViews(chatStore.voteHistory, chatStore.selectedParliamentarian)
   );
   let selectedParliamentarianIsOfficial = $derived(
-    chatContext.selectedParliamentarian
-      ? isOfficialParliamentarian(chatContext.selectedParliamentarian)
+    chatStore.selectedParliamentarian
+      ? isOfficialParliamentarian(chatStore.selectedParliamentarian)
       : false
   );
   let selectedParliamentarianIsOfficialSenado = $derived(
-    selectedParliamentarianIsOfficial && chatContext.selectedParliamentarian?.source === 'senado'
+    selectedParliamentarianIsOfficial && chatStore.selectedParliamentarian?.source === 'senado'
   );
   let selectedParliamentarianBillsEmptyTitle = $derived(
     selectedParliamentarianIsOfficialSenado
@@ -129,72 +121,31 @@
       : undefined
   );
   let selectedBillVotes: ParliamentarianVoteView[] = $derived(
-    chatContext.selectedProposal
-      ? chatContext.selectedParliamentarian
-        ? toParliamentarianVoteViews(chatContext.voteHistory, chatContext.selectedParliamentarian)
-        : toProposalVoteViews(chatContext.voteHistory)
+    chatStore.selectedProposal
+      ? chatStore.selectedParliamentarian
+        ? toParliamentarianVoteViews(chatStore.voteHistory, chatStore.selectedParliamentarian)
+        : toProposalVoteViews(chatStore.voteHistory)
       : []
   );
   let selectedBillShowsOfficialVotes = $derived(
-    chatContext.selectedProposal
-      ? isOfficialCamaraProposal(chatContext.selectedProposal) ||
-        isOfficialSenadoProposal(chatContext.selectedProposal)
+    chatStore.selectedProposal
+      ? isOfficialCamaraProposal(chatStore.selectedProposal) ||
+        isOfficialSenadoProposal(chatStore.selectedProposal)
       : false
   );
   let selectedBillOfficialVotesTitle = $derived(
-    chatContext.selectedProposal && isOfficialSenadoProposal(chatContext.selectedProposal)
+    chatStore.selectedProposal && isOfficialSenadoProposal(chatStore.selectedProposal)
       ? 'Votações do Senado'
       : 'Votações da Câmara'
   );
   let selectedBillOfficialVotesEmptyMessage = $derived(
-    chatContext.selectedProposal && isOfficialSenadoProposal(chatContext.selectedProposal)
+    chatStore.selectedProposal && isOfficialSenadoProposal(chatStore.selectedProposal)
       ? officialSenadoProposalVotesEmptyMessage
       : undefined
   );
-  let recoverableNotice = $derived(chatContext.errorMessage.trim());
-
-  let sideMaximized = $state(false);
-  let sideElement = $state<HTMLElement | null>(null);
-  let touchStartY = 0;
-
-  function toggleSideMaximized() {
-    sideMaximized = !sideMaximized;
-  }
-
-  function handleBrandClick() {
-    if (typeof window !== 'undefined' && window.innerWidth <= 700 && !sideMaximized) {
-      sideMaximized = true;
-    }
-  }
-
-  function handleTouchStart(e: TouchEvent) {
-    if (e.touches.length === 1) {
-      touchStartY = e.touches[0].clientY;
-    }
-  }
-
-  function handleTouchEnd(e: TouchEvent) {
-    if (typeof window !== 'undefined' && window.innerWidth > 700) return;
-    const touchEndY = e.changedTouches[0].clientY;
-    const diffY = touchEndY - touchStartY;
-    if (diffY > 30 && !sideMaximized) {
-      sideMaximized = true;
-    } else if (diffY < -30 && sideMaximized) {
-      sideMaximized = false;
-    }
-  }
-
-  function handleWindowClick(e: MouseEvent) {
-    if (typeof window !== 'undefined' && window.innerWidth <= 700 && sideMaximized) {
-      const target = e.target as Node | null;
-      if (sideElement && target && !sideElement.contains(target)) {
-        sideMaximized = false;
-      }
-    }
-  }
+  let recoverableNotice = $derived(chatStore.errorMessage.trim());
 
   function handleSearch(query: string) {
-    sideMaximized = false;
     searchRenderKey += 1;
     void executeSearch(query);
   }
@@ -322,82 +273,26 @@
   }
 
   function handleStartOver() {
-    sideMaximized = false;
     reset();
     searchRenderKey += 1;
     searchFormResetToken += 1;
   }
 
   onDestroy(() => {
-    unsubscribeChatStore();
     reset();
   });
 </script>
-
-<svelte:window onclick={handleWindowClick} />
 
 <svelte:head>
   <title>O que o parlamentar fez</title>
 </svelte:head>
 
 <main id="conteudo" tabindex="-1" class="app">
-  <aside
-    bind:this={sideElement}
-    id="side"
-    class={`side ${sideMaximized ? 'is-maximized' : ''}`}
-    ontouchstart={handleTouchStart}
-    ontouchend={handleTouchEnd}
-    aria-label="Barra lateral de consulta"
-  >
-    <div
-      class="brand"
-      role="button"
-      tabindex="0"
-      onclick={handleBrandClick}
-      onkeydown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleBrandClick();
-        }
-      }}
-    >
-      <ProductLogo showText={false} decorative class="brand-logo" />
-      <div>
-        <h1 id="home-title">O que o parlamentar fez</h1>
-      </div>
-    </div>
-
-    <p class="intro">
-      <strong>Consulte projetos e votações</strong> do Congresso Nacional a partir de registros oficiais disponíveis.
-    </p>
-
-    <InitialSearchForm onSearch={handleSearch} resetToken={searchFormResetToken} />
-
-    <div class="side-bottom">
-      <button
-        type="button"
-        class="btn secondary wide"
-        onclick={handleOpenAbout}
-      >
-        Sobre e privacidade
-      </button>
-    </div>
-
-    <button
-      id="sideHandle"
-      class="side-handle"
-      type="button"
-      aria-label={sideMaximized ? 'Deslizar para recolher' : 'Deslizar para expandir'}
-      aria-expanded={sideMaximized}
-      onclick={toggleSideMaximized}
-    >
-      <span class="handle-track">
-        <span class="handle-line"></span>
-        <span class="handle-line"></span>
-        <span class="handle-line"></span>
-      </span>
-    </button>
-  </aside>
+  <AppSidebar
+    onSearch={handleSearch}
+    onOpenAbout={handleOpenAbout}
+    resetToken={searchFormResetToken}
+  />
 
   <ConversationLog title="Conversa de consulta" busy={searchState === 'SEARCHING'}>
     {#if searchState === 'ABOUT'}
@@ -449,7 +344,7 @@
                 <b class="text-gold">!</b>
                 <h3 class="font-semibold">A busca não foi concluída.</h3>
                 <p class="mt-2 text-sm leading-6 text-ink-muted">
-                  {chatContext.errorMessage}
+                  {chatStore.errorMessage}
                 </p>
                 <button
                   type="button"
@@ -606,55 +501,6 @@
     gap: 16px;
   }
 
-  .side {
-    min-height: 0;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(23, 32, 39, 0.06);
-    background: var(--white);
-    border-top: 4px solid var(--gold);
-    padding: 16px 14px;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .side-handle {
-    display: none;
-  }
-
-  .brand {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .brand h1 {
-    margin: 0;
-    font-size: 18px;
-    line-height: 1.15;
-    font-weight: 650;
-    color: var(--ink);
-  }
-
-  .intro {
-    margin: 14px 0 0;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--muted);
-  }
-
-  .intro strong {
-    color: var(--ink);
-  }
-
-  .side-bottom {
-    margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
-  }
-
   .empty {
     height: 100%;
     display: grid;
@@ -698,145 +544,6 @@
       grid-template-rows: auto 1fr;
       padding: 7px;
       gap: 7px;
-    }
-
-    .side {
-      padding: 8px 10px 4px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-      grid-template-areas:
-        "brand form"
-        "handle handle";
-      gap: 4px 8px;
-      align-items: center;
-      border-top-width: 3px;
-      transition: background-color 0.15s ease;
-    }
-
-    .brand {
-      grid-area: brand;
-      display: flex;
-      gap: 7px;
-      align-items: center;
-      min-width: 0;
-      overflow: hidden;
-      cursor: pointer;
-    }
-
-    .brand h1 {
-      font-size: 11px;
-      line-height: 1.15;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin: 0;
-    }
-
-    .intro,
-    .side-bottom {
-      display: none;
-    }
-
-    .side-handle {
-      grid-area: handle;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      padding: 4px 0 2px;
-      background: transparent;
-      border: 0;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-
-    .handle-track {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2.5px;
-      padding: 3px 18px;
-      border-radius: 99px;
-      background: rgba(204, 216, 211, 0.45);
-      transition: all 0.15s ease;
-    }
-
-    .side-handle:hover .handle-track,
-    .side-handle:active .handle-track {
-      background: rgba(0, 95, 115, 0.12);
-    }
-
-    .handle-line {
-      display: block;
-      height: 2px;
-      background: var(--muted);
-      border-radius: 99px;
-      transition: background-color 0.15s ease, width 0.15s ease;
-    }
-
-    .handle-line:nth-child(1) {
-      width: 22px;
-    }
-
-    .handle-line:nth-child(2) {
-      width: 26px;
-    }
-
-    .handle-line:nth-child(3) {
-      width: 22px;
-    }
-
-    .side-handle:hover .handle-line,
-    .side-handle:active .handle-line {
-      background: var(--accent);
-    }
-
-    .side.is-maximized {
-      display: flex;
-      flex-direction: column;
-      padding: 14px 13px 6px;
-      gap: 0;
-      border-top-width: 4px;
-      box-shadow: 0 3px 14px rgba(23, 32, 39, 0.1);
-    }
-
-    .side.is-maximized .brand {
-      gap: 10px;
-      overflow: visible;
-    }
-
-    .side.is-maximized .brand h1 {
-      font-size: 16px;
-      line-height: 1.2;
-      white-space: normal;
-    }
-
-    .side.is-maximized .intro {
-      display: block;
-      margin: 12px 0 0;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-      font-size: 12px;
-      line-height: 1.45;
-      color: var(--muted);
-    }
-
-    .side.is-maximized .side-bottom {
-      display: block;
-      margin-top: 14px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-    }
-
-    .side.is-maximized .side-bottom :global(.btn) {
-      width: 100%;
-      min-height: 36px;
-      font-size: 11px;
-    }
-
-    .side.is-maximized .side-handle {
-      margin-top: 8px;
-      padding: 6px 0 2px;
     }
   }
 </style>

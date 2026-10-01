@@ -4,7 +4,9 @@ import type { LegislativeProposal, Parliamentarian, RollCallVote } from '$lib/do
 import { searchPublicRecords } from '$lib/services/publicSearchService';
 import type { SearchResults } from '$lib/services/searchResults';
 import {
+  ChatStateMachine,
   chatStore,
+  createChatStateMachine,
   executeSearch,
   goBack,
   hasOfficialParliamentarianIdPattern,
@@ -1139,3 +1141,110 @@ describe('chatStore actions', () => {
     });
   });
 });
+
+describe('Svelte 5 Runes state machine and reactivity contract', () => {
+  beforeEach(() => {
+    reset();
+  });
+
+  it('provides direct reactive getter access matching context properties', () => {
+    expect(chatStore.currentState).toBe('WELCOME');
+    expect(chatStore.historyStack).toEqual([]);
+    expect(chatStore.lastQuery).toBe('');
+    expect(chatStore.parliamentariansFound).toEqual([]);
+    expect(chatStore.proposalsFound).toEqual([]);
+    expect(chatStore.selectedParliamentarian).toBeNull();
+    expect(chatStore.parliamentarianProposals).toEqual([]);
+    expect(chatStore.selectedProposal).toBeNull();
+    expect(chatStore.selectedVote).toBeNull();
+    expect(chatStore.voteHistory).toEqual([]);
+    expect(chatStore.errorMessage).toBe('');
+    expect(chatStore.context).toEqual(initialChatContext);
+
+    navigateTo('ABOUT');
+
+    expect(chatStore.currentState).toBe('ABOUT');
+    expect(chatStore.historyStack).toEqual(['WELCOME']);
+    expect(chatStore.context.currentState).toBe('ABOUT');
+  });
+
+  it('notifies subscribers synchronously on subscription and upon transitions', () => {
+    const snapshots: string[] = [];
+    const unsubscribe = chatStore.subscribe((ctx) => {
+      snapshots.push(ctx.currentState);
+    });
+
+    expect(snapshots).toEqual(['WELCOME']);
+
+    navigateTo('ABOUT');
+    navigateTo('SEARCH_RESULTS');
+    goBack();
+
+    expect(snapshots).toEqual(['WELCOME', 'ABOUT', 'SEARCH_RESULTS', 'ABOUT']);
+
+    unsubscribe();
+    navigateTo('WELCOME');
+
+    expect(snapshots).toEqual(['WELCOME', 'ABOUT', 'SEARCH_RESULTS', 'ABOUT']);
+  });
+
+  it('supports isolated state machines via createChatStateMachine without cross-talk', () => {
+    const isolatedMachine = createChatStateMachine();
+
+    expect(isolatedMachine).toBeInstanceOf(ChatStateMachine);
+    expect(isolatedMachine.currentState).toBe('WELCOME');
+    expect(chatStore.currentState).toBe('WELCOME');
+
+    isolatedMachine.navigateTo('ABOUT');
+
+    expect(isolatedMachine.currentState).toBe('ABOUT');
+    expect(chatStore.currentState).toBe('WELCOME');
+
+    chatStore.navigateTo('SEARCH_RESULTS');
+
+    expect(isolatedMachine.currentState).toBe('ABOUT');
+    expect(chatStore.currentState).toBe('SEARCH_RESULTS');
+  });
+
+  it('supports set and update store contract methods', () => {
+    const isolatedMachine = createChatStateMachine();
+
+    isolatedMachine.set({
+      ...initialChatContext,
+      currentState: 'ERROR',
+      errorMessage: 'Erro simulado'
+    });
+
+    expect(isolatedMachine.currentState).toBe('ERROR');
+    expect(isolatedMachine.errorMessage).toBe('Erro simulado');
+
+    isolatedMachine.update((ctx) => ({
+      ...ctx,
+      errorMessage: 'Erro atualizado'
+    }));
+
+    expect(isolatedMachine.errorMessage).toBe('Erro atualizado');
+  });
+
+  it('cancels pending searches and clears timers deterministically upon reset', async () => {
+    const slowSearch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ parliamentarians: [], proposals: [] }), 200)
+        )
+    );
+
+    const isolatedMachine = createChatStateMachine();
+    const searchPromise = isolatedMachine.executeSearch('termo', {
+      delayMs: 100,
+      search: slowSearch
+    });
+
+    isolatedMachine.reset();
+    await searchPromise;
+
+    expect(isolatedMachine.currentState).toBe('WELCOME');
+    expect(isolatedMachine.lastQuery).toBe('');
+  });
+});
+
