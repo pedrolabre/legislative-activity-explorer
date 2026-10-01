@@ -201,4 +201,69 @@ describe('createOfficialApiClients', () => {
     expect(fallbackEvents[0].reason).toBe('server-error');
     expect(fallbackEvents[0].status).toBe(503);
   });
+
+  it('shares an in-memory cache instance between camaraClient and senadoClient by default', async () => {
+    let camaraFetchCount = 0;
+    let senadoFetchCount = 0;
+
+    const clients = createOfficialApiClients({
+      fetch: async (input) => {
+        if (input.startsWith(CAMARA_API_BASE_URL)) {
+          camaraFetchCount++;
+          return jsonResponse({ dados: [] });
+        }
+
+        senadoFetchCount++;
+        return jsonResponse({
+          DetalheParlamentar: {
+            Parlamentar: {
+              IdentificacaoParlamentar: {
+                CodigoParlamentar: '5953'
+              }
+            }
+          }
+        });
+      }
+    });
+
+    expect(clients.cache).toBeDefined();
+
+    // Primeira consulta a Camara
+    await clients.camaraClient.getDeputados({ nome: 'Ana' });
+    expect(camaraFetchCount).toBe(1);
+
+    // Segunda consulta idêntica a Camara (deve vir do cache compartilhado)
+    await clients.camaraClient.getDeputados({ nome: 'Ana' });
+    expect(camaraFetchCount).toBe(1);
+
+    // Primeira consulta ao Senado
+    await clients.senadoClient.getSenadorById('5953');
+    expect(senadoFetchCount).toBe(1);
+
+    // Segunda consulta idêntica ao Senado (deve vir do cache compartilhado)
+    await clients.senadoClient.getSenadorById('5953');
+    expect(senadoFetchCount).toBe(1);
+
+    const stats = clients.cache?.getStats?.();
+    expect(stats?.hits).toBe(2);
+    expect(stats?.sets).toBe(2);
+  });
+
+  it('disables caching when cache: null is explicitly provided', async () => {
+    let fetchCount = 0;
+    const clients = createOfficialApiClients({
+      cache: null,
+      fetch: async () => {
+        fetchCount++;
+        return jsonResponse({ dados: [] });
+      }
+    });
+
+    expect(clients.cache).toBeNull();
+
+    await clients.camaraClient.getDeputados({ nome: 'Ana' });
+    await clients.camaraClient.getDeputados({ nome: 'Ana' });
+
+    expect(fetchCount).toBe(2);
+  });
 });

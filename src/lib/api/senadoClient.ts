@@ -1,3 +1,9 @@
+import {
+  buildHttpCacheKey,
+  resolveHttpMemoryCache,
+  type HttpCacheOption,
+  type LegislativeHttpMemoryCache
+} from './httpMemoryCache';
 import { OFFICIAL_API_DEFAULT_TIMEOUT_MS } from './officialApiConfig';
 import { OfficialApiClientError, type OfficialApiErrorKind } from './officialApiErrors';
 
@@ -33,6 +39,8 @@ export interface SenadoApiClientOptions {
   fetch?: SenadoFetch;
   jsonMode?: SenadoJsonMode;
   timeoutMs?: number;
+  cache?: HttpCacheOption;
+  cacheTtlMs?: number;
 }
 
 export interface SenadoIdentificacaoParlamentarPayload {
@@ -250,11 +258,15 @@ export interface SenadoVotacaoPayload {
   votos?: SenadoVotoPayload | SenadoVotoPayload[] | null;
 }
 
-export interface GetSenadoMateriasPesquisaOptions {
+export interface SenadoRequestOptions {
+  bypassCache?: boolean;
+}
+
+export interface GetSenadoMateriasPesquisaOptions extends SenadoRequestOptions {
   termo: string;
 }
 
-export interface GetSenadoProcessosOptions {
+export interface GetSenadoProcessosOptions extends SenadoRequestOptions {
   termo?: string;
   sigla?: string;
   numero?: string;
@@ -266,7 +278,7 @@ export interface GetSenadoProcessosOptions {
   numdias?: number;
 }
 
-export interface GetSenadoRelatoriasOptions {
+export interface GetSenadoRelatoriasOptions extends SenadoRequestOptions {
   idProcesso?: string | number;
   codigoMateria?: string | number;
   codigoParlamentar?: string | number;
@@ -274,7 +286,7 @@ export interface GetSenadoRelatoriasOptions {
   dataFim?: string;
 }
 
-export interface GetSenadoVotacoesOptions {
+export interface GetSenadoVotacoesOptions extends SenadoRequestOptions {
   idProcesso?: string | number;
   codigoMateria?: string | number;
   sigla?: string;
@@ -342,88 +354,147 @@ export class SenadoApiClient {
   private readonly fetcher: SenadoFetch;
   private readonly jsonMode: SenadoJsonMode;
   private readonly timeoutMs: number;
+  private readonly cacheInstance: LegislativeHttpMemoryCache | null;
+  private readonly cacheTtlMs?: number;
 
   constructor(options: SenadoApiClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? SENADO_API_BASE_URL;
     this.fetcher = options.fetch ?? getDefaultFetch();
     this.jsonMode = options.jsonMode ?? 'suffix';
     this.timeoutMs = options.timeoutMs ?? SENADO_API_DEFAULT_TIMEOUT_MS;
+    this.cacheTtlMs = options.cacheTtlMs;
+    this.cacheInstance = resolveHttpMemoryCache(options.cache, {
+      defaultTtlMs: options.cacheTtlMs
+    });
   }
 
-  async getSenadorById(id: number | string): Promise<SenadoSenadorPayload> {
-    return this.requestNestedData<SenadoSenadorPayload>(`senador/${id}`, [
-      ['DetalheParlamentar', 'Parlamentar'],
-      ['DetalheSenador']
-    ]);
+  get cache(): LegislativeHttpMemoryCache | null {
+    return this.cacheInstance;
   }
 
-  async getSenadoresAtuais(): Promise<SenadoSenadorPayload[]> {
-    return this.requestNestedArray<SenadoSenadorPayload>('senador/lista/atual', [
-      ['ListaParlamentarEmExercicio', 'Parlamentares', 'Parlamentar'],
-      ['ListaParlamentarEmExercicio', 'Parlamentar']
-    ]);
+  clearCache(): void {
+    this.cacheInstance?.clear();
   }
 
-  async getSenadorMandatosById(id: number | string): Promise<SenadoMandatoPayload[]> {
-    return this.requestNestedArray<SenadoMandatoPayload>(`senador/${id}/mandatos`, [
-      ['MandatosParlamentar', 'Parlamentar', 'Mandatos', 'Mandato'],
-      ['MandatosParlamentar', 'Mandatos', 'Mandato'],
-      ['ListaMandatos', 'Mandatos', 'Mandato'],
-      ['ListaMandatoParlamentar', 'Mandatos', 'Mandato'],
-      ['DetalheParlamentar', 'Parlamentar', 'Mandatos', 'Mandato'],
-      ['Parlamentar', 'Mandatos', 'Mandato'],
-      ['Mandatos', 'Mandato'],
-      ['Mandato']
-    ]);
+  async getSenadorById(
+    id: number | string,
+    options?: SenadoRequestOptions
+  ): Promise<SenadoSenadorPayload> {
+    return this.requestNestedData<SenadoSenadorPayload>(
+      `senador/${id}`,
+      [
+        ['DetalheParlamentar', 'Parlamentar'],
+        ['DetalheSenador']
+      ],
+      undefined,
+      options
+    );
   }
 
-  async getProcessoById(id: number | string): Promise<SenadoProcessoPayload> {
-    return this.requestJson<SenadoProcessoPayload>(`processo/${id}`);
+  async getSenadoresAtuais(options?: SenadoRequestOptions): Promise<SenadoSenadorPayload[]> {
+    return this.requestNestedArray<SenadoSenadorPayload>(
+      'senador/lista/atual',
+      [
+        ['ListaParlamentarEmExercicio', 'Parlamentares', 'Parlamentar'],
+        ['ListaParlamentarEmExercicio', 'Parlamentar']
+      ],
+      undefined,
+      options
+    );
+  }
+
+  async getSenadorMandatosById(
+    id: number | string,
+    options?: SenadoRequestOptions
+  ): Promise<SenadoMandatoPayload[]> {
+    return this.requestNestedArray<SenadoMandatoPayload>(
+      `senador/${id}/mandatos`,
+      [
+        ['MandatosParlamentar', 'Parlamentar', 'Mandatos', 'Mandato'],
+        ['MandatosParlamentar', 'Mandatos', 'Mandato'],
+        ['ListaMandatos', 'Mandatos', 'Mandato'],
+        ['ListaMandatoParlamentar', 'Mandatos', 'Mandato'],
+        ['DetalheParlamentar', 'Parlamentar', 'Mandatos', 'Mandato'],
+        ['Parlamentar', 'Mandatos', 'Mandato'],
+        ['Mandatos', 'Mandato'],
+        ['Mandato']
+      ],
+      undefined,
+      options
+    );
+  }
+
+  async getProcessoById(
+    id: number | string,
+    options?: SenadoRequestOptions
+  ): Promise<SenadoProcessoPayload> {
+    return this.requestJson<SenadoProcessoPayload>(`processo/${id}`, undefined, options);
   }
 
   async searchProcessos(options: GetSenadoProcessosOptions): Promise<SenadoProcessoPayload[]> {
-    return this.requestNestedArray<SenadoProcessoPayload>('processo', [[]], {
-      termo: options.termo,
-      sigla: options.sigla,
-      numero: options.numero,
-      ano: options.ano,
-      codigoMateria: options.codigoMateria,
-      idProcesso: options.idProcesso,
-      codigoParlamentarAutor: options.codigoParlamentarAutor,
-      tramitando: options.tramitando,
-      numdias: options.numdias
-    });
+    return this.requestNestedArray<SenadoProcessoPayload>(
+      'processo',
+      [[]],
+      {
+        termo: options.termo,
+        sigla: options.sigla,
+        numero: options.numero,
+        ano: options.ano,
+        codigoMateria: options.codigoMateria,
+        idProcesso: options.idProcesso,
+        codigoParlamentarAutor: options.codigoParlamentarAutor,
+        tramitando: options.tramitando,
+        numdias: options.numdias
+      },
+      options
+    );
   }
 
   async searchRelatorias(options: GetSenadoRelatoriasOptions): Promise<SenadoRelatoriaPayload[]> {
-    return this.requestNestedArray<SenadoRelatoriaPayload>('processo/relatoria', [[]], {
-      idProcesso: options.idProcesso,
-      codigoMateria: options.codigoMateria,
-      codigoParlamentar: options.codigoParlamentar,
-      dataInicio: options.dataInicio,
-      dataFim: options.dataFim
-    });
+    return this.requestNestedArray<SenadoRelatoriaPayload>(
+      'processo/relatoria',
+      [[]],
+      {
+        idProcesso: options.idProcesso,
+        codigoMateria: options.codigoMateria,
+        codigoParlamentar: options.codigoParlamentar,
+        dataInicio: options.dataInicio,
+        dataFim: options.dataFim
+      },
+      options
+    );
   }
 
   async getVotacoes(options: GetSenadoVotacoesOptions): Promise<SenadoVotacaoPayload[]> {
-    return this.requestNestedArray<SenadoVotacaoPayload>('votacao', [[]], {
-      idProcesso: options.idProcesso,
-      codigoMateria: options.codigoMateria,
-      sigla: options.sigla,
-      numero: options.numero,
-      ano: options.ano,
-      codigoParlamentar: options.codigoParlamentar
-    });
+    return this.requestNestedArray<SenadoVotacaoPayload>(
+      'votacao',
+      [[]],
+      {
+        idProcesso: options.idProcesso,
+        codigoMateria: options.codigoMateria,
+        sigla: options.sigla,
+        numero: options.numero,
+        ano: options.ano,
+        codigoParlamentar: options.codigoParlamentar
+      },
+      options
+    );
   }
 
   /**
    * Endpoint legado/depreciado pelo Senado. Mantido apenas para compatibilidade
    * com registros antigos que ainda tenham CodigoMateria como identificador.
    */
-  async getMateriaById(id: number | string): Promise<SenadoMateriaPayload> {
-    return this.requestNestedData<SenadoMateriaPayload>(`materia/${id}`, [
-      ['DetalheMateria', 'Materia']
-    ]);
+  async getMateriaById(
+    id: number | string,
+    options?: SenadoRequestOptions
+  ): Promise<SenadoMateriaPayload> {
+    return this.requestNestedData<SenadoMateriaPayload>(
+      `materia/${id}`,
+      [['DetalheMateria', 'Materia']],
+      undefined,
+      options
+    );
   }
 
   /**
@@ -440,7 +511,8 @@ export class SenadoApiClient {
       ],
       {
         termo: options.termo
-      }
+      },
+      options
     );
   }
 
@@ -464,9 +536,19 @@ export class SenadoApiClient {
 
   private async requestJson<T>(
     path: string,
-    params?: Record<string, string | number | undefined>
+    params?: Record<string, string | number | undefined>,
+    requestOptions: SenadoRequestOptions = {}
   ): Promise<T> {
     const url = this.buildUrl(path, params);
+    const cacheKey = buildHttpCacheKey(url, 'GET');
+
+    if (this.cacheInstance && !requestOptions.bypassCache) {
+      const cached = this.cacheInstance.get<T>(cacheKey);
+      if (cached !== undefined) {
+        return cached;
+      }
+    }
+
     let response: Response;
 
     try {
@@ -495,8 +577,10 @@ export class SenadoApiClient {
       });
     }
 
+    let data: T;
+
     try {
-      return (await response.json()) as T;
+      data = (await response.json()) as T;
     } catch (cause) {
       throw new SenadoApiClientError('A API do Senado retornou JSON invalido.', {
         kind: 'invalid-payload',
@@ -504,6 +588,12 @@ export class SenadoApiClient {
         cause
       });
     }
+
+    if (this.cacheInstance && !requestOptions.bypassCache) {
+      this.cacheInstance.set(cacheKey, data, this.cacheTtlMs);
+    }
+
+    return data;
   }
 
   private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
@@ -555,10 +645,15 @@ export class SenadoApiClient {
     }
   }
 
-  private async requestNestedData<T>(path: string, acceptedPaths: NestedPath[]): Promise<T> {
+  private async requestNestedData<T>(
+    path: string,
+    acceptedPaths: NestedPath[],
+    params?: Record<string, string | number | undefined>,
+    requestOptions?: SenadoRequestOptions
+  ): Promise<T> {
     const envelope = await this.requestJson<
       SenadoDetalheParlamentarResponse | SenadoDetalheSenadorResponse | SenadoDetalheMateriaResponse
-    >(path);
+    >(path, params, requestOptions);
 
     for (const acceptedPath of acceptedPaths) {
       const nestedValue = readNestedValue(envelope, acceptedPath);
@@ -576,9 +671,10 @@ export class SenadoApiClient {
   private async requestNestedArray<T>(
     path: string,
     acceptedPaths: NestedPath[],
-    params?: Record<string, string | number | undefined>
+    params?: Record<string, string | number | undefined>,
+    requestOptions?: SenadoRequestOptions
   ): Promise<T[]> {
-    const envelope = await this.requestJson<unknown>(path, params);
+    const envelope = await this.requestJson<unknown>(path, params, requestOptions);
 
     for (const acceptedPath of acceptedPaths) {
       const nestedValue = readNestedValue(envelope, acceptedPath);

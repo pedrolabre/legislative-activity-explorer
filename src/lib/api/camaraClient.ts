@@ -1,3 +1,9 @@
+import {
+  buildHttpCacheKey,
+  resolveHttpMemoryCache,
+  type HttpCacheOption,
+  type LegislativeHttpMemoryCache
+} from './httpMemoryCache';
 import { OFFICIAL_API_DEFAULT_TIMEOUT_MS } from './officialApiConfig';
 import { OfficialApiClientError, type OfficialApiErrorKind } from './officialApiErrors';
 
@@ -127,12 +133,16 @@ export interface CamaraVotoPayload {
   } | null;
 }
 
-export interface GetCamaraProposicoesByDeputadoAutorOptions {
+export interface CamaraRequestOptions {
+  bypassCache?: boolean;
+}
+
+export interface GetCamaraProposicoesByDeputadoAutorOptions extends CamaraRequestOptions {
   pagina?: number;
   itens?: number;
 }
 
-export interface GetCamaraDeputadosOptions {
+export interface GetCamaraDeputadosOptions extends CamaraRequestOptions {
   nome?: string;
   pagina?: number;
   itens?: number;
@@ -140,7 +150,7 @@ export interface GetCamaraDeputadosOptions {
   ordenarPor?: string;
 }
 
-export interface GetCamaraProposicoesOptions {
+export interface GetCamaraProposicoesOptions extends CamaraRequestOptions {
   keywords?: string;
   siglaTipo?: string;
   numero?: string | number;
@@ -151,7 +161,7 @@ export interface GetCamaraProposicoesOptions {
   ordenarPor?: string;
 }
 
-export interface GetCamaraProposicaoVotacoesByIdOptions {
+export interface GetCamaraProposicaoVotacoesByIdOptions extends CamaraRequestOptions {
   ordem?: 'ASC' | 'DESC';
   ordenarPor?: 'id' | 'dataHoraRegistro';
 }
@@ -162,6 +172,8 @@ export interface CamaraApiClientOptions {
   baseUrl?: string;
   fetch?: CamaraFetch;
   timeoutMs?: number;
+  cache?: HttpCacheOption;
+  cacheTtlMs?: number;
 }
 
 function getDefaultFetch(): CamaraFetch {
@@ -186,15 +198,32 @@ export class CamaraApiClient {
   private readonly baseUrl: string;
   private readonly fetcher: CamaraFetch;
   private readonly timeoutMs: number;
+  private readonly cacheInstance: LegislativeHttpMemoryCache | null;
+  private readonly cacheTtlMs?: number;
 
   constructor(options: CamaraApiClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? CAMARA_API_BASE_URL;
     this.fetcher = options.fetch ?? getDefaultFetch();
     this.timeoutMs = options.timeoutMs ?? CAMARA_API_DEFAULT_TIMEOUT_MS;
+    this.cacheTtlMs = options.cacheTtlMs;
+    this.cacheInstance = resolveHttpMemoryCache(options.cache, {
+      defaultTtlMs: options.cacheTtlMs
+    });
   }
 
-  async getDeputadoById(id: number | string): Promise<CamaraDeputadoPayload> {
-    return this.requestSingleData<CamaraDeputadoPayload>(`deputados/${id}`);
+  get cache(): LegislativeHttpMemoryCache | null {
+    return this.cacheInstance;
+  }
+
+  clearCache(): void {
+    this.cacheInstance?.clear();
+  }
+
+  async getDeputadoById(
+    id: number | string,
+    options?: CamaraRequestOptions
+  ): Promise<CamaraDeputadoPayload> {
+    return this.requestSingleData<CamaraDeputadoPayload>(`deputados/${id}`, undefined, options);
   }
 
   async getDeputados(options: GetCamaraDeputadosOptions = {}): Promise<CamaraDeputadoPayload[]> {
@@ -206,29 +235,44 @@ export class CamaraApiClient {
   async getDeputadosPage(
     options: GetCamaraDeputadosOptions = {}
   ): Promise<CamaraApiPage<CamaraDeputadoPayload>> {
-    return this.requestListPage<CamaraDeputadoPayload>('deputados', {
-      nome: options.nome,
-      pagina: options.pagina,
-      itens: options.itens,
-      ordem: options.ordem,
-      ordenarPor: options.ordenarPor
-    });
+    return this.requestListPage<CamaraDeputadoPayload>(
+      'deputados',
+      {
+        nome: options.nome,
+        pagina: options.pagina,
+        itens: options.itens,
+        ordem: options.ordem,
+        ordenarPor: options.ordenarPor
+      },
+      options
+    );
   }
 
-  async getProposicaoById(id: number | string): Promise<CamaraProposicaoPayload> {
-    return this.requestSingleData<CamaraProposicaoPayload>(`proposicoes/${id}`);
+  async getProposicaoById(
+    id: number | string,
+    options?: CamaraRequestOptions
+  ): Promise<CamaraProposicaoPayload> {
+    return this.requestSingleData<CamaraProposicaoPayload>(`proposicoes/${id}`, undefined, options);
   }
 
-  async getProposicaoTemasById(id: number | string): Promise<CamaraProposicaoTemaPayload[]> {
-    const page = await this.getProposicaoTemasByIdPage(id);
+  async getProposicaoTemasById(
+    id: number | string,
+    options?: CamaraRequestOptions
+  ): Promise<CamaraProposicaoTemaPayload[]> {
+    const page = await this.getProposicaoTemasByIdPage(id, options);
 
     return page.data;
   }
 
   async getProposicaoTemasByIdPage(
-    id: number | string
+    id: number | string,
+    options?: CamaraRequestOptions
   ): Promise<CamaraApiPage<CamaraProposicaoTemaPayload>> {
-    return this.requestListPage<CamaraProposicaoTemaPayload>(`proposicoes/${id}/temas`);
+    return this.requestListPage<CamaraProposicaoTemaPayload>(
+      `proposicoes/${id}/temas`,
+      undefined,
+      options
+    );
   }
 
   async getProposicaoVotacoesById(
@@ -244,24 +288,37 @@ export class CamaraApiClient {
     id: number | string,
     options: GetCamaraProposicaoVotacoesByIdOptions = {}
   ): Promise<CamaraApiPage<CamaraVotacaoPayload>> {
-    return this.requestListPage<CamaraVotacaoPayload>(`proposicoes/${id}/votacoes`, {
-      ordem: options.ordem,
-      ordenarPor: options.ordenarPor
-    });
+    return this.requestListPage<CamaraVotacaoPayload>(
+      `proposicoes/${id}/votacoes`,
+      {
+        ordem: options.ordem,
+        ordenarPor: options.ordenarPor
+      },
+      options
+    );
   }
 
-  async getVotacaoById(id: number | string): Promise<CamaraVotacaoPayload> {
-    return this.requestSingleData<CamaraVotacaoPayload>(`votacoes/${id}`);
+  async getVotacaoById(
+    id: number | string,
+    options?: CamaraRequestOptions
+  ): Promise<CamaraVotacaoPayload> {
+    return this.requestSingleData<CamaraVotacaoPayload>(`votacoes/${id}`, undefined, options);
   }
 
-  async getVotacaoVotosById(id: number | string): Promise<CamaraVotoPayload[]> {
-    const page = await this.getVotacaoVotosByIdPage(id);
+  async getVotacaoVotosById(
+    id: number | string,
+    options?: CamaraRequestOptions
+  ): Promise<CamaraVotoPayload[]> {
+    const page = await this.getVotacaoVotosByIdPage(id, options);
 
     return page.data;
   }
 
-  async getVotacaoVotosByIdPage(id: number | string): Promise<CamaraApiPage<CamaraVotoPayload>> {
-    return this.requestListPage<CamaraVotoPayload>(`votacoes/${id}/votos`);
+  async getVotacaoVotosByIdPage(
+    id: number | string,
+    options?: CamaraRequestOptions
+  ): Promise<CamaraApiPage<CamaraVotoPayload>> {
+    return this.requestListPage<CamaraVotoPayload>(`votacoes/${id}/votos`, undefined, options);
   }
 
   async getProposicoes(
@@ -275,16 +332,20 @@ export class CamaraApiClient {
   async getProposicoesPage(
     options: GetCamaraProposicoesOptions = {}
   ): Promise<CamaraApiPage<CamaraProposicaoPayload>> {
-    return this.requestListPage<CamaraProposicaoPayload>('proposicoes', {
-      keywords: options.keywords,
-      siglaTipo: options.siglaTipo,
-      numero: options.numero,
-      ano: options.ano,
-      pagina: options.pagina,
-      itens: options.itens,
-      ordem: options.ordem,
-      ordenarPor: options.ordenarPor
-    });
+    return this.requestListPage<CamaraProposicaoPayload>(
+      'proposicoes',
+      {
+        keywords: options.keywords,
+        siglaTipo: options.siglaTipo,
+        numero: options.numero,
+        ano: options.ano,
+        pagina: options.pagina,
+        itens: options.itens,
+        ordem: options.ordem,
+        ordenarPor: options.ordenarPor
+      },
+      options
+    );
   }
 
   async getProposicoesByDeputadoAutor(
@@ -300,11 +361,15 @@ export class CamaraApiClient {
     deputadoId: number | string,
     options: GetCamaraProposicoesByDeputadoAutorOptions = {}
   ): Promise<CamaraApiPage<CamaraProposicaoPayload>> {
-    return this.requestListPage<CamaraProposicaoPayload>('proposicoes', {
-      idDeputadoAutor: String(deputadoId),
-      pagina: options.pagina,
-      itens: options.itens
-    });
+    return this.requestListPage<CamaraProposicaoPayload>(
+      'proposicoes',
+      {
+        idDeputadoAutor: String(deputadoId),
+        pagina: options.pagina,
+        itens: options.itens
+      },
+      options
+    );
   }
 
   private buildUrl(path: string, params: Record<string, string | number | undefined> = {}) {
@@ -323,9 +388,19 @@ export class CamaraApiClient {
 
   private async requestJson<T>(
     path: string,
-    params?: Record<string, string | number | undefined>
+    params?: Record<string, string | number | undefined>,
+    requestOptions: CamaraRequestOptions = {}
   ): Promise<T> {
     const url = this.buildUrl(path, params);
+    const cacheKey = buildHttpCacheKey(url, 'GET');
+
+    if (this.cacheInstance && !requestOptions.bypassCache) {
+      const cached = this.cacheInstance.get<T>(cacheKey);
+      if (cached !== undefined) {
+        return cached;
+      }
+    }
+
     let response: Response;
 
     try {
@@ -354,8 +429,10 @@ export class CamaraApiClient {
       });
     }
 
+    let data: T;
+
     try {
-      return (await response.json()) as T;
+      data = (await response.json()) as T;
     } catch (cause) {
       throw new CamaraApiClientError('A API da Camara retornou JSON invalido.', {
         kind: 'invalid-payload',
@@ -363,6 +440,12 @@ export class CamaraApiClient {
         cause
       });
     }
+
+    if (this.cacheInstance && !requestOptions.bypassCache) {
+      this.cacheInstance.set(cacheKey, data, this.cacheTtlMs);
+    }
+
+    return data;
   }
 
   private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
@@ -416,9 +499,14 @@ export class CamaraApiClient {
 
   private async requestSingleData<T>(
     path: string,
-    params?: Record<string, string | number | undefined>
+    params?: Record<string, string | number | undefined>,
+    requestOptions?: CamaraRequestOptions
   ): Promise<T> {
-    const envelope = await this.requestJson<CamaraApiSingleResponse<T>>(path, params);
+    const envelope = await this.requestJson<CamaraApiSingleResponse<T>>(
+      path,
+      params,
+      requestOptions
+    );
 
     if (!isResponseWithData(envelope) || envelope.dados === null || envelope.dados === undefined) {
       throw new CamaraApiClientError('A resposta da Camara nao contem dados validos.', {
@@ -431,9 +519,14 @@ export class CamaraApiClient {
 
   private async requestListPage<T>(
     path: string,
-    params?: Record<string, string | number | undefined>
+    params?: Record<string, string | number | undefined>,
+    requestOptions?: CamaraRequestOptions
   ): Promise<CamaraApiPage<T>> {
-    const envelope = await this.requestJson<CamaraApiListResponse<T>>(path, params);
+    const envelope = await this.requestJson<CamaraApiListResponse<T>>(
+      path,
+      params,
+      requestOptions
+    );
 
     if (!isResponseWithData(envelope) || !Array.isArray(envelope.dados)) {
       throw new CamaraApiClientError('A resposta da Camara nao contem lista de dados valida.', {

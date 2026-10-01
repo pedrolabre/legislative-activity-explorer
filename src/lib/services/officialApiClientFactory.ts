@@ -1,5 +1,10 @@
 import { CamaraApiClient } from '$lib/api/camaraClient';
 import {
+  HttpMemoryCache,
+  type HttpCacheOption,
+  type LegislativeHttpMemoryCache
+} from '$lib/api/httpMemoryCache';
+import {
   createLegislativeApiFetch,
   resolveLegislativeDataSourceConfig,
   type LegislativeApiFetch,
@@ -17,12 +22,16 @@ export interface OfficialApiClientFactoryOptions {
   onFallback?: LegislativeFallbackListener;
   fetch?: LegislativeApiFetch;
   timeoutMs?: number;
+  cache?: HttpCacheOption;
+  cacheTtlMs?: number;
+  cacheMaxEntries?: number;
 }
 
 export interface OfficialApiClients {
   config: LegislativeDataSourceConfig;
   camaraClient: CamaraApiClient;
   senadoClient: SenadoApiClient;
+  cache?: LegislativeHttpMemoryCache | null;
 }
 
 function getRuntimeDataSourceEnv(): LegislativeDataSourceEnv {
@@ -44,6 +53,24 @@ function createConfiguredLegislativeFetch(
     : createLegislativeApiFetch(config, undefined, options);
 }
 
+function resolveSharedCache(
+  options: OfficialApiClientFactoryOptions
+): LegislativeHttpMemoryCache | null {
+  if (options.cache === null || options.cache === false) {
+    return null;
+  }
+
+  if (options.cache && typeof options.cache === 'object') {
+    return options.cache;
+  }
+
+  // Padrão: cache em memória LRU/TTL compartilhado entre os clientes da Câmara e do Senado
+  return new HttpMemoryCache({
+    defaultTtlMs: options.cacheTtlMs,
+    maxEntries: options.cacheMaxEntries
+  });
+}
+
 export function createOfficialApiClients(
   options: OfficialApiClientFactoryOptions = {}
 ): OfficialApiClients {
@@ -54,18 +81,22 @@ export function createOfficialApiClients(
       options.dataSourceMode ? { mode: options.dataSourceMode } : undefined
     );
   const fetch = createConfiguredLegislativeFetch(config, options.fetch, options.onFallback);
+  const cache = resolveSharedCache(options);
 
   return {
     config,
+    cache,
     camaraClient: new CamaraApiClient({
       baseUrl: config.camaraBaseUrl,
       fetch,
-      timeoutMs: options.timeoutMs
+      timeoutMs: options.timeoutMs,
+      cache: cache ?? undefined
     }),
     senadoClient: new SenadoApiClient({
       baseUrl: config.senadoBaseUrl,
       fetch,
-      timeoutMs: options.timeoutMs
+      timeoutMs: options.timeoutMs,
+      cache: cache ?? undefined
     })
   };
 }

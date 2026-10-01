@@ -427,4 +427,97 @@ describe('CamaraApiClient', () => {
       kind: 'invalid-payload'
     });
   });
+
+  it('serves repeated requests from in-memory cache when cache is enabled', async () => {
+    let fetchCount = 0;
+    const client = new CamaraApiClient({
+      cache: true,
+      fetch: async () => {
+        fetchCount++;
+        return jsonResponse({
+          dados: {
+            id: 204556,
+            nomeCivil: 'Deputado Exemplo'
+          }
+        });
+      }
+    });
+
+    const deputy1 = await client.getDeputadoById(204556);
+    const deputy2 = await client.getDeputadoById(204556);
+
+    expect(deputy1).toEqual(deputy2);
+    expect(fetchCount).toBe(1);
+    expect(client.cache?.getStats?.().hits).toBe(1);
+  });
+
+  it('bypasses in-memory cache when bypassCache is explicitly requested', async () => {
+    let fetchCount = 0;
+    const client = new CamaraApiClient({
+      cache: true,
+      fetch: async () => {
+        fetchCount++;
+        return jsonResponse({
+          dados: {
+            id: 204556,
+            nomeCivil: `Deputado Versao ${fetchCount}`
+          }
+        });
+      }
+    });
+
+    const deputy1 = await client.getDeputadoById(204556);
+    expect(deputy1.nomeCivil).toBe('Deputado Versao 1');
+    expect(fetchCount).toBe(1);
+
+    // Sem bypass: deve vir do cache
+    const cachedDeputy = await client.getDeputadoById(204556);
+    expect(cachedDeputy.nomeCivil).toBe('Deputado Versao 1');
+    expect(fetchCount).toBe(1);
+
+    // Com bypass: deve forcar nova requisicao na rede
+    const deputy2 = await client.getDeputadoById(204556, { bypassCache: true });
+    expect(deputy2.nomeCivil).toBe('Deputado Versao 2');
+    expect(fetchCount).toBe(2);
+  });
+
+  it('protects cached payloads against caller mutations via cloning', async () => {
+    const client = new CamaraApiClient({
+      cache: true,
+      fetch: async () =>
+        jsonResponse({
+          dados: {
+            id: 100,
+            nome: 'Original'
+          }
+        })
+    });
+
+    const deputy1 = await client.getDeputadoById(100);
+    deputy1.nome = 'Mutado pelo chamador';
+
+    const deputy2 = await client.getDeputadoById(100);
+    expect(deputy2.nome).toBe('Original');
+  });
+
+  it('clears cache on demand via clearCache()', async () => {
+    let fetchCount = 0;
+    const client = new CamaraApiClient({
+      cache: true,
+      fetch: async () => {
+        fetchCount++;
+        return jsonResponse({
+          dados: { id: 1 }
+        });
+      }
+    });
+
+    await client.getDeputadoById(1);
+    expect(fetchCount).toBe(1);
+
+    client.clearCache();
+
+    await client.getDeputadoById(1);
+    expect(fetchCount).toBe(2);
+  });
 });

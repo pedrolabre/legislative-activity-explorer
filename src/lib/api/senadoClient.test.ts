@@ -550,4 +550,113 @@ describe('SenadoApiClient', () => {
       kind: 'invalid-payload'
     });
   });
+
+  it('serves repeated requests from in-memory cache when cache is enabled', async () => {
+    let fetchCount = 0;
+    const client = new SenadoApiClient({
+      cache: true,
+      fetch: async () => {
+        fetchCount++;
+        return jsonResponse({
+          DetalheParlamentar: {
+            Parlamentar: {
+              IdentificacaoParlamentar: {
+                CodigoParlamentar: '5953',
+                NomeParlamentar: 'Senador Exemplo'
+              }
+            }
+          }
+        });
+      }
+    });
+
+    const senator1 = await client.getSenadorById('5953');
+    const senator2 = await client.getSenadorById('5953');
+
+    expect(senator1).toEqual(senator2);
+    expect(fetchCount).toBe(1);
+    expect(client.cache?.getStats?.().hits).toBe(1);
+  });
+
+  it('bypasses in-memory cache when bypassCache is explicitly requested', async () => {
+    let fetchCount = 0;
+    const client = new SenadoApiClient({
+      cache: true,
+      fetch: async () => {
+        fetchCount++;
+        return jsonResponse({
+          DetalheParlamentar: {
+            Parlamentar: {
+              IdentificacaoParlamentar: {
+                CodigoParlamentar: '5953',
+                NomeParlamentar: `Senador Versao ${fetchCount}`
+              }
+            }
+          }
+        });
+      }
+    });
+
+    const senator1 = await client.getSenadorById('5953');
+    expect(senator1.IdentificacaoParlamentar?.NomeParlamentar).toBe('Senador Versao 1');
+    expect(fetchCount).toBe(1);
+
+    // Sem bypass: deve vir do cache
+    const cachedSenator = await client.getSenadorById('5953');
+    expect(cachedSenator.IdentificacaoParlamentar?.NomeParlamentar).toBe('Senador Versao 1');
+    expect(fetchCount).toBe(1);
+
+    // Com bypass: deve forcar nova requisicao na rede
+    const senator2 = await client.getSenadorById('5953', { bypassCache: true });
+    expect(senator2.IdentificacaoParlamentar?.NomeParlamentar).toBe('Senador Versao 2');
+    expect(fetchCount).toBe(2);
+  });
+
+  it('protects cached payloads against caller mutations via cloning', async () => {
+    const client = new SenadoApiClient({
+      cache: true,
+      fetch: async () =>
+        jsonResponse({
+          DetalheParlamentar: {
+            Parlamentar: {
+              IdentificacaoParlamentar: {
+                CodigoParlamentar: '5953',
+                NomeParlamentar: 'Original'
+              }
+            }
+          }
+        })
+    });
+
+    const senator1 = await client.getSenadorById('5953');
+    if (senator1.IdentificacaoParlamentar) {
+      senator1.IdentificacaoParlamentar.NomeParlamentar = 'Mutado pelo chamador';
+    }
+
+    const senator2 = await client.getSenadorById('5953');
+    expect(senator2.IdentificacaoParlamentar?.NomeParlamentar).toBe('Original');
+  });
+
+  it('clears cache on demand via clearCache()', async () => {
+    let fetchCount = 0;
+    const client = new SenadoApiClient({
+      cache: true,
+      fetch: async () => {
+        fetchCount++;
+        return jsonResponse({
+          processo: {
+            id: 10
+          }
+        });
+      }
+    });
+
+    await client.getProcessoById(10);
+    expect(fetchCount).toBe(1);
+
+    client.clearCache();
+
+    await client.getProcessoById(10);
+    expect(fetchCount).toBe(2);
+  });
 });
