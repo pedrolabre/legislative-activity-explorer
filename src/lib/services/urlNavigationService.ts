@@ -19,13 +19,51 @@ export interface ApplyDeepLinkOptions {
   searchFn?: (query: string) => Promise<void>;
   selectProposalFn?: (id: string) => Promise<boolean>;
   selectParliamentarianFn?: (id: string) => Promise<boolean>;
+  resetFn?: () => void;
   getCurrentState?: () => string;
+  force?: boolean;
 }
 
 export interface ApplyDeepLinkResult {
   executed: boolean;
   action: DeepLinkAction;
   resolvedQuery?: string;
+}
+
+export interface NavigationStateSnapshot {
+  currentState: string;
+  lastQuery?: string;
+  selectedParliamentarianId?: string;
+  selectedProposalId?: string;
+}
+
+export interface HistorySyncTarget {
+  pushState(data: unknown, unused: string, url?: string | URL | null): void;
+  replaceState(data: unknown, unused: string, url?: string | URL | null): void;
+}
+
+export interface LocationSnapshot {
+  pathname: string;
+  search: string;
+}
+
+export interface SyncUrlOptions {
+  history?: HistorySyncTarget;
+  location?: LocationSnapshot;
+  replace?: boolean;
+}
+
+export interface SyncUrlResult {
+  updated: boolean;
+  method: 'pushState' | 'replaceState' | 'none';
+  targetUrl: string;
+  params: NavigationSearchParams;
+}
+
+export interface HandlePopStateNavigationOptions extends ApplyDeepLinkOptions {
+  location?: LocationSnapshot | Location;
+  onNavigationStart?: () => void;
+  onNavigationEnd?: () => void;
 }
 
 const legislativeNotationPattern = /^([a-zA-Z]{2,5})[- /]+(\d+)(?:[- /]+(\d{4}))?$/;
@@ -286,7 +324,7 @@ export async function applyDeepLink(
   options: ApplyDeepLinkOptions = {}
 ): Promise<ApplyDeepLinkResult> {
   const currentState = options.getCurrentState?.();
-  if (currentState && currentState !== 'WELCOME') {
+  if (!options.force && currentState && currentState !== 'WELCOME') {
     return {
       executed: false,
       action: { type: 'none' }
@@ -301,6 +339,14 @@ export async function applyDeepLink(
   const action = resolveDeepLinkAction(params);
 
   if (action.type === 'none') {
+    if (options.force && options.resetFn && currentState && currentState !== 'WELCOME') {
+      options.resetFn();
+      return {
+        executed: true,
+        action
+      };
+    }
+
     return {
       executed: false,
       action
@@ -376,4 +422,213 @@ export async function applyDeepLink(
     executed: false,
     action
   };
+}
+
+/**
+ * Determina se o estado atual é transitório e não deve ser persistido no histórico.
+ * 'SEARCHING' representa carregamento em andamento e deve ser suprimido.
+ */
+export function isTransientNavigationState(state: string | undefined | null): boolean {
+  return state === 'SEARCHING';
+}
+
+/**
+ * Determina se o estado representa um ponto de navegação significativo.
+ */
+export function isSignificantNavigationState(state: string | undefined | null): boolean {
+  return Boolean(state) && !isTransientNavigationState(state);
+}
+
+/**
+ * Mapeia o snapshot do estado da aplicação para os parâmetros de busca correspondentes.
+ */
+export function computeSearchParamsFromState(
+  snapshot: NavigationStateSnapshot
+): NavigationSearchParams {
+  const { currentState, lastQuery, selectedParliamentarianId, selectedProposalId } = snapshot;
+
+  if (!currentState || currentState === 'WELCOME' || isTransientNavigationState(currentState)) {
+    return {};
+  }
+
+  const params: NavigationSearchParams = {};
+
+  if (currentState === 'BILL_DETAIL' || currentState === 'BILL_VOTES') {
+    if (selectedProposalId) {
+      params.prop = selectedProposalId;
+    }
+    if (selectedParliamentarianId) {
+      params.parl = selectedParliamentarianId;
+    }
+    if (lastQuery?.trim()) {
+      params.q = lastQuery.trim();
+    }
+    return params;
+  }
+
+  if (
+    currentState === 'PARLIAMENTARIAN_DETAIL' ||
+    currentState === 'PARLIAMENTARIAN_BILLS' ||
+    currentState === 'PARLIAMENTARIAN_VOTES'
+  ) {
+    if (selectedParliamentarianId) {
+      params.parl = selectedParliamentarianId;
+    }
+    if (lastQuery?.trim()) {
+      params.q = lastQuery.trim();
+    }
+    return params;
+  }
+
+  if (currentState === 'SEARCH_RESULTS') {
+    if (lastQuery?.trim()) {
+      params.q = lastQuery.trim();
+    }
+    return params;
+  }
+
+  if (lastQuery?.trim()) {
+    params.q = lastQuery.trim();
+  }
+
+  return params;
+}
+
+/**
+ * Compara dois conjuntos de parâmetros de busca semântica e deterministicamente.
+ */
+export function areNavigationParamsEqual(
+  a: NavigationSearchParams,
+  b: NavigationSearchParams
+): boolean {
+  const normAQ = (a.q ?? '').trim();
+  const normBQ = (b.q ?? '').trim();
+  const normAProp = (a.prop ?? '').trim();
+  const normBProp = (b.prop ?? '').trim();
+  const normAParl = (a.parl ?? '').trim();
+  const normBParl = (b.parl ?? '').trim();
+
+  return normAQ === normBQ && normAProp === normBProp && normAParl === normBParl;
+}
+
+/**
+ * Sincroniza ativamente a URL do navegador com o estado atual da aplicação via History API.
+ * - Suprime estados transitórios (como SEARCHING).
+ * - Usa replaceState para limpar a URL ao retornar ao estado WELCOME.
+ * - Usa pushState para registrar novos estados de busca ou visualização.
+ * - Garante idempotência ignorando chamadas quando os parâmetros já coincidem.
+ */
+export function syncUrlWithState(
+  snapshot: NavigationStateSnapshot,
+  options: SyncUrlOptions = {}
+): SyncUrlResult {
+  if (isTransientNavigationState(snapshot.currentState)) {
+    return {
+      updated: false,
+      method: 'none',
+      targetUrl: '',
+      params: {}
+    };
+  }
+
+  const historyTarget =
+    options.history ??
+    (typeof window !== 'undefined' && window.history ? window.history : undefined);
+
+  if (!historyTarget) {
+    return {
+      updated: false,
+      method: 'none',
+      targetUrl: '',
+      params: {}
+    };
+  }
+
+  const currentPathname =
+    options.location?.pathname ??
+    (typeof window !== 'undefined' && window.location ? window.location.pathname : '');
+  const currentSearch =
+    options.location?.search ??
+    (typeof window !== 'undefined' && window.location ? window.location.search : '');
+
+  const targetParams = computeSearchParamsFromState(snapshot);
+  const currentParams = parseNavigationSearchParams(currentSearch);
+
+  const basePath = currentPathname || '/';
+
+  if (areNavigationParamsEqual(targetParams, currentParams)) {
+    const existingUrl = currentSearch ? `${basePath}${currentSearch}` : basePath;
+    return {
+      updated: false,
+      method: 'none',
+      targetUrl: existingUrl,
+      params: targetParams
+    };
+  }
+
+  const targetQueryString = buildSearchQueryString(targetParams);
+  const targetUrl = targetQueryString ? `${basePath}${targetQueryString}` : basePath;
+
+  const method: 'pushState' | 'replaceState' =
+    options.replace === true || snapshot.currentState === 'WELCOME'
+      ? 'replaceState'
+      : 'pushState';
+
+  try {
+    historyTarget[method](null, '', targetUrl);
+    return {
+      updated: true,
+      method,
+      targetUrl,
+      params: targetParams
+    };
+  } catch {
+    return {
+      updated: false,
+      method: 'none',
+      targetUrl,
+      params: targetParams
+    };
+  }
+}
+
+/**
+ * Registra listener no evento popstate do navegador e retorna função de limpeza.
+ * Seguro para ambientes sem window (SSR/Vitest).
+ */
+export function registerPopstateListener(
+  handler: (event: PopStateEvent) => void,
+  targetWindow?: Window | { addEventListener: (type: string, listener: (ev: PopStateEvent) => void) => void; removeEventListener: (type: string, listener: (ev: PopStateEvent) => void) => void }
+): () => void {
+  const win = targetWindow ?? (typeof window !== 'undefined' ? window : undefined);
+  if (!win || typeof win.addEventListener !== 'function') {
+    return () => {};
+  }
+
+  win.addEventListener('popstate', handler as EventListener);
+  return () => {
+    win.removeEventListener('popstate', handler as EventListener);
+  };
+}
+
+/**
+ * Orquestra a navegação e sincronização quando o evento popstate é emitido pelo navegador.
+ * Controla os ganchos de início/fim para evitar loops de navegação e executa applyDeepLink forçado.
+ */
+export async function handlePopStateNavigation(
+  options: HandlePopStateNavigationOptions = {}
+): Promise<ApplyDeepLinkResult> {
+  const search =
+    options.location?.search ??
+    (typeof window !== 'undefined' && window.location ? window.location.search : '');
+
+  options.onNavigationStart?.();
+  try {
+    return await applyDeepLink(search, {
+      ...options,
+      force: true
+    });
+  } finally {
+    options.onNavigationEnd?.();
+  }
 }

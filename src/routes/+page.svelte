@@ -16,7 +16,13 @@
     selectProposalById,
     selectVoteById
   } from '$lib/state/chatStore';
-  import { applyDeepLink } from '$lib/services/urlNavigationService';
+  import {
+    applyDeepLink,
+    handlePopStateNavigation,
+    isTransientNavigationState,
+    registerPopstateListener,
+    syncUrlWithState
+  } from '$lib/services/urlNavigationService';
   import {
     getParliamentarianBillsFeedback,
     getParliamentarianVotesFeedback,
@@ -38,13 +44,14 @@
   let searchRenderKey = $state(0);
   let searchFormResetToken = $state(0);
   let hasInitializedFromUrl = false;
+  let isPopstateNavigation = false;
+  let isMounted = false;
+  let cleanupPopstateListener: (() => void) | null = null;
 
   onMount(() => {
-    if (hasInitializedFromUrl) {
-      return;
-    }
+    isMounted = true;
 
-    if (typeof window !== 'undefined' && window.location.search) {
+    if (!hasInitializedFromUrl && typeof window !== 'undefined' && window.location.search) {
       hasInitializedFromUrl = true;
       void applyDeepLink(window.location.search, {
         searchFn: async (query) => {
@@ -56,6 +63,56 @@
         getCurrentState: () => chatStore.currentState
       });
     }
+
+    cleanupPopstateListener = registerPopstateListener(async () => {
+      await handlePopStateNavigation({
+        searchFn: async (query) => {
+          searchRenderKey += 1;
+          await executeSearch(query);
+        },
+        selectProposalFn: selectProposalById,
+        selectParliamentarianFn: selectParliamentarianById,
+        resetFn: () => {
+          reset();
+          searchRenderKey += 1;
+          searchFormResetToken += 1;
+        },
+        getCurrentState: () => chatStore.currentState,
+        onNavigationStart: () => {
+          isPopstateNavigation = true;
+        },
+        onNavigationEnd: () => {
+          isPopstateNavigation = false;
+        }
+      });
+    });
+
+    return () => {
+      cleanupPopstateListener?.();
+      cleanupPopstateListener = null;
+    };
+  });
+
+  $effect(() => {
+    const currentState = chatStore.currentState;
+    const lastQuery = chatStore.lastQuery;
+    const selectedParliamentarianId = chatStore.selectedParliamentarian?.id;
+    const selectedProposalId = chatStore.selectedProposal?.id;
+
+    if (!isMounted || isPopstateNavigation) {
+      return;
+    }
+
+    if (isTransientNavigationState(currentState)) {
+      return;
+    }
+
+    syncUrlWithState({
+      currentState,
+      lastQuery,
+      selectedParliamentarianId,
+      selectedProposalId
+    });
   });
 
   let submittedSearch = $derived(
@@ -239,6 +296,8 @@
   }
 
   onDestroy(() => {
+    cleanupPopstateListener?.();
+    cleanupPopstateListener = null;
     reset();
   });
 </script>

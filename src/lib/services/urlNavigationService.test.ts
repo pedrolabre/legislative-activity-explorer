@@ -1,13 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyDeepLink,
+  areNavigationParamsEqual,
   buildSearchQueryString,
   buildShareableUrl,
+  computeSearchParamsFromState,
+  handlePopStateNavigation,
+  isSignificantNavigationState,
+  isTransientNavigationState,
   parseNavigationSearchParams,
+  registerPopstateListener,
   resolveDeepLinkAction,
   resolveProposalQuery,
   sanitizeIdentifierText,
-  sanitizeQueryText
+  sanitizeQueryText,
+  syncUrlWithState
 } from './urlNavigationService';
 
 describe('urlNavigationService', () => {
@@ -346,12 +353,419 @@ describe('urlNavigationService', () => {
       expect(searchFn).not.toHaveBeenCalled();
     });
 
+    it('executa deep link mesmo em estado não-WELCOME quando force é true', async () => {
+      const searchFn = vi.fn().mockResolvedValue(undefined);
+
+      const result = await applyDeepLink('?q=saude', {
+        searchFn,
+        getCurrentState: () => 'SEARCH_RESULTS',
+        force: true
+      });
+
+      expect(result.executed).toBe(true);
+      expect(searchFn).toHaveBeenCalledWith('saude');
+    });
+
+    it('executa resetFn quando a query é vazia e force é true em estado não-WELCOME', async () => {
+      const resetFn = vi.fn();
+
+      const result = await applyDeepLink('', {
+        resetFn,
+        getCurrentState: () => 'BILL_DETAIL',
+        force: true
+      });
+
+      expect(result.executed).toBe(true);
+      expect(result.action).toEqual({ type: 'none' });
+      expect(resetFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('não executa resetFn se o estado já for WELCOME', async () => {
+      const resetFn = vi.fn();
+
+      const result = await applyDeepLink('', {
+        resetFn,
+        getCurrentState: () => 'WELCOME',
+        force: true
+      });
+
+      expect(result.executed).toBe(false);
+      expect(resetFn).not.toHaveBeenCalled();
+    });
+
     it('trata exceções lançadas nos callbacks defensivamente', async () => {
       const searchFn = vi.fn().mockRejectedValue(new Error('Falha de rede'));
 
       const result = await applyDeepLink('?q=falha', { searchFn });
 
       expect(result.executed).toBe(false);
+    });
+  });
+
+  describe('Detecção de estados transitórios e significativos', () => {
+    it('isTransientNavigationState identifica SEARCHING como transitório', () => {
+      expect(isTransientNavigationState('SEARCHING')).toBe(true);
+      expect(isTransientNavigationState('WELCOME')).toBe(false);
+      expect(isTransientNavigationState('SEARCH_RESULTS')).toBe(false);
+      expect(isTransientNavigationState('BILL_DETAIL')).toBe(false);
+      expect(isTransientNavigationState(undefined)).toBe(false);
+      expect(isTransientNavigationState(null)).toBe(false);
+    });
+
+    it('isSignificantNavigationState identifica estados válidos não-transitórios', () => {
+      expect(isSignificantNavigationState('WELCOME')).toBe(true);
+      expect(isSignificantNavigationState('SEARCH_RESULTS')).toBe(true);
+      expect(isSignificantNavigationState('PARLIAMENTARIAN_DETAIL')).toBe(true);
+      expect(isSignificantNavigationState('BILL_DETAIL')).toBe(true);
+      expect(isSignificantNavigationState('SEARCHING')).toBe(false);
+      expect(isSignificantNavigationState('')).toBe(false);
+      expect(isSignificantNavigationState(null)).toBe(false);
+    });
+  });
+
+  describe('Cálculo de parâmetros a partir do estado (computeSearchParamsFromState)', () => {
+    it('retorna vazio para WELCOME, SEARCHING ou estados indefinidos', () => {
+      expect(computeSearchParamsFromState({ currentState: 'WELCOME' })).toEqual({});
+      expect(
+        computeSearchParamsFromState({ currentState: 'SEARCHING', lastQuery: 'educacao' })
+      ).toEqual({});
+      expect(computeSearchParamsFromState({ currentState: '' })).toEqual({});
+    });
+
+    it('retorna parâmetro q para SEARCH_RESULTS com lastQuery', () => {
+      const params = computeSearchParamsFromState({
+        currentState: 'SEARCH_RESULTS',
+        lastQuery: 'reforma tributaria'
+      });
+      expect(params).toEqual({ q: 'reforma tributaria' });
+    });
+
+    it('retorna parâmetros parl e q para PARLIAMENTARIAN_DETAIL, BILLS e VOTES', () => {
+      const detailParams = computeSearchParamsFromState({
+        currentState: 'PARLIAMENTARIAN_DETAIL',
+        selectedParliamentarianId: 'camara-deputado-74400',
+        lastQuery: 'tabata'
+      });
+      expect(detailParams).toEqual({
+        parl: 'camara-deputado-74400',
+        q: 'tabata'
+      });
+
+      const billsParams = computeSearchParamsFromState({
+        currentState: 'PARLIAMENTARIAN_BILLS',
+        selectedParliamentarianId: 'senado-senador-5982'
+      });
+      expect(billsParams).toEqual({
+        parl: 'senado-senador-5982'
+      });
+
+      const votesParams = computeSearchParamsFromState({
+        currentState: 'PARLIAMENTARIAN_VOTES',
+        selectedParliamentarianId: 'senado-senador-5982',
+        lastQuery: 'senador'
+      });
+      expect(votesParams).toEqual({
+        parl: 'senado-senador-5982',
+        q: 'senador'
+      });
+    });
+
+    it('retorna parâmetros prop, parl e q para BILL_DETAIL e BILL_VOTES', () => {
+      const billParams = computeSearchParamsFromState({
+        currentState: 'BILL_DETAIL',
+        selectedProposalId: 'PL 1234/2024',
+        selectedParliamentarianId: 'camara-10',
+        lastQuery: 'educacao'
+      });
+      expect(billParams).toEqual({
+        prop: 'PL 1234/2024',
+        parl: 'camara-10',
+        q: 'educacao'
+      });
+
+      const billVotesParams = computeSearchParamsFromState({
+        currentState: 'BILL_VOTES',
+        selectedProposalId: 'PEC 45/2023'
+      });
+      expect(billVotesParams).toEqual({
+        prop: 'PEC 45/2023'
+      });
+    });
+
+    it('retorna query preservada para outros estados significativos como ABOUT', () => {
+      const params = computeSearchParamsFromState({
+        currentState: 'ABOUT',
+        lastQuery: 'consulta ativa'
+      });
+      expect(params).toEqual({ q: 'consulta ativa' });
+    });
+  });
+
+  describe('Comparação de parâmetros (areNavigationParamsEqual)', () => {
+    it('reconhece parâmetros vazios como equivalentes a indefinidos', () => {
+      expect(areNavigationParamsEqual({}, {})).toBe(true);
+      expect(areNavigationParamsEqual({ q: '' }, {})).toBe(true);
+      expect(areNavigationParamsEqual({ prop: undefined }, { prop: '' })).toBe(true);
+    });
+
+    it('reconhece parâmetros equivalentes ignorando espaços periféricos', () => {
+      expect(areNavigationParamsEqual({ q: '  saude  ' }, { q: 'saude' })).toBe(true);
+      expect(
+        areNavigationParamsEqual(
+          { q: 'educacao', prop: 'PL 10/2024' },
+          { q: 'educacao', prop: 'PL 10/2024' }
+        )
+      ).toBe(true);
+    });
+
+    it('retorna false quando qualquer parâmetro for diferente', () => {
+      expect(areNavigationParamsEqual({ q: 'saude' }, { q: 'educacao' })).toBe(false);
+      expect(areNavigationParamsEqual({ prop: 'PL 1/2024' }, { prop: 'PL 2/2024' })).toBe(false);
+      expect(
+        areNavigationParamsEqual(
+          { parl: 'camara-1' },
+          { parl: 'camara-2' }
+        )
+      ).toBe(false);
+    });
+  });
+
+  describe('Sincronização de URL via History API (syncUrlWithState)', () => {
+    it('suprime sincronização de histórico durante estado transitório SEARCHING', () => {
+      const mockHistory = {
+        pushState: vi.fn(),
+        replaceState: vi.fn()
+      };
+
+      const result = syncUrlWithState(
+        { currentState: 'SEARCHING', lastQuery: 'educacao' },
+        { history: mockHistory, location: { pathname: '/', search: '' } }
+      );
+
+      expect(result.updated).toBe(false);
+      expect(result.method).toBe('none');
+      expect(mockHistory.pushState).not.toHaveBeenCalled();
+      expect(mockHistory.replaceState).not.toHaveBeenCalled();
+    });
+
+    it('ignora sincronização quando a URL atual já contém os mesmos parâmetros (idempotência)', () => {
+      const mockHistory = {
+        pushState: vi.fn(),
+        replaceState: vi.fn()
+      };
+
+      const result = syncUrlWithState(
+        { currentState: 'SEARCH_RESULTS', lastQuery: 'educacao' },
+        { history: mockHistory, location: { pathname: '/app', search: '?q=educacao' } }
+      );
+
+      expect(result.updated).toBe(false);
+      expect(result.method).toBe('none');
+      expect(result.targetUrl).toBe('/app?q=educacao');
+      expect(mockHistory.pushState).not.toHaveBeenCalled();
+    });
+
+    it('usa pushState ao transicionar para novo estado de busca', () => {
+      const mockHistory = {
+        pushState: vi.fn(),
+        replaceState: vi.fn()
+      };
+
+      const result = syncUrlWithState(
+        { currentState: 'SEARCH_RESULTS', lastQuery: 'tecnologia' },
+        { history: mockHistory, location: { pathname: '/', search: '' } }
+      );
+
+      expect(result.updated).toBe(true);
+      expect(result.method).toBe('pushState');
+      expect(result.targetUrl).toBe('/?q=tecnologia');
+      expect(mockHistory.pushState).toHaveBeenCalledWith(null, '', '/?q=tecnologia');
+    });
+
+    it('usa pushState ao selecionar proposição com parâmetros serializados', () => {
+      const mockHistory = {
+        pushState: vi.fn(),
+        replaceState: vi.fn()
+      };
+
+      const result = syncUrlWithState(
+        {
+          currentState: 'BILL_DETAIL',
+          selectedProposalId: 'PL 100/2024',
+          lastQuery: 'saude'
+        },
+        { history: mockHistory, location: { pathname: '/', search: '?q=saude' } }
+      );
+
+      expect(result.updated).toBe(true);
+      expect(result.method).toBe('pushState');
+      expect(result.targetUrl).toBe('/?q=saude&prop=PL+100%2F2024');
+      expect(mockHistory.pushState).toHaveBeenCalledWith(
+        null,
+        '',
+        '/?q=saude&prop=PL+100%2F2024'
+      );
+    });
+
+    it('usa replaceState para limpar query string ao retornar para WELCOME', () => {
+      const mockHistory = {
+        pushState: vi.fn(),
+        replaceState: vi.fn()
+      };
+
+      const result = syncUrlWithState(
+        { currentState: 'WELCOME' },
+        { history: mockHistory, location: { pathname: '/painel', search: '?q=saude&prop=PL+10' } }
+      );
+
+      expect(result.updated).toBe(true);
+      expect(result.method).toBe('replaceState');
+      expect(result.targetUrl).toBe('/painel');
+      expect(mockHistory.replaceState).toHaveBeenCalledWith(null, '', '/painel');
+    });
+
+    it('não executa replaceState no WELCOME se a URL já estiver limpa', () => {
+      const mockHistory = {
+        pushState: vi.fn(),
+        replaceState: vi.fn()
+      };
+
+      const result = syncUrlWithState(
+        { currentState: 'WELCOME' },
+        { history: mockHistory, location: { pathname: '/', search: '' } }
+      );
+
+      expect(result.updated).toBe(false);
+      expect(result.method).toBe('none');
+      expect(mockHistory.replaceState).not.toHaveBeenCalled();
+    });
+
+    it('força replaceState quando a opção replace for explicitamente true', () => {
+      const mockHistory = {
+        pushState: vi.fn(),
+        replaceState: vi.fn()
+      };
+
+      const result = syncUrlWithState(
+        { currentState: 'SEARCH_RESULTS', lastQuery: 'educacao' },
+        {
+          history: mockHistory,
+          location: { pathname: '/', search: '' },
+          replace: true
+        }
+      );
+
+      expect(result.updated).toBe(true);
+      expect(result.method).toBe('replaceState');
+      expect(mockHistory.replaceState).toHaveBeenCalledWith(null, '', '/?q=educacao');
+      expect(mockHistory.pushState).not.toHaveBeenCalled();
+    });
+
+    it('retorna updated: false e method: none em ambiente sem history', () => {
+      const result = syncUrlWithState(
+        { currentState: 'SEARCH_RESULTS', lastQuery: 'educacao' },
+        { history: undefined }
+      );
+
+      expect(result.updated).toBe(false);
+      expect(result.method).toBe('none');
+    });
+
+    it('trata exceções lançadas pelo history com segurança', () => {
+      const throwingHistory = {
+        pushState: vi.fn().mockImplementation(() => {
+          throw new Error('SecurityError: History call rejected');
+        }),
+        replaceState: vi.fn()
+      };
+
+      const result = syncUrlWithState(
+        { currentState: 'SEARCH_RESULTS', lastQuery: 'educacao' },
+        { history: throwingHistory, location: { pathname: '/', search: '' } }
+      );
+
+      expect(result.updated).toBe(false);
+      expect(result.method).toBe('none');
+    });
+  });
+
+  describe('Listener de popstate (registerPopstateListener)', () => {
+    it('registra o listener no objeto window e remove na função de limpeza', () => {
+      const mockWindow = {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn()
+      };
+
+      const handler = vi.fn();
+      const unregister = registerPopstateListener(handler, mockWindow as unknown as Window);
+
+      expect(mockWindow.addEventListener).toHaveBeenCalledWith('popstate', handler);
+
+      unregister();
+      expect(mockWindow.removeEventListener).toHaveBeenCalledWith('popstate', handler);
+    });
+
+    it('retorna no-op sem falhas se targetWindow for undefined ou inválido', () => {
+      const unregister = registerPopstateListener(vi.fn(), undefined);
+      expect(typeof unregister).toBe('function');
+      expect(() => unregister()).not.toThrow();
+    });
+  });
+
+  describe('Navegação orquestrada de popstate (handlePopStateNavigation)', () => {
+    it('aciona os ganchos onNavigationStart e onNavigationEnd e executa busca', async () => {
+      const onNavigationStart = vi.fn();
+      const onNavigationEnd = vi.fn();
+      const searchFn = vi.fn().mockResolvedValue(undefined);
+
+      const result = await handlePopStateNavigation({
+        location: { pathname: '/', search: '?q=meio+ambiente' },
+        searchFn,
+        onNavigationStart,
+        onNavigationEnd
+      });
+
+      expect(onNavigationStart).toHaveBeenCalledTimes(1);
+      expect(onNavigationEnd).toHaveBeenCalledTimes(1);
+      expect(result.executed).toBe(true);
+      expect(result.action).toEqual({ type: 'search', query: 'meio ambiente' });
+      expect(searchFn).toHaveBeenCalledWith('meio ambiente');
+    });
+
+    it('aciona resetFn quando o usuário navega de volta para a raiz limpa', async () => {
+      const resetFn = vi.fn();
+      const onNavigationStart = vi.fn();
+      const onNavigationEnd = vi.fn();
+
+      const result = await handlePopStateNavigation({
+        location: { pathname: '/', search: '' },
+        resetFn,
+        getCurrentState: () => 'SEARCH_RESULTS',
+        onNavigationStart,
+        onNavigationEnd
+      });
+
+      expect(result.executed).toBe(true);
+      expect(resetFn).toHaveBeenCalledTimes(1);
+      expect(onNavigationStart).toHaveBeenCalledTimes(1);
+      expect(onNavigationEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it('garante que onNavigationEnd é chamado mesmo se ocorrer erro durante navegação', async () => {
+      const onNavigationStart = vi.fn();
+      const onNavigationEnd = vi.fn();
+      const searchFn = vi.fn().mockRejectedValue(new Error('Erro de conexão'));
+
+      const result = await handlePopStateNavigation({
+        location: { pathname: '/', search: '?q=erro' },
+        searchFn,
+        onNavigationStart,
+        onNavigationEnd
+      });
+
+      expect(result.executed).toBe(false);
+      expect(onNavigationStart).toHaveBeenCalledTimes(1);
+      expect(onNavigationEnd).toHaveBeenCalledTimes(1);
     });
   });
 });
