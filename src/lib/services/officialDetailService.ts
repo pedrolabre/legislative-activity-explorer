@@ -85,6 +85,19 @@ export interface OfficialDetailServiceOptions extends OfficialApiClientFactoryOp
   camaraClient?: OfficialCamaraDetailClient;
   senadoClient?: OfficialSenadoDetailClient;
   maxSenadoAssociatedProcesses?: number;
+  signal?: AbortSignal;
+}
+
+function isAbortError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  if (typeof error === 'object' && 'name' in error && (error as { name?: string }).name === 'AbortError') {
+    return true;
+  }
+
+  return false;
 }
 
 function getErrorKind(error: unknown): OfficialDetailErrorKind {
@@ -257,7 +270,8 @@ function deduplicateAssociatedProposals(proposals: LegislativeProposal[]) {
 
 async function loadSenadoAssociatedGroup<TPayload>(
   load: () => Promise<TPayload[]>,
-  map: (payload: TPayload) => LegislativeProposal
+  map: (payload: TPayload) => LegislativeProposal,
+  signal?: AbortSignal
 ): Promise<SenadoAssociatedGroupResult> {
   const proposals: LegislativeProposal[] = [];
   const errors: OfficialDetailRecoverableError[] = [];
@@ -267,6 +281,9 @@ async function loadSenadoAssociatedGroup<TPayload>(
       try {
         proposals.push(map(payload));
       } catch (error) {
+        if (signal?.aborted || isAbortError(error)) {
+          throw error;
+        }
         errors.push(toRecoverableError('senado', 'parliamentarian-proposals', error));
       }
     }
@@ -277,6 +294,10 @@ async function loadSenadoAssociatedGroup<TPayload>(
       succeeded: true
     };
   } catch (error) {
+    if (signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     return {
       proposals,
       errors: [toRecoverableError('senado', 'parliamentarian-proposals', error)],
@@ -288,30 +309,39 @@ async function loadSenadoAssociatedGroup<TPayload>(
 async function getOfficialSenadoAssociatedProposals(
   parliamentarian: Parliamentarian,
   client: OfficialSenadoDetailClient,
-  maxSenadoAssociatedProcesses: number
+  maxSenadoAssociatedProcesses: number,
+  signal?: AbortSignal
 ): Promise<OfficialDetailListResult<LegislativeProposal>> {
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException('A consulta foi cancelada.', 'AbortError');
+  }
+
   const [authorResult, rapporteurResult] = await Promise.all([
     loadSenadoAssociatedGroup<SenadoProcessoPayload>(
       () =>
         client.searchProcessos({
-          codigoParlamentarAutor: parliamentarian.sourceId
+          codigoParlamentarAutor: parliamentarian.sourceId,
+          signal
         }),
       (payload) => ({
         ...attachEditorialReferencesToProposal(
           attachReviewedFactualSummaryToProposal(mapSenadoProcessoToLegislativeProposal(payload))
         ),
         relationship: 'Autoria'
-      })
+      }),
+      signal
     ),
     loadSenadoAssociatedGroup<SenadoRelatoriaPayload>(
       () =>
         client.searchRelatorias({
-          codigoParlamentar: parliamentarian.sourceId
+          codigoParlamentar: parliamentarian.sourceId,
+          signal
         }),
       (payload) =>
         attachEditorialReferencesToProposal(
           attachReviewedFactualSummaryToProposal(mapSenadoRelatoriaToLegislativeProposal(payload))
-        )
+        ),
+      signal
     )
   ]);
   const errors = [...authorResult.errors, ...rapporteurResult.errors];
@@ -340,16 +370,25 @@ async function getOfficialSenadoAssociatedProposals(
 
 async function getOfficialCamaraProposalDetail(
   proposal: LegislativeProposal,
-  client: OfficialCamaraDetailClient
+  client: OfficialCamaraDetailClient,
+  signal?: AbortSignal
 ): Promise<OfficialDetailResult<LegislativeProposal>> {
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException('A consulta foi cancelada.', 'AbortError');
+  }
+
   const errors: OfficialDetailRecoverableError[] = [];
   let data: LegislativeProposal;
 
   try {
     data = mapCamaraProposicaoToLegislativeProposal(
-      await client.getProposicaoById(proposal.sourceId)
+      await client.getProposicaoById(proposal.sourceId, { signal })
     );
   } catch (error) {
+    if (signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     return {
       status: 'failed',
       data: null,
@@ -359,7 +398,7 @@ async function getOfficialCamaraProposalDetail(
 
   try {
     const subject = mapCamaraProposicaoTemasToSubject(
-      await client.getProposicaoTemasById(proposal.sourceId)
+      await client.getProposicaoTemasById(proposal.sourceId, { signal })
     );
 
     if (subject) {
@@ -369,6 +408,10 @@ async function getOfficialCamaraProposalDetail(
       };
     }
   } catch (error) {
+    if (signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     errors.push(toRecoverableError('camara', 'proposal', error));
   }
 
@@ -384,14 +427,23 @@ async function getOfficialCamaraProposalDetail(
 
 async function getOfficialSenadoParliamentarianDetail(
   parliamentarian: Parliamentarian,
-  client: OfficialSenadoDetailClient
+  client: OfficialSenadoDetailClient,
+  signal?: AbortSignal
 ): Promise<OfficialDetailResult<Parliamentarian>> {
+  if (signal?.aborted) {
+    throw signal.reason ?? new DOMException('A consulta foi cancelada.', 'AbortError');
+  }
+
   const errors: OfficialDetailRecoverableError[] = [];
   let senatorPayload: SenadoSenadorPayload;
 
   try {
-    senatorPayload = await client.getSenadorById(parliamentarian.sourceId);
+    senatorPayload = await client.getSenadorById(parliamentarian.sourceId, { signal });
   } catch (error) {
+    if (signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     return {
       status: 'failed',
       data: null,
@@ -402,8 +454,12 @@ async function getOfficialSenadoParliamentarianDetail(
   let mandates: SenadoMandatoPayload[] = [];
 
   try {
-    mandates = await client.getSenadorMandatosById(parliamentarian.sourceId);
+    mandates = await client.getSenadorMandatosById(parliamentarian.sourceId, { signal });
   } catch (error) {
+    if (signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     errors.push(toRecoverableError('senado', 'parliamentarian', error));
   }
 
@@ -416,6 +472,10 @@ async function getOfficialSenadoParliamentarianDetail(
       errors
     };
   } catch (error) {
+    if (signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     return {
       status: 'failed',
       data: null,
@@ -432,20 +492,30 @@ export async function getOfficialParliamentarianDetail(
   parliamentarian: Parliamentarian,
   options: OfficialDetailServiceOptions = {}
 ): Promise<OfficialDetailResult<Parliamentarian>> {
+  if (options.signal?.aborted) {
+    throw (
+      options.signal.reason ??
+      new DOMException('A consulta foi cancelada.', 'AbortError')
+    );
+  }
+
   const { source, sourceId } = parliamentarian;
 
   try {
     const data =
       source === 'camara'
         ? mapCamaraDeputadoToParliamentarian(
-            await getConfiguredCamaraDetailClient(options).getDeputadoById(sourceId)
+            await getConfiguredCamaraDetailClient(options).getDeputadoById(sourceId, {
+              signal: options.signal
+            })
           )
         : undefined;
 
     if (!data) {
       return getOfficialSenadoParliamentarianDetail(
         parliamentarian,
-        getConfiguredSenadoDetailClient(options)
+        getConfiguredSenadoDetailClient(options),
+        options.signal
       );
     }
 
@@ -455,6 +525,10 @@ export async function getOfficialParliamentarianDetail(
       errors: []
     };
   } catch (error) {
+    if (options.signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     return {
       status: 'failed',
       data: null,
@@ -467,17 +541,26 @@ export async function getOfficialProposalsByParliamentarian(
   parliamentarian: Parliamentarian,
   options: OfficialDetailServiceOptions = {}
 ): Promise<OfficialDetailListResult<LegislativeProposal>> {
+  if (options.signal?.aborted) {
+    throw (
+      options.signal.reason ??
+      new DOMException('A consulta foi cancelada.', 'AbortError')
+    );
+  }
+
   if (parliamentarian.source === 'senado') {
     return getOfficialSenadoAssociatedProposals(
       parliamentarian,
       getConfiguredSenadoDetailClient(options),
-      options.maxSenadoAssociatedProcesses ?? defaultMaxSenadoAssociatedProcesses
+      options.maxSenadoAssociatedProcesses ?? defaultMaxSenadoAssociatedProcesses,
+      options.signal
     );
   }
 
   try {
     const payloads = await getConfiguredCamaraDetailClient(options).getProposicoesByDeputadoAutor(
-      parliamentarian.sourceId
+      parliamentarian.sourceId,
+      { signal: options.signal }
     );
     const { proposals, errors } = mapCamaraAuthorProposals(payloads);
 
@@ -487,6 +570,10 @@ export async function getOfficialProposalsByParliamentarian(
       errors
     };
   } catch (error) {
+    if (options.signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     return {
       status: 'failed',
       data: [],
@@ -499,17 +586,32 @@ export async function getOfficialProposalDetail(
   proposal: LegislativeProposal,
   options: OfficialDetailServiceOptions = {}
 ): Promise<OfficialDetailResult<LegislativeProposal>> {
+  if (options.signal?.aborted) {
+    throw (
+      options.signal.reason ??
+      new DOMException('A consulta foi cancelada.', 'AbortError')
+    );
+  }
+
   const { source, sourceId } = proposal;
 
   if (source === 'camara') {
-    return getOfficialCamaraProposalDetail(proposal, getConfiguredCamaraDetailClient(options));
+    return getOfficialCamaraProposalDetail(
+      proposal,
+      getConfiguredCamaraDetailClient(options),
+      options.signal
+    );
   }
 
   try {
     const senadoClient = getConfiguredSenadoDetailClient(options);
     const data = isModernSenadoProcessProposal(proposal)
-      ? mapSenadoProcessoToLegislativeProposal(await senadoClient.getProcessoById(sourceId))
-      : mapSenadoMateriaToLegislativeProposal(await senadoClient.getMateriaById(sourceId));
+      ? mapSenadoProcessoToLegislativeProposal(
+          await senadoClient.getProcessoById(sourceId, { signal: options.signal })
+        )
+      : mapSenadoMateriaToLegislativeProposal(
+          await senadoClient.getMateriaById(sourceId, { signal: options.signal })
+        );
 
     return {
       status: 'fulfilled',
@@ -520,6 +622,10 @@ export async function getOfficialProposalDetail(
       errors: []
     };
   } catch (error) {
+    if (options.signal?.aborted || isAbortError(error)) {
+      throw error;
+    }
+
     return {
       status: 'failed',
       data: null,

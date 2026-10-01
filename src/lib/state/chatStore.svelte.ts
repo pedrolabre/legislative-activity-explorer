@@ -18,7 +18,7 @@ import {
 } from '$lib/ui/officialMessages';
 import { joinRecoverableNotices } from '$lib/services/officialNotices';
 import { searchPublicRecords } from '$lib/services/publicSearchService';
-import { emptySearchResults } from '$lib/services/searchResults';
+import { emptySearchResults, type SearchResults } from '$lib/services/searchResults';
 import type {
   ChatContext,
   ChatContextPatch,
@@ -74,10 +74,23 @@ export {
   officialSenadoStaticCoverageDescription
 };
 
+function isAbortError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  if (typeof error === 'object' && 'name' in error && (error as { name?: string }).name === 'AbortError') {
+    return true;
+  }
+
+  return false;
+}
+
 export class ChatStateMachine {
   #context = $state<ChatContext>(createInitialChatContext());
   #subscribers = new SvelteSet<(context: ChatContext) => void>();
   #searchSequence = 0;
+  #searchAbortController: AbortController | null = null;
   #pendingSearch: {
     timeoutId: ReturnType<typeof setTimeout> | null;
     resolve: () => void;
@@ -144,6 +157,11 @@ export class ChatStateMachine {
   }
 
   #cancelPendingSearch(): void {
+    if (this.#searchAbortController) {
+      this.#searchAbortController.abort();
+      this.#searchAbortController = null;
+    }
+
     if (!this.#pendingSearch) {
       return;
     }
@@ -175,6 +193,7 @@ export class ChatStateMachine {
   }
 
   navigateTo(nextState: UIState, options: NavigateToOptions = {}): void {
+    this.#cancelPendingSearch();
     const { updates = {}, recordHistory = true } = options;
     const shouldRecordHistory = recordHistory && this.#context.currentState !== nextState;
 
@@ -194,6 +213,7 @@ export class ChatStateMachine {
       return;
     }
 
+    this.#cancelPendingSearch();
     const historyStack = [...this.#context.historyStack];
     const previousState = historyStack.pop() as UIState;
 
@@ -221,6 +241,8 @@ export class ChatStateMachine {
 
     this.#cancelPendingSearch();
     const currentSearchId = ++this.#searchSequence;
+    const searchController = new AbortController();
+    this.#searchAbortController = searchController;
     const search = options.search ?? searchPublicRecords;
     const delayMs = options.delayMs ?? defaultSearchDelayMs;
 
@@ -243,15 +265,20 @@ export class ChatStateMachine {
     await new Promise<void>((resolve) => {
       const completeSearch = () => {
         void (async () => {
-          if (currentSearchId !== this.#searchSequence) {
+          if (currentSearchId !== this.#searchSequence || searchController.signal.aborted) {
             resolve();
             return;
           }
 
           try {
-            const results = await search(normalizedQuery);
+            const results = await (
+              search as (
+                q: string,
+                opt?: { signal?: AbortSignal }
+              ) => SearchResults | Promise<SearchResults>
+            )(normalizedQuery, { signal: searchController.signal });
 
-            if (currentSearchId !== this.#searchSequence) {
+            if (currentSearchId !== this.#searchSequence || searchController.signal.aborted) {
               resolve();
               return;
             }
@@ -263,7 +290,7 @@ export class ChatStateMachine {
                 true
               );
 
-              if (currentSearchId !== this.#searchSequence) {
+              if (currentSearchId !== this.#searchSequence || searchController.signal.aborted) {
                 resolve();
                 return;
               }
@@ -281,8 +308,13 @@ export class ChatStateMachine {
               this.#context = applySearchResults(this.#context, normalizedQuery, results);
               this.#notifySubscribers();
             }
-          } catch {
-            if (currentSearchId !== this.#searchSequence) {
+          } catch (cause) {
+            if (
+              currentSearchId !== this.#searchSequence ||
+              searchController.signal.aborted ||
+              isAbortError(cause)
+            ) {
+              resolve();
               return;
             }
 
@@ -295,6 +327,9 @@ export class ChatStateMachine {
           } finally {
             if (this.#pendingSearch?.resolve === resolve) {
               this.#pendingSearch = null;
+            }
+            if (this.#searchAbortController === searchController) {
+              this.#searchAbortController = null;
             }
 
             resolve();
@@ -318,6 +353,7 @@ export class ChatStateMachine {
     id: string,
     options: SelectParliamentarianByIdOptions = {}
   ): Promise<boolean> {
+    this.#cancelPendingSearch();
     const contextParliamentarian = findParliamentarianInContext(this.#context, id);
 
     if (!contextParliamentarian || !isOfficialParliamentarian(contextParliamentarian)) {
@@ -349,6 +385,7 @@ export class ChatStateMachine {
   async openParliamentarianBills(
     options: OpenParliamentarianBillsOptions = {}
   ): Promise<boolean> {
+    this.#cancelPendingSearch();
     if (!this.#context.selectedParliamentarian) {
       return false;
     }
@@ -380,6 +417,7 @@ export class ChatStateMachine {
   }
 
   openParliamentarianVotes(): boolean {
+    this.#cancelPendingSearch();
     if (!this.#context.selectedParliamentarian) {
       return false;
     }
@@ -415,6 +453,7 @@ export class ChatStateMachine {
     id: string,
     options: SelectProposalByIdOptions = {}
   ): Promise<boolean> {
+    this.#cancelPendingSearch();
     const contextProposal = findProposalInContext(this.#context, id);
 
     if (!contextProposal || !isOfficialProposal(contextProposal)) {

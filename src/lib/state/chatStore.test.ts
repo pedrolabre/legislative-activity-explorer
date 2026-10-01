@@ -266,7 +266,10 @@ describe('chatStore actions', () => {
 
     await executeSearch(' ana ', { delayMs: 0 });
 
-    expect(mockedSearchPublicRecords).toHaveBeenCalledWith('ana');
+    expect(mockedSearchPublicRecords).toHaveBeenCalledWith(
+      'ana',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     expect(chatStore.currentState).toBe('SEARCH_RESULTS');
     expect(chatStore.lastQuery).toBe('ana');
     expect(chatStore.parliamentariansFound).toEqual([
@@ -1552,7 +1555,10 @@ describe('Concurrency, search race conditions, and debounce hardening', () => {
     await Promise.all([search1Promise, search2Promise]);
 
     expect(search1Fn).not.toHaveBeenCalled();
-    expect(search2Fn).toHaveBeenCalledWith('segunda');
+    expect(search2Fn).toHaveBeenCalledWith(
+      'segunda',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     expect(machine.currentState).toBe('SEARCH_RESULTS');
     expect(machine.lastQuery).toBe('segunda');
     assertStoreParity(machine);
@@ -1747,6 +1753,175 @@ describe('Navigation boundaries and defensive selection behavior', () => {
 
     const votesResult = machine.openParliamentarianVotes();
     expect(votesResult).toBe(false);
+    assertStoreParity(machine);
+  });
+});
+
+describe('ChatStateMachine in-flight request cancellation with AbortSignal', () => {
+  it('aborts previous in-flight search when a subsequent search is dispatched', async () => {
+    const machine = createChatStateMachine();
+    const signals: AbortSignal[] = [];
+
+    const deferred: { resolve: (results: SearchResults) => void } = {
+      resolve: () => undefined
+    };
+    const searchPromise1 = new Promise<SearchResults>((resolve) => {
+      deferred.resolve = resolve;
+    });
+
+    const searchMock = vi.fn().mockImplementation((query: string, opts?: { signal?: AbortSignal }) => {
+      if (opts?.signal) {
+        signals.push(opts.signal);
+      }
+      if (query === 'primeira') {
+        return searchPromise1;
+      }
+      return Promise.resolve({
+        parliamentarians: [createOfficialParliamentarian({ id: 'camara-2', name: 'Segundo' })],
+        proposals: []
+      });
+    });
+
+    // Dispatch first search
+    const exec1 = machine.executeSearch('primeira', {
+      delayMs: 0,
+      search: searchMock
+    });
+
+    expect(signals).toHaveLength(1);
+    expect(signals[0].aborted).toBe(false);
+
+    // Dispatch second search while first is still in flight
+    const exec2 = machine.executeSearch('segunda', {
+      delayMs: 0,
+      search: searchMock
+    });
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0].aborted).toBe(true);
+    expect(signals[1].aborted).toBe(false);
+
+    // First search finishes late
+    deferred.resolve({
+      parliamentarians: [createOfficialParliamentarian({ id: 'camara-1', name: 'Primeiro' })],
+      proposals: []
+    });
+
+    await Promise.all([exec1, exec2]);
+
+    expect(machine.currentState).toBe('SEARCH_RESULTS');
+    expect(machine.lastQuery).toBe('segunda');
+    expect(machine.parliamentariansFound[0]?.name).toBe('Segundo');
+    assertStoreParity(machine);
+  });
+
+  it('aborts in-flight search and ignores cancellation silently upon reset()', async () => {
+    const machine = createChatStateMachine();
+    let capturedSignal: AbortSignal | undefined;
+
+    const slowSearch = vi.fn().mockImplementation((_query: string, opts?: { signal?: AbortSignal }) => {
+      capturedSignal = opts?.signal;
+      return new Promise<SearchResults>((_resolve, reject) => {
+        opts?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('A busca foi cancelada.', 'AbortError'));
+        });
+      });
+    });
+
+    const searchPromise = machine.executeSearch('educacao', {
+      delayMs: 0,
+      search: slowSearch
+    });
+
+    expect(capturedSignal).toBeDefined();
+    expect(capturedSignal?.aborted).toBe(false);
+
+    machine.reset();
+
+    expect(capturedSignal?.aborted).toBe(true);
+    await searchPromise;
+
+    expect(machine.currentState).toBe('WELCOME');
+    expect(machine.errorMessage).toBe('');
+    assertStoreParity(machine);
+  });
+
+  it('aborts in-flight search and ignores cancellation silently upon navigateTo()', async () => {
+    const machine = createChatStateMachine();
+    let capturedSignal: AbortSignal | undefined;
+
+    const slowSearch = vi.fn().mockImplementation((_query: string, opts?: { signal?: AbortSignal }) => {
+      capturedSignal = opts?.signal;
+      return new Promise<SearchResults>((_resolve, reject) => {
+        opts?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('A busca foi cancelada.', 'AbortError'));
+        });
+      });
+    });
+
+    const searchPromise = machine.executeSearch('saude', {
+      delayMs: 0,
+      search: slowSearch
+    });
+
+    expect(capturedSignal).toBeDefined();
+    expect(capturedSignal?.aborted).toBe(false);
+
+    machine.navigateTo('ABOUT');
+
+    expect(capturedSignal?.aborted).toBe(true);
+    await searchPromise;
+
+    expect(machine.currentState).toBe('ABOUT');
+    expect(machine.errorMessage).toBe('');
+    assertStoreParity(machine);
+  });
+
+  it('ignores AbortError thrown by search without transitioning to ERROR state', async () => {
+    const machine = createChatStateMachine();
+
+    await machine.executeSearch('termo', {
+      delayMs: 0,
+      search: async () => {
+        throw new DOMException('Operação abortada.', 'AbortError');
+      }
+    });
+
+    expect(machine.currentState).not.toBe('ERROR');
+    expect(machine.errorMessage).toBe('');
+    assertStoreParity(machine);
+  });
+
+  it('aborts in-flight search when user selects a parliamentarian or proposal', async () => {
+    const initialParliamentarian = createOfficialParliamentarian({ id: 'camara-10' });
+    const machine = createChatStateMachine();
+    let capturedSignal: AbortSignal | undefined;
+
+    const slowSearch = vi.fn().mockImplementation((_query: string, opts?: { signal?: AbortSignal }) => {
+      capturedSignal = opts?.signal;
+      return new Promise<SearchResults>((_resolve, reject) => {
+        opts?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('Cancelado.', 'AbortError'));
+        });
+      });
+    });
+
+    const searchPromise = machine.executeSearch('consulta', {
+      delayMs: 0,
+      search: slowSearch
+    });
+
+    expect(capturedSignal?.aborted).toBe(false);
+
+    machine.navigateTo('PARLIAMENTARIAN_DETAIL', {
+      updates: { selectedParliamentarian: initialParliamentarian }
+    });
+
+    expect(capturedSignal?.aborted).toBe(true);
+    await searchPromise;
+
+    expect(machine.currentState).toBe('PARLIAMENTARIAN_DETAIL');
+    expect(machine.selectedParliamentarian?.id).toBe('camara-10');
     assertStoreParity(machine);
   });
 });

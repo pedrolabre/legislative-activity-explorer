@@ -755,4 +755,101 @@ describe('searchOfficialRecords', () => {
     expect(result.parliamentarians).toEqual([]);
     expect(result.proposals).toEqual([]);
   });
+
+  it('propagates AbortSignal to both Camara and Senado search clients', async () => {
+    const controller = new AbortController();
+    let camaraDeputadosSignal: AbortSignal | undefined;
+    let camaraProposicoesSignal: AbortSignal | undefined;
+    let senadoSenadoresSignal: AbortSignal | undefined;
+    let senadoProcessosSignal: AbortSignal | undefined;
+
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async (options) => {
+        camaraDeputadosSignal = options?.signal;
+        return [];
+      },
+      getProposicoes: async (options) => {
+        camaraProposicoesSignal = options?.signal;
+        return [];
+      }
+    };
+
+    const senadoClient: OfficialSenadoSearchClient = {
+      getSenadoresAtuais: async (options) => {
+        senadoSenadoresSignal = options?.signal;
+        return [];
+      },
+      searchProcessos: async (options) => {
+        senadoProcessosSignal = options?.signal;
+        return [];
+      }
+    };
+
+    await searchOfficialRecords('reforma', {
+      camaraClient,
+      senadoClient,
+      signal: controller.signal
+    });
+
+    expect(camaraDeputadosSignal).toBe(controller.signal);
+    expect(camaraProposicoesSignal).toBe(controller.signal);
+    expect(senadoSenadoresSignal).toBe(controller.signal);
+    expect(senadoProcessosSignal).toBe(controller.signal);
+  });
+
+  it('rejects immediately without calling any clients when signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let called = false;
+
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async () => {
+        called = true;
+        return [];
+      },
+      getProposicoes: async () => {
+        called = true;
+        return [];
+      }
+    };
+
+    await expect(
+      searchOfficialRecords('reforma', {
+        camaraClient,
+        senadoClient: createEmptySenadoClient(),
+        signal: controller.signal
+      })
+    ).rejects.toSatisfy((err: unknown) => {
+      return err instanceof DOMException && err.name === 'AbortError';
+    });
+
+    expect(called).toBe(false);
+  });
+
+  it('rethrows AbortError when aborted in flight without converting to recoverable UI errors', async () => {
+    const controller = new AbortController();
+
+    const camaraClient: OfficialCamaraSearchClient = {
+      getDeputados: async (options) => {
+        return new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => {
+            reject(new DOMException('Operação abortada.', 'AbortError'));
+          });
+        });
+      },
+      getProposicoes: async () => []
+    };
+
+    const searchPromise = searchOfficialRecords('educacao', {
+      camaraClient,
+      senadoClient: createEmptySenadoClient(),
+      signal: controller.signal
+    });
+
+    controller.abort();
+
+    await expect(searchPromise).rejects.toSatisfy((err: unknown) => {
+      return err instanceof DOMException && err.name === 'AbortError';
+    });
+  });
 });

@@ -659,4 +659,135 @@ describe('SenadoApiClient', () => {
     await client.getProcessoById(10);
     expect(fetchCount).toBe(2);
   });
+
+  it('propagates external AbortSignal to the fetcher and rejects with AbortError when aborted in flight', async () => {
+    const controller = new AbortController();
+    let receivedSignal: AbortSignal | undefined;
+
+    const client = new SenadoApiClient({
+      fetch: async (_input, init) => {
+        receivedSignal = init?.signal ?? undefined;
+        return new Promise<Response>((_resolve, reject) => {
+          receivedSignal?.addEventListener('abort', () => {
+            reject(new DOMException('A consulta foi cancelada.', 'AbortError'));
+          });
+        });
+      }
+    });
+
+    const promise = client.getSenadorById('5953', { signal: controller.signal });
+    expect(receivedSignal).toBeDefined();
+
+    controller.abort();
+
+    await expect(promise).rejects.toSatisfy((err: unknown) => {
+      return (
+        err instanceof DOMException &&
+        err.name === 'AbortError' &&
+        !(err instanceof SenadoApiClientError)
+      );
+    });
+  });
+
+  it('rejects immediately without calling fetcher when external signal is already aborted', async () => {
+    let fetchCalled = false;
+    const controller = new AbortController();
+    controller.abort();
+
+    const client = new SenadoApiClient({
+      fetch: async () => {
+        fetchCalled = true;
+        return jsonResponse({
+          processo: { id: 10 }
+        });
+      }
+    });
+
+    await expect(
+      client.getProcessoById(10, { signal: controller.signal })
+    ).rejects.toSatisfy((err: unknown) => {
+      return (
+        err instanceof DOMException &&
+        err.name === 'AbortError' &&
+        !(err instanceof SenadoApiClientError)
+      );
+    });
+
+    expect(fetchCalled).toBe(false);
+  });
+
+  it('distinguishes between timeout error and caller abort error when timeout is active', async () => {
+    const callerController = new AbortController();
+
+    const client = new SenadoApiClient({
+      timeoutMs: 50,
+      fetch: async (_input, init) => {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            if (callerController.signal.aborted) {
+              reject(new DOMException('Cancelado pelo chamador.', 'AbortError'));
+            }
+          });
+        });
+      }
+    });
+
+    // Caller aborts before timeout
+    const callerAbortPromise = client.getProcessoById(10, { signal: callerController.signal });
+    callerController.abort();
+
+    await expect(callerAbortPromise).rejects.toSatisfy((err: unknown) => {
+      return err instanceof DOMException && err.name === 'AbortError';
+    });
+
+    // Timeout triggers without caller abort
+    const timeoutClient = new SenadoApiClient({
+      timeoutMs: 1,
+      fetch: async () => new Promise<Response>(() => undefined)
+    });
+
+    await expect(timeoutClient.getProcessoById(10)).rejects.toMatchObject({
+      name: 'SenadoApiClientError',
+      kind: 'timeout'
+    });
+  });
+
+  it('cleans up abort event listeners on external signal upon completion', async () => {
+    const controller = new AbortController();
+    let addListenerCount = 0;
+    let removeListenerCount = 0;
+
+    const originalAdd = controller.signal.addEventListener.bind(controller.signal);
+    const originalRemove = controller.signal.removeEventListener.bind(controller.signal);
+
+    controller.signal.addEventListener = (
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions
+    ) => {
+      addListenerCount++;
+      return originalAdd(type, listener, options);
+    };
+
+    controller.signal.removeEventListener = (
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | EventListenerOptions
+    ) => {
+      removeListenerCount++;
+      return originalRemove(type, listener, options);
+    };
+
+    const client = new SenadoApiClient({
+      fetch: async () =>
+        jsonResponse({
+          processo: { id: 10 }
+        })
+    });
+
+    await client.getProcessoById(10, { signal: controller.signal });
+
+    expect(addListenerCount).toBe(1);
+    expect(removeListenerCount).toBe(1);
+  });
 });

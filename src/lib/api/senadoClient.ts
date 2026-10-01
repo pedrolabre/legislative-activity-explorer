@@ -260,6 +260,7 @@ export interface SenadoVotacaoPayload {
 
 export interface SenadoRequestOptions {
   bypassCache?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface GetSenadoMateriasPesquisaOptions extends SenadoRequestOptions {
@@ -321,6 +322,18 @@ function getDefaultFetch(): SenadoFetch {
   }
 
   return globalThis.fetch.bind(globalThis);
+}
+
+function isAbortError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  if (typeof error === 'object' && 'name' in error && (error as { name?: string }).name === 'AbortError') {
+    return true;
+  }
+
+  return false;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -539,6 +552,13 @@ export class SenadoApiClient {
     params?: Record<string, string | number | undefined>,
     requestOptions: SenadoRequestOptions = {}
   ): Promise<T> {
+    if (requestOptions.signal?.aborted) {
+      throw (
+        requestOptions.signal.reason ??
+        new DOMException('A consulta foi cancelada.', 'AbortError')
+      );
+    }
+
     const url = this.buildUrl(path, params);
     const cacheKey = buildHttpCacheKey(url, 'GET');
 
@@ -555,10 +575,15 @@ export class SenadoApiClient {
       response = await this.fetchWithTimeout(url, {
         headers: {
           Accept: 'application/json'
-        }
+        },
+        signal: requestOptions.signal
       });
     } catch (cause) {
       if (cause instanceof SenadoApiClientError) {
+        throw cause;
+      }
+
+      if (requestOptions.signal?.aborted || isAbortError(cause)) {
         throw cause;
       }
 
@@ -582,6 +607,10 @@ export class SenadoApiClient {
     try {
       data = (await response.json()) as T;
     } catch (cause) {
+      if (requestOptions.signal?.aborted || isAbortError(cause)) {
+        throw cause;
+      }
+
       throw new SenadoApiClientError('A API do Senado retornou JSON invalido.', {
         kind: 'invalid-payload',
         url,
@@ -597,16 +626,35 @@ export class SenadoApiClient {
   }
 
   private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    const externalSignal = init.signal;
+
+    if (externalSignal?.aborted) {
+      throw (
+        externalSignal.reason ??
+        new DOMException('A consulta foi cancelada.', 'AbortError')
+      );
+    }
+
     if (!Number.isFinite(this.timeoutMs) || this.timeoutMs <= 0) {
       return this.fetcher(url, init);
     }
 
     const controller = new AbortController();
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let isTimedOut = false;
+
+    const onExternalAbort = () => {
+      controller.abort(externalSignal?.reason);
+    };
+
+    if (externalSignal) {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
 
     try {
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
+          isTimedOut = true;
           controller.abort();
           reject(
             new SenadoApiClientError('A consulta a API do Senado excedeu o tempo limite.', {
@@ -629,7 +677,11 @@ export class SenadoApiClient {
         throw cause;
       }
 
-      if (controller.signal.aborted) {
+      if (externalSignal?.aborted) {
+        throw cause;
+      }
+
+      if (isTimedOut || controller.signal.aborted) {
         throw new SenadoApiClientError('A consulta a API do Senado excedeu o tempo limite.', {
           kind: 'timeout',
           url,
@@ -641,6 +693,9 @@ export class SenadoApiClient {
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
+      }
+      if (externalSignal) {
+        externalSignal.removeEventListener('abort', onExternalAbort);
       }
     }
   }

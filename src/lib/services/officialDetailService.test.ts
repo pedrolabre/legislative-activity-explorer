@@ -853,4 +853,119 @@ describe('getOfficialProposalDetail', () => {
       ]
     });
   });
+
+  it('propagates AbortSignal and rethrows AbortError on getOfficialParliamentarianDetail when aborted', async () => {
+    const controller = new AbortController();
+    let receivedSignal: AbortSignal | undefined;
+
+    const promise = getOfficialParliamentarianDetail(
+      {
+        id: 'camara-10',
+        origin: 'official',
+        source: 'camara',
+        sourceId: '10',
+        name: 'Deputado Teste',
+        office: 'Deputado federal'
+      },
+      {
+        camaraClient: {
+          ...createEmptyCamaraClient(),
+          getDeputadoById: async (_id, options) => {
+            receivedSignal = options?.signal;
+            return new Promise((_resolve, reject) => {
+              options?.signal?.addEventListener('abort', () => {
+                reject(new DOMException('Cancelado.', 'AbortError'));
+              });
+            });
+          }
+        },
+        senadoClient: createEmptySenadoClient(),
+        signal: controller.signal
+      }
+    );
+
+    expect(receivedSignal).toBe(controller.signal);
+    controller.abort();
+
+    await expect(promise).rejects.toSatisfy((err: unknown) => {
+      return err instanceof DOMException && err.name === 'AbortError';
+    });
+  });
+
+  it('propagates AbortSignal and rethrows AbortError on getOfficialProposalsByParliamentarian when aborted', async () => {
+    const controller = new AbortController();
+    let receivedSignal: AbortSignal | undefined;
+
+    const promise = getOfficialProposalsByParliamentarian(
+      {
+        id: 'camara-10',
+        origin: 'official',
+        source: 'camara',
+        sourceId: '10',
+        name: 'Deputado Teste',
+        office: 'Deputado federal'
+      },
+      {
+        camaraClient: {
+          ...createEmptyCamaraClient(),
+          getProposicoesByDeputadoAutor: async (_id, options) => {
+            receivedSignal = options?.signal;
+            return new Promise((_resolve, reject) => {
+              options?.signal?.addEventListener('abort', () => {
+                reject(new DOMException('Cancelado.', 'AbortError'));
+              });
+            });
+          }
+        },
+        senadoClient: createEmptySenadoClient(),
+        signal: controller.signal
+      }
+    );
+
+    expect(receivedSignal).toBe(controller.signal);
+    controller.abort();
+
+    await expect(promise).rejects.toSatisfy((err: unknown) => {
+      return err instanceof DOMException && err.name === 'AbortError';
+    });
+  });
+
+  it('propagates AbortSignal and rethrows AbortError on getOfficialProposalDetail when aborted', async () => {
+    const controller = new AbortController();
+    let receivedSignal: AbortSignal | undefined;
+
+    const promise = getOfficialProposalDetail(
+      {
+        id: 'camara-proposicao-100',
+        origin: 'official',
+        source: 'camara',
+        sourceId: '100',
+        title: 'PL 100/2024',
+        type: 'PL',
+        references: []
+      },
+      {
+        camaraClient: {
+          ...createEmptyCamaraClient(),
+          getProposicaoById: async (_id, options) => {
+            receivedSignal = options?.signal;
+            return new Promise((_resolve, reject) => {
+              options?.signal?.addEventListener('abort', () => {
+                reject(new DOMException('Cancelado.', 'AbortError'));
+              });
+            });
+          }
+        },
+        senadoClient: createEmptySenadoClient(),
+        signal: controller.signal
+      }
+    );
+
+    expect(receivedSignal).toBe(controller.signal);
+    controller.abort();
+
+    await expect(promise).rejects.toSatisfy((err: unknown) => {
+      return err instanceof DOMException && err.name === 'AbortError';
+    });
+  });
 });
