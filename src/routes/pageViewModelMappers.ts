@@ -7,6 +7,12 @@ import {
   type RollCallVote
 } from '$lib/domain';
 import {
+  officialParliamentarianSessionVotesCoverageMessage,
+  officialParliamentarianSessionVotesEmptyMessage,
+  officialParliamentarianStaticCoverageDescription,
+  officialSenadoAssociatedMattersEmptyMessage,
+  officialSenadoAssociatedMattersUnavailableDescription,
+  officialSenadoProposalVotesEmptyMessage,
   unavailableNominalVoteListLabel,
   unavailableOfficialFieldLabel,
   unavailableVersionFieldLabel
@@ -337,3 +343,69 @@ export function toParliamentarianVoteViews(
 export function toProposalVoteViews(votes: RollCallVote[]): ParliamentarianVoteView[] {
   return votes.map(toProposalVoteView);
 }
+
+export interface ParliamentarianBillsFeedback {
+  emptyTitle?: string;
+  emptyDescription?: string;
+}
+
+export interface ParliamentarianVotesFeedback {
+  coverageDescription?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+}
+
+export interface ProposalVotesFeedback {
+  showOfficialVotes: boolean;
+  officialVotesTitle: string;
+  officialVotesEmptyMessage?: string;
+}
+
+export function getParliamentarianBillsFeedback(
+  parliamentarian: Parliamentarian | null
+): ParliamentarianBillsFeedback {
+  const isOfficialSenado = Boolean(
+    parliamentarian && isOfficialParliamentarian(parliamentarian) && parliamentarian.source === 'senado'
+  );
+
+  return {
+    emptyTitle: isOfficialSenado ? officialSenadoAssociatedMattersEmptyMessage : undefined,
+    emptyDescription: isOfficialSenado ? officialSenadoAssociatedMattersUnavailableDescription : undefined
+  };
+}
+
+export function getParliamentarianVotesFeedback(
+  parliamentarian: Parliamentarian | null,
+  hasVotes: boolean
+): ParliamentarianVotesFeedback {
+  const isOfficial = Boolean(parliamentarian && isOfficialParliamentarian(parliamentarian));
+
+  return {
+    coverageDescription:
+      isOfficial && hasVotes ? officialParliamentarianSessionVotesCoverageMessage : undefined,
+    emptyTitle: isOfficial ? officialParliamentarianSessionVotesEmptyMessage : undefined,
+    emptyDescription: isOfficial ? officialParliamentarianStaticCoverageDescription : undefined
+  };
+}
+
+export function getProposalVotesFeedback(
+  proposal: LegislativeProposal | null
+): ProposalVotesFeedback {
+  if (!proposal) {
+    return {
+      showOfficialVotes: false,
+      officialVotesTitle: 'Votações da Câmara',
+      officialVotesEmptyMessage: undefined
+    };
+  }
+
+  const isCamara = isOfficialCamaraProposal(proposal);
+  const isSenado = isOfficialSenadoProposal(proposal);
+
+  return {
+    showOfficialVotes: isCamara || isSenado,
+    officialVotesTitle: isSenado ? 'Votações do Senado' : 'Votações da Câmara',
+    officialVotesEmptyMessage: isSenado ? officialSenadoProposalVotesEmptyMessage : undefined
+  };
+}
+
