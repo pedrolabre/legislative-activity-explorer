@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import AppSidebar from './AppSidebar.svelte';
   import ConversationFlow from './ConversationFlow.svelte';
   import ConversationLog from '$lib/components/conversation/ConversationLog.svelte';
@@ -16,6 +16,7 @@
     selectProposalById,
     selectVoteById
   } from '$lib/state/chatStore';
+  import { applyDeepLink } from '$lib/services/urlNavigationService';
   import {
     getParliamentarianBillsFeedback,
     getParliamentarianVotesFeedback,
@@ -36,6 +37,26 @@
 
   let searchRenderKey = $state(0);
   let searchFormResetToken = $state(0);
+  let hasInitializedFromUrl = false;
+
+  onMount(() => {
+    if (hasInitializedFromUrl) {
+      return;
+    }
+
+    if (typeof window !== 'undefined' && window.location.search) {
+      hasInitializedFromUrl = true;
+      void applyDeepLink(window.location.search, {
+        searchFn: async (query) => {
+          searchRenderKey += 1;
+          await executeSearch(query);
+        },
+        selectProposalFn: selectProposalById,
+        selectParliamentarianFn: selectParliamentarianById,
+        getCurrentState: () => chatStore.currentState
+      });
+    }
+  });
 
   let submittedSearch = $derived(
     chatStore.lastQuery ? { id: searchRenderKey, query: chatStore.lastQuery } : null
