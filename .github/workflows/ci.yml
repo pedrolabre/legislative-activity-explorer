@@ -1,0 +1,53 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Quality Gate & Static Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+
+      - name: Typecheck & Svelte Diagnostics
+        run: npm run check
+
+      - name: Lint code style & static analysis
+        run: npm run lint
+
+      - name: Run unit & integration tests
+        run: npm run test
+
+      - name: Build static site (SPA adapter)
+        run: npm run build
+
+      - name: Verify static build artifacts integrity
+        run: |
+          test -s build/index.html || { echo "::error::Missing or empty build/index.html"; exit 1; }
+          test -s build/200.html || { echo "::error::Missing or empty build/200.html"; exit 1; }
+          test -d build/_app || { echo "::error::Missing build/_app directory"; exit 1; }
+          echo "Static build artifacts verified successfully."
