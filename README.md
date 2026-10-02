@@ -1,153 +1,136 @@
-# legislative-activity-explorer
+# O que o parlamentar fez
 
-> Produto: **O que o parlamentar fez**  
-> Consulta pública sobre projetos e votações do Congresso Nacional.
+SPA client-side para consulta pública, exploração histórica e conferência factual de proposições e votações nominais do Congresso Nacional (Câmara dos Deputados e Senado Federal). Tudo opera diretamente no navegador: sem servidores intermediários, sem banco de dados, sem login e sem rastreadores.
 
----
+*O que o parlamentar fez* é a aplicação web de consulta pública do repositório `legislative-activity-explorer`.
 
-## Por que fiz esse projeto
+## Funcionamento
 
-Sempre achei estranho que acompanhar o histórico legislativo de um parlamentar exigisse abrir vários sites diferentes, entender termos jurídicos e navegar por interfaces públicas pouco amigáveis. Resolvi construir uma ferramenta que diminuísse essa barreira.
+- **Busca Unificada Oficial**: Pesquisa direta e simultânea na Câmara dos Deputados e no Senado Federal por nome de parlamentar ou identificador de proposição (ex.: `PL 1234/2023`, `PEC 45/2019`).
+- **Navegação Guiada**: Interface conversacional estruturada baseada em cartões e botões contextuais, sem texto livre ou ambiguidades.
+- **Perfil do Parlamentar**: Consulta a dados biográficos oficiais, exercício de mandato, estado, partido, foto oficial e acesso direto a proposições de sua autoria e votações associadas.
+- **Detalhamento de Proposições**: Ementa oficial completa, autoria, relatoria, temas e tramitação, distinguindo estritamente o texto legal de resumos factuais verificados.
+- **Painel de Votações Nominais**: Exibição detalhada de contagens oficiais (SIM, NÃO, ABSTENÇÃO, OBSTRUÇÃO e OUTROS), detalhamento nominal com busca/filtro e histórico por parlamentar.
+- **Acesso Direto via URL**: Sincronização com rotas e parâmetros na URL para compartilhamento direto de buscas, perfis de parlamentares e proposições legislativas.
+- **Cache em Memória e Resiliência**: Cache de respostas HTTP em memória para evitar requisições repetidas e garantir navegação fluida.
+- **Proxy CORS Integrado**: Roteamento por Cloudflare Worker para contornar restrições de CORS e aplicar cache de borda nas requisições às APIs públicas.
 
-Meu objetivo não é dizer em quem alguém deve votar, nem criar rankings políticos. Quero apenas facilitar o acesso às informações públicas oficiais (da Câmara dos Deputados e do Senado Federal) para que cada pessoa tire suas próprias conclusões sobre a atuação de seus representantes.
+## Premissas e Neutralidade
 
----
+- **Neutralidade Institucional Absoluta**: Sem ranqueamentos políticos, notas ideológicas ("esquerda", "direita", "centro") ou juízos de valor sobre o mérito das proposições. A aplicação apresenta exclusivamente os registros públicos oficiais.
+- **Fidelidade Factual e Fontes Oficiais**: O aplicativo exibe estritamente as ementas e tramitações oficiais dos órgãos públicos ou resumos factuais verificados a partir de catálogo auditado (`factualSummaryCatalog.ts`), garantindo determinismo e reprodutibilidade sem sínteses dinâmicas ou interpretações de terceiros.
+- **Privacidade Estrita**: Sem cookies analíticos, telemetria, pixels de monitoramento, contas de usuário ou persistência de buscas em servidores externos. As consultas permanecem na memória do dispositivo.
+- **Semântica Visual Isenta e Acessível**: Padrões visuais neutros e de alto contraste, sem códigos de cor valorativos (como verde para "favorável" e vermelho para "contrário"), respeitando a neutralidade da informação e conformidade com acessibilidade (WCAG).
 
-## Decisões de projeto
+## Stack Tecnológica
 
-Quando comecei esse projeto, minha principal preocupação era não criar mais uma plataforma política partidária. Meu objetivo é facilitar o acesso a dados públicos sem interpretar ou julgar as decisões dos parlamentares.
+- **SvelteKit 2 & Svelte 5**: SPA estática compilada via `@sveltejs/adapter-static`, reatividade com Runes e navegação veloz no cliente.
+- **TypeScript 5**: Tipagem estrita de contratos de domínio, payloads das APIs da Câmara e do Senado e mappers de dados.
+- **Tailwind CSS 4**: Estilização utilitária de alta densidade focada em acessibilidade, contraste e responsividade móvel.
+- **Vitest 3**: Suíte abrangente de testes automatizados com mocks de rede injetados e execução determinística.
+- **Playwright**: Testes de ponta a ponta (E2E) cobrindo fluxos conversacionais e integridade da interface.
+- **Cloudflare Pages & Workers**: Hospedagem estática serverless e Worker para proxy CORS e cache de borda.
 
-Para isso, defini algumas regras para o projeto:
+## Comandos
 
-* **Interface guiada:** O app usa uma metáfora de chat conversacional, mas não é um chat aberto. O usuário pesquisa um parlamentar ou projeto na tela inicial e depois navega clicando em botões pré-definidos. Isso evita a necessidade de interpretar textos livres e torna o fluxo muito simples de seguir no celular.
-* **Resumos factuais:** O MVP deve exibir a ementa oficial do projeto e, quando tecnicamente viável, uma versão simplificada baseada nesse texto. A aplicação não promete resumir todas as emendas, substitutivos, pareceres ou alterações posteriores.
-* **Transparência e fontes:** O MVP deve priorizar links oficiais dos projetos consultados. Links jornalísticos ou institucionais podem ser adicionados depois, conforme disponibilidade e viabilidade técnica.
-
----
-
-## O que decidi não implementar (e por quê)
-
-Decisões de exclusão de funcionalidades são tão importantes quanto o código que escrevo. Aqui está o que decidi deixar de fora de propósito:
-
-* **IA Generativa em produção:** Não uso LLMs para resumir votações ou ementas. Quero que a mesma consulta sempre produza o mesmo resultado, sem o risco de alucinações ou distorções dos dados oficiais.
-* **Banco de dados e login:** O app funciona direto no navegador do usuário. Não preciso salvar seus dados, histórico de buscas ou criar perfis. Isso protege a privacidade de quem pesquisa e elimina o custo de manutenção de servidores de banco de dados.
-* **Analytics e rastreadores:** Não utilizo cookies de rastreamento, pixels de redes sociais ou ferramentas de monitoração invasivas. O que você pesquisa fica no seu dispositivo. Não tenho interesse em saber o que as pessoas pesquisam.
-* **Recomendações e filtros políticos:** Não há recomendação de votos, classificação ideológica ("esquerda", "direita", "centro") ou agrupamento de projetos por visões específicas de "bom" ou "ruim".
-
----
-
-## Stack técnica
-
-Escolhi SvelteKit porque queria sair da zona de conforto do React e explorar uma stack frontend diferente. Também achei que ele combina bem com um projeto que precisa carregar rápido no celular, ter boa experiência em dispositivos simples e funcionar melhor em conexões móveis lentas.
-
-* **SvelteKit + TypeScript:** Para criar uma SPA (Single Page Application) estática de alto desempenho e tipos bem definidos para mapear as APIs públicas.
-* **Tailwind CSS:** Para estilizar a interface de forma rápida, moderna e focada em utilitários de acessibilidade (como foco de teclado e contraste).
-* **Cloudflare Pages:** Onde hospedo a aplicação. Como a compilação gera um site estático, consigo hospedar gratuitamente e escalar sem me preocupar com infraestrutura de servidores.
-* **Cloudflare Workers:** Se eu realmente precisar, vou adicionar um Cloudflare Worker para rodar como um proxy simples, apenas para resolver os problemas de CORS com as APIs oficiais e fazer um cache rápido temporário.
-
----
-
-## Estrutura atual
-
-O projeto já foi iniciado com SvelteKit, TypeScript, Tailwind CSS, Vitest e build estático. A estrutura atual concentra a fundação web da aplicação, o shell conversacional inicial, busca pública oficial como comportamento padrão, resultados de busca, detalhe de parlamentar, lista de proposições associadas, detalhe de proposição, estados de votações indisponíveis no fluxo oficial, contratos compartilhados de busca, clients e mappers isolados da Câmara dos Deputados e do Senado Federal, área informativa sobre neutralidade, privacidade, responsabilidade e acessibilidade e um Worker opcional isolado para proxy CORS das APIs oficiais.
-
-* `vite.config.ts`: Configuração do Vite, SvelteKit, Tailwind CSS e Vitest, incluindo testes unitários em `src/` e `workers/`.
-* `src/app.html`: HTML global da aplicação, com idioma `pt-BR` e metadados iniciais.
-* `src/app.css`: Import do Tailwind CSS, tokens iniciais de tema e estilos globais de base, contraste e foco visível.
-* `src/lib/api/camaraClient.ts`: Client HTTP base da Câmara dos Deputados, com tipos mínimos de payload, detalhe, busca/listagem de deputados, proposições e votações por proposição com parâmetros oficiais de ordenação, timeout configurável e erro recuperável.
-* `src/lib/api/camaraClient.test.ts`: Testes unitários do client da Câmara com `fetch` injetado, timeout controlado, busca/listagem/votações controladas e sem rede real.
-* `src/lib/api/legislativeDataSourceConfig.ts`: Configuracao publica e testavel para escolher chamadas diretas as APIs oficiais ou roteamento futuro por Worker opcional, sem segredos no frontend.
-* `src/lib/api/legislativeDataSourceConfig.test.ts`: Testes unitarios da configuracao de fonte de dados, cobrindo fallback direto, URL publica de proxy, rejeicao de configuracao insegura e `fetch` injetado sem rede real.
-* `src/lib/api/senadoClient.ts`: Client HTTP base do Senado Federal, com tipos mínimos de payload, suporte a JSON por sufixo ou cabeçalho, lista de senadores, busca moderna de processos legislativos, autoria por processo, relatorias, votações oficiais por processo ou matéria, compatibilidade explícita com endpoints legados de matérias, timeout configurável e erro recuperável.
-* `src/lib/api/senadoClient.test.ts`: Testes unitários do client do Senado com `fetch` injetado, timeout controlado, envelopes controlados, busca moderna de processos, autoria, relatoria, votações oficiais, compatibilidade legada e sem rede real.
-* `src/lib/components/about/AboutPrivacyInfo.svelte`: Área informativa pública sobre finalidade do projeto, neutralidade institucional, privacidade, acessibilidade e consulta a fontes oficiais.
-* `src/lib/components/brand/ProductLogo.svelte`: Componente reutilizavel e acessivel para renderizar o logotipo oficial em SVG sem conversao para PNG.
-* `src/lib/components/conversation/ConversationBubble.svelte`: Balão visual para mensagens da experiência conversacional.
-* `src/lib/components/conversation/ConversationLog.svelte`: Container conversacional com semântica de log e atualização acessível.
-* `src/lib/components/parliamentarians/ParliamentarianDetail.svelte`: Perfil factual de parlamentar com foto quando disponível, alternativa acessível sem foto e controles para abrir proposições e votações associadas.
-* `src/lib/components/proposals/BillDetail.svelte`: Detalhe factual de proposição com dados gerais, ementa oficial, resumo factual revisado apenas quando disponível em catálogo versionado, indisponibilidade neutra para resumo ausente, fontes e referências revisadas, aceitando abertura associada a parlamentar ou consulta direta com votações oficiais da Câmara quando carregadas.
-* `src/lib/components/proposals/BillDetail.test.ts`: Testes unitários do detalhe de proposição, cobrindo separação entre ementa oficial, resumo factual revisado e resumo indisponível.
-* `src/lib/components/proposals/ParliamentarianBills.svelte`: Lista factual de proposições associadas a parlamentar, com dados parciais tratados de forma neutra.
-* `src/lib/components/search/InitialSearchForm.svelte`: Formulário inicial de busca com label, envio por `Enter` e validação local.
-* `src/lib/components/search/SearchResultCard.svelte`: Card factual para item de resultado de parlamentar ou proposição, com abertura de perfil para parlamentares e abertura de detalhe para proposições oficiais.
-* `src/lib/components/search/SearchResults.svelte`: Lista de resultados agrupada por parlamentares e proposições, incluindo estado vazio, seleção de parlamentar e seleção de proposição oficial.
-* `src/lib/components/votes/BillVotes.svelte`: Detalhe factual de votação com identificação da proposição, resultado quando disponível, contagens agregadas, lista nominal com mensagem específica para lista vazia oficial e destaque neutro do parlamentar selecionado quando disponível, aceitando também o contexto independente de proposição.
-* `src/lib/components/votes/ParliamentarianVotes.svelte`: Lista factual de votações associadas a parlamentar ou à proposição aberta, com cobertura parcial da sessão para parlamentar oficial e dados parciais tratados de forma neutra.
-* `src/lib/components/votes/ParliamentarianVotes.test.ts`: Testes unitários da lista de votações por parlamentar, cobrindo estado vazio oficial específico e cobertura parcial da sessão.
-* `src/lib/components/votes/VoteBadge.svelte`: Rótulo visual neutro e acessível para votos `SIM`, `NÃO`, `ABSTENÇÃO` e `AUSENTE`.
-* `src/lib/components/votes/votePresentation.ts`: Politica visual auditada para labels e classes neutras de votos.
-* `src/lib/components/votes/votePresentation.test.ts`: Testes unitarios da politica visual de votos, cobrindo labels oficiais e ausencia de tokens verde/vermelho.
-* `src/lib/data/factualSummaryCatalog.ts`: Catalogo versionado e revisavel de resumos factuais revisados para proposicoes legislativas controladas.
-* `src/lib/data/factualSummaryCatalog.test.ts`: Testes unitarios do catalogo de resumos factuais, cobrindo contrato, datas de revisao e ausencia de linguagem valorativa conhecida.
-* `src/lib/data/referenceCatalog.ts`: Catalogo versionado e revisavel de referencias externas para proposicoes legislativas controladas.
-* `src/lib/data/referenceCatalog.test.ts`: Testes unitarios do catalogo de referencias, cobrindo contrato, tipos, ids, URLs externas e datas de revisao.
-* `src/lib/domain/index.ts`: Exportações centralizadas dos contratos de domínio e tipos auxiliares.
-* `src/lib/domain/legislativeSource.ts`: Constantes e união de fontes legislativas normalizadas.
-* `src/lib/domain/references.ts`: Constantes e união de tipos de referência externa.
-* `src/lib/domain/types.ts`: Contratos centrais para parlamentares, proposições, votações, votos individuais e referências externas.
-* `src/lib/domain/uiState.ts`: Constantes e união dos estados previstos da interface conversacional.
-* `src/lib/domain/votes.ts`: Constantes, união de posições de voto e contagens agregadas.
-* `src/lib/mappers/camaraMapper.ts`: Mapper da Câmara para normalizar deputados, proposições, temas, votações, indicador oficial de aprovação e votos individuais aos contratos de domínio.
-* `src/lib/mappers/camaraMapper.test.ts`: Testes unitários do mapper da Câmara com payloads completos, parciais, inválidos e votos individuais oficiais controlados.
-* `src/lib/mappers/senadoMapper.ts`: Mapper do Senado para normalizar senadores, processos legislativos modernos, autoria, relatoria, matérias legadas e votações nominais oficiais aos contratos de domínio.
-* `src/lib/mappers/senadoMapper.test.ts`: Testes unitários do mapper do Senado com payloads modernos, legados, autoria, relatoria, votações nominais, dados aninhados, parciais e inválidos.
-* `src/lib/services/factualSummaryService.ts`: Service interno para aplicar resumos factuais revisados ao detalhe de proposicao sem geracao dinamica.
-* `src/lib/services/factualSummaryService.test.ts`: Testes unitarios do service de resumos factuais, cobrindo aplicacao revisada, descarte de resumo nao catalogado e ausencia de inferencia pela ementa oficial.
-* `src/lib/services/officialApiClientFactory.ts`: Factory testável dos clients oficiais, conectando chamadas diretas ou roteamento por proxy público opcional sem segredos no frontend.
-* `src/lib/services/officialApiClientFactory.test.ts`: Testes unitários da factory de clients oficiais com `fetch` injetado, modo direto, modo proxy e sem rede real.
-* `src/lib/services/legislativeIdentifierParser.ts`: Parser legislativo nacional para identificadores de proposições, com tipos explícitos, formatos compactos, hifenizados ou com ano e falhas explicáveis sem heurística sobre nomes de parlamentares.
-* `src/lib/services/legislativeIdentifierParser.test.ts`: Testes unitários do parser legislativo nacional, cobrindo formatos aceitos, tipos oficiais no escopo, nomes de parlamentares e entradas inválidas.
-* `src/lib/services/officialNotices.ts`: Utilitários compartilhados para classificar falhas oficiais recuperáveis, padronizar mensagens neutras e preservar detalhes técnicos testáveis como tipo e status HTTP sem expor stack trace na UI.
-* `src/lib/services/officialSearchService.ts`: Service isolado de busca oficial unificada, combinando Câmara e Senado em contratos de domínio com relatório de falhas recuperáveis, timeout, falha HTTP, indisponibilidade oficial, payload inválido, dados parciais por fonte, clients configurados por direct/proxy, busca direta baseada no parser legislativo nacional e filtros modernos de processos do Senado.
-* `src/lib/services/officialSearchService.test.ts`: Testes unitários da busca oficial unificada com clients controlados, timeout, falha HTTP, indisponibilidade oficial, payload inválido, falha parcial, ordenação neutra, deduplicação objetiva, parser legislativo nacional, busca moderna do Senado e sem rede real.
-* `src/lib/services/publicSearchService.ts`: Adapter da busca pública padrão, convertendo `officialSearchService` para o contrato da store e preservando mensagens recuperáveis específicas para falhas oficiais parciais, falhas completas, busca direta ambígua, identificador inválido ou proposição oficial não encontrada.
-* `src/lib/services/publicSearchService.test.ts`: Testes unitários do adapter de busca pública oficial com clients controlados, falha parcial, falha HTTP, indisponibilidade oficial, falha completa, busca direta de proposição, identificador inválido e sem fallback para dados de exemplo.
-* `src/lib/services/searchResults.ts`: Contrato compartilhado e vazio seguro para resultados de busca consumidos pela store e pelo adapter público oficial.
-* `src/lib/services/officialDetailService.ts`: Service isolado para detalhe oficial de parlamentar, proposições oficiais associadas e detalhe oficial de proposição, processo legislativo moderno do Senado ou matéria legada, com autoria e relatoria oficiais do Senado, clients configurados por direct/proxy e estados recuperáveis de indisponibilidade oficial, timeout, falha HTTP, payload inválido, limite local ou falha parcial.
-* `src/lib/services/officialDetailService.test.ts`: Testes unitários dos detalhes oficiais com clients controlados, timeout, dados parciais, detalhe moderno do Senado, autoria e relatoria do Senado, falha parcial recuperável e sem rede real.
-* `src/lib/services/officialVoteService.ts`: Service isolado para votações oficiais da Câmara e do Senado associadas à proposição aberta, com detalhe de votação, lista nominal quando disponível, ordenação oficial, limite de processamento leve, diferenciação entre lista vazia oficial, timeout, falha HTTP, payload inválido, limite de paginação/local e indisponibilidade, e sem fallback para dados de exemplo.
-* `src/lib/services/officialVoteService.test.ts`: Testes unitários das votações oficiais da Câmara e do Senado com clients controlados, falhas parciais, paginação ou limite local, indisponibilidade oficial, lista vazia oficial e sem rede real.
-* `src/lib/services/referenceService.ts`: Service interno para combinar referências existentes da proposição com o catálogo revisado e identificar cobertura editorial incompleta.
-* `src/lib/services/referenceService.test.ts`: Testes unitários da combinação de referências, prioridade do catálogo e fallback de cobertura revisada incompleta.
-* `src/lib/state/chatStore.ts`: Store central em memória e actions da máquina de estados do fluxo conversacional, com busca pública oficial como caminho padrão, seleção gradual de detalhes oficiais, abertura direta de proposição oficial confiável, fluxo independente de proposição com votações oficiais da Câmara e do Senado quando disponíveis e mensagens recuperáveis quando fontes oficiais retornam dados parciais ou falham.
-* `src/lib/state/chatStore.test.ts`: Testes unitários das actions da store conversacional, incluindo busca oficial padrão mockada, detalhes oficiais, fluxo independente de proposição com votação, dado parcial controlado e sem rede real.
-* `src/routes/+layout.ts`: Configuração da SPA estática com prerender habilitado e SSR desabilitado.
-* `src/routes/+layout.svelte`: Shell global mínimo, import dos estilos e link de salto para acessibilidade.
-* `src/routes/+page.svelte`: Tela `WELCOME` pública com shell conversacional consumindo a store central, busca inicial oficial, avisos recuperáveis mínimos, detalhe direto de proposição, autoria oficial quando disponível, votações por proposição sem parlamentar obrigatório e estados `SEARCHING`, `SEARCH_RESULTS`, `PARLIAMENTARIAN_DETAIL`, `PARLIAMENTARIAN_BILLS`, `PARLIAMENTARIAN_VOTES`, `BILL_DETAIL`, `BILL_VOTES`, `ABOUT` e `ERROR`.
-* `static/_headers`: Cabeçalhos estáticos mínimos para Cloudflare Pages, sem CSP dependente de domínio futuro e sem cache persistente de navegador criado pela aplicação.
-* `static/brand/legislative-activity-explorer-logo.svg`: Logotipo oficial do produto em SVG original, incorporado como asset vetorial publico.
-* `static/robots.txt`: Configuração inicial de indexação.
-* `workers/legislativeProxy.ts`: Worker opcional e isolado para proxy CORS seguro das APIs oficiais, limitado a `GET`, `OPTIONS`, allowlist estrita e cache temporário de borda.
-* `workers/legislativeProxy.test.ts`: Testes unitários do Worker com `fetch` e cache injetados, sem rede real.
-
----
-
-## Como rodar localmente
-
-### Pré-requisitos
-* Node.js (v18 ou superior)
-
-### Instalação
 ```bash
-# Clone o repositório
-git clone https://github.com/pedrolabre/legislative-activity-explorer.git
-cd legislative-activity-explorer
-
-# Instale as dependências
-npm install
+npm install        # instala as dependências
+npm run dev        # servidor de desenvolvimento local
+npm test           # suíte de testes unitários (Vitest)
+npm run check      # verificação de tipos (svelte-check + tsconfig)
+npm run lint       # análise estática com ESLint
+npm run build      # compila a SPA estática em build/
+npm run preview    # serve o build estático localmente
+npm run test:e2e   # testes de ponta a ponta com Playwright
+npm run validate   # verificação completa: check, lint, test e build
 ```
 
-### Desenvolvimento
-```bash
-npm run dev -- --open
+## Estrutura do Projeto
+
+```text
+legislative-activity-explorer/
+  package.json
+  vite.config.ts
+  svelte.config.js
+  tsconfig.json
+  playwright.config.ts
+  README.md
+  static/
+    _headers                            cabeçalhos HTTP e regras de cache para Cloudflare Pages
+    robots.txt                          configuração de rastreamento para buscadores
+    brand/
+      legislative-activity-explorer-logo.svg  logotipo vetorial oficial da aplicação
+  workers/
+    legislativeProxy.ts                 worker Cloudflare para proxy CORS seguro e cache de borda
+    legislativeProxy.test.ts            testes unitários do proxy com cache simulado
+  src/
+    app.html                            template HTML global com metadados e lang pt-BR
+    app.css                             estilos globais, tema Tailwind CSS e acessibilidade
+    routes/
+      +layout.svelte                    shell global da aplicação e link de salto para acessibilidade
+      +layout.ts                        configuração SPA estática (prerender ativo, SSR desativado)
+      +page.svelte                      página principal e máquina de estados da interface
+      AppSidebar.svelte                 barra lateral com atalhos, histórico e informações
+      ConversationFlow.svelte           orquestrador do fluxo conversacional e balões
+      pageViewModelMappers.ts           mapeamento reativo da store para o modelo da tela
+    lib/
+      api/
+        camaraClient.ts                 cliente HTTP da API de Dados Abertos da Câmara dos Deputados
+        senadoClient.ts                 cliente HTTP da API de Dados Abertos do Senado Federal
+        httpMemoryCache.ts              cache em memória com expiração para requisições HTTP
+        legislativeDataSourceConfig.ts  configuração de fontes de dados (modo direto vs. proxy)
+        officialApiConfig.ts            endereços base, cabeçalhos e configurações das APIs oficiais
+        officialApiErrors.ts            classificação e tratamento padronizado de erros de rede
+      domain/
+        types.ts                        contratos de parlamentares, proposições, votações e referências
+        legislativeSource.ts            definição tipada das fontes (Câmara e Senado)
+        votes.ts                        posições nominais (SIM, NÃO, ABSTENÇÃO) e contagens agregadas
+        references.ts                   tipos de referências documentadas e fontes externas
+        uiState.ts                      estados formais da máquina de navegação conversacional
+      mappers/
+        camaraMapper.ts                 normalizador de deputados, matérias e votações aos modelos de domínio
+        senadoMapper.ts                 normalizador de senadores, processos legislativos e votações
+        officialMapperError.ts          tratamento de inconsistências e falhas de contrato nos payloads
+      services/
+        officialSearchService.ts        motor de busca federado unificado com deduplicação e tolerância a falhas
+        publicSearchService.ts          adaptador público de busca consumido pela store
+        officialDetailService.ts        carregamento de detalhes de parlamentares e proposições
+        officialVoteService.ts          busca, contagem e detalhamento de votações nominais
+        legislativeIdentifierParser.ts  parser de identificadores legislativos oficiais (PL, PEC, MPV, etc.)
+        factualSummaryService.ts        aplicação de resumos factuais verificados a partir do catálogo
+        referenceService.ts             consolidação de referências documentadas e links externos
+        urlNavigationService.ts         sincronização bidirecional entre o estado da aplicação e a URL
+        officialNotices.ts              mensagens neutras e amigáveis para falhas parciais ou indisponibilidade
+      data/
+        factualSummaryCatalog.ts        catálogo versionado e auditado de resumos factuais
+        referenceCatalog.ts             catálogo versionado de referências e links oficiais
+      state/
+        chatStore.svelte.ts             instância da store com reatividade Svelte 5
+        chatStore.ts                    máquina de estados central e controle da sessão em memória
+        chatStoreOperations.ts          ações e transições assíncronas do fluxo da store
+        chatStoreHelpers.ts             funções utilitárias e reducers da store
+      components/
+        about/
+          AboutPrivacyInfo.svelte       área informativa sobre neutralidade, dados e privacidade
+        brand/
+          ProductLogo.svelte            componente de exibição do logotipo vetorial oficial
+        conversation/
+          ConversationBubble.svelte     balão individual de mensagem no fluxo conversacional
+          ConversationLog.svelte        container com semântica de log acessível para navegação
+        parliamentarians/
+          ParliamentarianDetail.svelte  perfil biográfico do parlamentar com foto oficial e atalhos
+        proposals/
+          BillDetail.svelte             detalhamento completo da proposição com ementa oficial
+          ParliamentarianBills.svelte   listagem de proposições associadas ao parlamentar
+          tabs/                         abas de fatos, fontes, ementa e votações da proposição
+        search/
+          InitialSearchForm.svelte      campo de busca inicial com validação e atalho Enter
+          SearchResultCard.svelte       card individual de resultado (parlamentar ou proposição)
+          SearchResults.svelte          grade agrupada de resultados de parlamentares e matérias
+        votes/
+          BillVotes.svelte              painel de votação com resultado oficial e contagens
+          ParliamentarianVotes.svelte   histórico de votações nominais associadas ao parlamentar
+          VoteBadge.svelte              etiqueta visual neutra e acessível para posições de voto
+          votePresentation.ts           regras de apresentação visual sem viés valorativo
+          tabs/                         abas de resumo, contagens e listagem nominal paginada
 ```
-
----
-
-## Sobre neutralidade
-
-Se alguém me perguntar qual é a posição política deste projeto, minha resposta é simples:
-
-> Trata-se de um explorador de dados construído sobre registros legislativos públicos.
-
-Essa frase resume exatamente o objetivo técnico e neutro da ferramenta.
