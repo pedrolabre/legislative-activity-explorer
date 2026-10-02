@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import AppSidebar from './AppSidebar.svelte';
-  import ConversationFlow from './ConversationFlow.svelte';
+  import ConversationFlow, { preloadAllPanels } from './ConversationFlow.svelte';
   import ConversationLog from '$lib/components/conversation/ConversationLog.svelte';
   import type { ParliamentarianVoteView } from '$lib/domain';
   import {
@@ -86,6 +86,18 @@
         }
       });
     });
+
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(() => {
+          void preloadAllPanels();
+        });
+      } else {
+        setTimeout(() => {
+          void preloadAllPanels();
+        }, 1000);
+      }
+    }
 
     return () => {
       cleanupPopstateListener?.();

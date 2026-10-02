@@ -1,10 +1,14 @@
 import { render } from 'svelte/server';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import Page from './+page.svelte';
+import { clearPanelCache, preloadAllPanels } from './ConversationFlow.svelte';
 import { navigateTo, reset } from '$lib/state/chatStore';
 import type { LegislativeProposal, Parliamentarian } from '$lib/domain';
 
 describe('page (+page.svelte Deep-Linking e Renderização da Página Inicial)', () => {
+  beforeAll(async () => {
+    await preloadAllPanels();
+  });
   const sampleParliamentarian: Parliamentarian = {
     id: 'camara-deputado-74400',
     origin: 'official',
@@ -110,5 +114,15 @@ describe('page (+page.svelte Deep-Linking e Renderização da Página Inicial)',
     expect(html).toContain('Finalidade pública');
     expect(html).toContain('Neutralidade');
     expect(html).toContain('Privacidade');
+  });
+
+  it('renderiza skeleton acessível de carregamento dinâmico em estados assíncronos quando o cache está vazio', () => {
+    clearPanelCache();
+    navigateTo('ABOUT');
+
+    const { body: html } = render(Page);
+    expect(html).toContain('data-testid="panel-loading-skeleton"');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-busy="true"');
   });
 });

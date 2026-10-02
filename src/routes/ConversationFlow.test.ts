@@ -1,6 +1,10 @@
 import { render } from 'svelte/server';
-import { describe, expect, it } from 'vitest';
-import ConversationFlow from './ConversationFlow.svelte';
+import { beforeAll, describe, expect, it } from 'vitest';
+import ConversationFlow, {
+  clearPanelCache,
+  preloadAllPanels,
+  preloadPanel
+} from './ConversationFlow.svelte';
 import type {
   ParliamentarianBillView,
   ParliamentarianDetailView,
@@ -9,6 +13,9 @@ import type {
 import type { ParliamentarianVoteView } from '$lib/domain';
 
 describe('ConversationFlow', () => {
+  beforeAll(async () => {
+    await preloadAllPanels();
+  });
   const dummyHandlers = {
     onSelectParliamentarian: () => undefined,
     onSelectBill: () => undefined,
@@ -299,5 +306,78 @@ describe('ConversationFlow', () => {
     expect(html).toContain('Votação selecionada');
     expect(html).toContain('PL 100/2024');
     expect(html).toContain('Votação nominal em primeiro turno');
+  });
+
+  it('renders loading skeleton with proper ARIA attributes when panel is not cached', () => {
+    clearPanelCache();
+
+    const { body: html } = render(ConversationFlow, {
+      props: {
+        searchState: 'ABOUT',
+        submittedSearch: null,
+        searchResults: emptySearchResults,
+        selectedParliamentarian: null,
+        selectedBill: null,
+        selectedVote: null,
+        selectedParliamentarianBills: [],
+        selectedParliamentarianVotes: [],
+        selectedBillVotes: [],
+        ...dummyHandlers
+      }
+    });
+
+    expect(html).toContain('data-testid="panel-loading-skeleton"');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('Carregando Sobre e privacidade...');
+  });
+
+  it('renders loading skeleton for parliamentarian detail when not preloaded', () => {
+    clearPanelCache();
+
+    const { body: html } = render(ConversationFlow, {
+      props: {
+        searchState: 'PARLIAMENTARIAN_DETAIL',
+        submittedSearch: { id: 1, query: 'Deputada Teste' },
+        searchResults: emptySearchResults,
+        selectedParliamentarian: sampleParliamentarian,
+        selectedBill: null,
+        selectedVote: null,
+        selectedParliamentarianBills: [],
+        selectedParliamentarianVotes: [],
+        selectedBillVotes: [],
+        ...dummyHandlers
+      }
+    });
+
+    expect(html).toContain('Parlamentar selecionado');
+    expect(html).toContain('Deputada Teste');
+    expect(html).toContain('data-testid="panel-loading-skeleton"');
+    expect(html).toContain('aria-label="Carregando Deputada Teste..."');
+  });
+
+  it('renders fully resolved panel after preloading individual panel', async () => {
+    clearPanelCache();
+    await preloadPanel('ABOUT');
+
+    const { body: html } = render(ConversationFlow, {
+      props: {
+        searchState: 'ABOUT',
+        submittedSearch: null,
+        searchResults: emptySearchResults,
+        selectedParliamentarian: null,
+        selectedBill: null,
+        selectedVote: null,
+        selectedParliamentarianBills: [],
+        selectedParliamentarianVotes: [],
+        selectedBillVotes: [],
+        ...dummyHandlers
+      }
+    });
+
+    expect(html).toContain('Área informativa');
+    expect(html).toContain('Sobre e privacidade');
+    expect(html).toContain('Sobre, privacidade e responsabilidade');
+    expect(html).not.toContain('data-testid="panel-loading-skeleton"');
   });
 });
