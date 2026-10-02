@@ -136,4 +136,33 @@ describe('BillVotes', () => {
     expect(htmlDirect).not.toContain('Voltar ao perfil');
     expect(htmlDirect).toContain('Nova consulta');
   });
+
+  it('renders full plenary vote (513 deputies) in nominal tab with bounded DOM nodes and pagination', () => {
+    const votes513 = Array.from({ length: 513 }, (_, i) => ({
+      parliamentarianName: i === 450 ? 'Erika Hilton' : `Deputado Federal ${i + 1}`,
+      party: i === 450 ? 'PSOL' : 'PT',
+      state: 'SP',
+      vote: i % 2 === 0 ? ('SIM' as const) : ('NÃO' as const),
+      isSelectedParliamentarian: i === 450
+    }));
+
+    const html = renderBillVotes({
+      individualVotes: votes513
+    });
+
+    // Only 25 nominal articles in DOM (bounded footprint)
+    const nominalArticles = html.match(/<article class="nominal\s/g);
+    expect(nominalArticles).toHaveLength(25);
+
+    // Selected parliamentarian is prioritized to the first page
+    expect(html).toContain('Parlamentar selecionado');
+    expect(html).toContain('Erika Hilton');
+
+    // Pagination controls and summary indicators
+    expect(html).toContain('Exibindo 1–25 de 513 parlamentares');
+    expect(html).toContain('Página 1 de 21');
+    expect(html).toContain('« Primeira');
+    expect(html).toContain('Última »');
+  });
 });
+

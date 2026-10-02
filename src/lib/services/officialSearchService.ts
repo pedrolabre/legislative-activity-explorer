@@ -1,74 +1,55 @@
-import {
-  CamaraApiClient,
-  type CamaraDeputadoPayload,
-  type CamaraProposicaoPayload
-} from '$lib/api/camaraClient';
-import {
-  SenadoApiClient,
-  type SenadoProcessoPayload,
-  type SenadoSenadorPayload
-} from '$lib/api/senadoClient';
-import type { LegislativeProposal, LegislativeSource, Parliamentarian } from '$lib/domain';
-import {
-  mapCamaraDeputadoToParliamentarian,
-  mapCamaraProposicaoToLegislativeProposal
-} from '$lib/mappers/camaraMapper';
-import {
-  mapSenadoProcessoToLegislativeProposal,
-  mapSenadoSenadorToParliamentarian
-} from '$lib/mappers/senadoMapper';
+import type { LegislativeProposal, Parliamentarian } from '$lib/domain';
 import {
   createOfficialApiClients,
   type OfficialApiClientFactoryOptions
 } from './officialApiClientFactory';
 import {
-  getOfficialClientErrorMessage,
-  getOfficialErrorKind,
-  getOfficialErrorStatus,
-  getOfficialMapperErrorMessage,
-  getSourceReference,
-  isOfficialClientError,
-  isOfficialMapperError,
-  type OfficialRecoverableErrorKind
-} from './officialNotices';
-import {
-  parseLegislativeIdentifier,
-  type NationalLegislativeIdentifier,
-  type NationalLegislativeIdentifierType
+  parseLegislativeIdentifier
 } from './legislativeIdentifierParser';
+import {
+  deduplicateById,
+  getParliamentarianFields,
+  getProposalFields,
+  matchesDirectProposalQuery,
+  sortByNeutralText,
+  type DirectProposalQuery,
+  type DirectProposalQueryType
+} from './officialSearchHelpers';
+import {
+  buildSourceReport,
+  searchCamaraSource,
+  searchSenadoSource,
+  type OfficialCamaraSearchClient,
+  type OfficialSearchErrorKind,
+  type OfficialSearchGroup,
+  type OfficialSearchLimits,
+  type OfficialSearchRecoverableError,
+  type OfficialSearchSourceReport,
+  type OfficialSearchSourceStatus,
+  type OfficialSenadoSearchClient
+} from './officialSearchAdapters';
 
 export { parseDirectProposalQuery } from './legislativeIdentifierParser';
 
-export type OfficialSearchGroup = 'parliamentarians' | 'proposals';
-export type OfficialSearchSourceStatus = 'fulfilled' | 'partial' | 'failed';
-export type OfficialSearchErrorKind = Exclude<
-  OfficialRecoverableErrorKind,
-  'unsupported-source' | 'pagination-limit'
->;
-export type DirectProposalQueryType = NationalLegislativeIdentifierType;
+export type {
+  OfficialSearchGroup,
+  OfficialSearchSourceStatus,
+  OfficialSearchErrorKind,
+  DirectProposalQueryType,
+  DirectProposalQuery,
+  OfficialSearchRecoverableError,
+  OfficialSearchSourceReport,
+  OfficialSearchLimits,
+  OfficialCamaraSearchClient,
+  OfficialSenadoSearchClient
+};
+
 export type DirectProposalResolution =
   | 'not-direct-query'
   | 'invalid'
   | 'single'
   | 'ambiguous'
   | 'not-found';
-export type DirectProposalQuery = NationalLegislativeIdentifier;
-
-export interface OfficialSearchRecoverableError {
-  source: LegislativeSource;
-  group: OfficialSearchGroup;
-  kind: OfficialSearchErrorKind;
-  message: string;
-  status?: number;
-}
-
-export interface OfficialSearchSourceReport {
-  source: LegislativeSource;
-  status: OfficialSearchSourceStatus;
-  parliamentarianCount: number;
-  proposalCount: number;
-  errors: OfficialSearchRecoverableError[];
-}
 
 export interface OfficialSearchResult {
   query: string;
@@ -81,39 +62,11 @@ export interface OfficialSearchResult {
   directProposalResolution: DirectProposalResolution;
 }
 
-export interface OfficialSearchLimits {
-  parliamentariansPerSource: number;
-  proposalsPerSource: number;
-}
-
-export type OfficialCamaraSearchClient = Pick<CamaraApiClient, 'getDeputados' | 'getProposicoes'>;
-export type OfficialSenadoSearchClient = Pick<
-  SenadoApiClient,
-  'getSenadoresAtuais' | 'searchProcessos'
->;
-
 export interface OfficialSearchServiceOptions extends OfficialApiClientFactoryOptions {
   camaraClient?: OfficialCamaraSearchClient;
   senadoClient?: OfficialSenadoSearchClient;
   limits?: Partial<OfficialSearchLimits>;
   signal?: AbortSignal;
-}
-
-interface MappedGroupResult<T> {
-  items: T[];
-  errors: OfficialSearchRecoverableError[];
-}
-
-interface GroupSearchResult<T> extends MappedGroupResult<T> {
-  succeeded: boolean;
-}
-
-interface SourceSearchResult {
-  source: LegislativeSource;
-  parliamentarians: Parliamentarian[];
-  proposals: LegislativeProposal[];
-  errors: OfficialSearchRecoverableError[];
-  succeededGroups: number;
 }
 
 export const emptyOfficialSearchResult: OfficialSearchResult = {
@@ -129,298 +82,6 @@ const defaultLimits: OfficialSearchLimits = {
   proposalsPerSource: 20
 };
 
-const senadoOnlyDirectProposalTypes: DirectProposalQueryType[] = [
-  'RQS',
-  'RQN',
-  'PLS',
-  'PLC',
-  'PRS',
-  'PDS'
-];
-
-function normalizeText(value: string | undefined) {
-  return (value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('pt-BR')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function getQueryTokens(query: string) {
-  return normalizeText(query).split(' ').filter(Boolean);
-}
-
-function normalizeProposalNumber(value: string | undefined) {
-  const normalized = value?.trim().replace(/^0+(?=\d)/, '');
-
-  return normalized || undefined;
-}
-
-function matchesQuery(query: string, fields: (string | undefined)[]) {
-  const tokens = getQueryTokens(query);
-
-  if (tokens.length === 0) {
-    return false;
-  }
-
-  const searchableText = normalizeText(fields.filter(Boolean).join(' '));
-
-  return tokens.every((token) => searchableText.includes(token));
-}
-
-function getTextMatchOrder(query: string, fields: (string | undefined)[]) {
-  const normalizedQuery = normalizeText(query);
-  const normalizedFields = fields.map(normalizeText).filter(Boolean);
-
-  if (normalizedFields.some((field) => field === normalizedQuery)) {
-    return 0;
-  }
-
-  if (normalizedFields.some((field) => field.startsWith(normalizedQuery))) {
-    return 1;
-  }
-
-  return matchesQuery(query, normalizedFields) ? 2 : 3;
-}
-
-function compareText(a: string, b: string) {
-  return a.localeCompare(b, 'pt-BR', {
-    sensitivity: 'base',
-    numeric: true
-  });
-}
-
-function getParliamentarianFields(parliamentarian: Parliamentarian) {
-  return [
-    parliamentarian.name,
-    parliamentarian.fullName,
-    parliamentarian.office,
-    parliamentarian.party,
-    parliamentarian.state,
-    parliamentarian.status
-  ];
-}
-
-function getProposalFields(proposal: LegislativeProposal) {
-  return [
-    proposal.title,
-    proposal.type,
-    proposal.number,
-    proposal.year ? String(proposal.year) : undefined,
-    proposal.subject,
-    proposal.status,
-    proposal.officialSummary
-  ];
-}
-
-function matchesDirectProposalQuery(proposal: LegislativeProposal, directQuery: DirectProposalQuery) {
-  const proposalType = proposal.type.toLocaleUpperCase('pt-BR');
-  const proposalNumber = normalizeProposalNumber(proposal.number);
-
-  if (proposalType !== directQuery.type || proposalNumber !== directQuery.number) {
-    return false;
-  }
-
-  return directQuery.year === undefined || proposal.year === directQuery.year;
-}
-
-function filterDirectProposalMatches(
-  proposals: LegislativeProposal[],
-  directQuery: DirectProposalQuery | null
-) {
-  return directQuery
-    ? proposals.filter((proposal) => matchesDirectProposalQuery(proposal, directQuery))
-    : proposals;
-}
-
-function getSenadoProcessSearchOptions(query: string, directQuery: DirectProposalQuery | null) {
-  if (directQuery) {
-    return {
-      sigla: directQuery.type,
-      numero: directQuery.number,
-      ano: directQuery.year
-    };
-  }
-
-  return {
-    termo: query
-  };
-}
-
-function shouldSearchCamaraProposals(directQuery: DirectProposalQuery | null) {
-  return !directQuery || !senadoOnlyDirectProposalTypes.includes(directQuery.type);
-}
-
-function sortByNeutralText<T>(
-  items: T[],
-  query: string,
-  getFields: (item: T) => (string | undefined)[],
-  getLabel: (item: T) => string,
-  getId: (item: T) => string
-) {
-  return [...items].sort((left, right) => {
-    const matchOrder =
-      getTextMatchOrder(query, getFields(left)) - getTextMatchOrder(query, getFields(right));
-
-    if (matchOrder !== 0) {
-      return matchOrder;
-    }
-
-    const labelOrder = compareText(getLabel(left), getLabel(right));
-
-    return labelOrder !== 0 ? labelOrder : compareText(getId(left), getId(right));
-  });
-}
-
-function deduplicateById<T extends { id: string }>(items: T[]) {
-  const seenIds = new Set<string>();
-  const deduplicatedItems: T[] = [];
-
-  for (const item of items) {
-    if (!seenIds.has(item.id)) {
-      seenIds.add(item.id);
-      deduplicatedItems.push(item);
-    }
-  }
-
-  return deduplicatedItems;
-}
-
-function isAbortError(error: unknown): boolean {
-  if (!error) {
-    return false;
-  }
-
-  if (typeof error === 'object' && 'name' in error && (error as { name?: string }).name === 'AbortError') {
-    return true;
-  }
-
-  return false;
-}
-
-function getErrorKind(error: unknown): OfficialSearchErrorKind {
-  return getOfficialErrorKind(error) as Exclude<
-    OfficialRecoverableErrorKind,
-    'unsupported-source' | 'pagination-limit'
-  >;
-}
-
-function getGroupLabel(group: OfficialSearchGroup) {
-  return group === 'parliamentarians' ? 'parlamentares' : 'proposições ou matérias';
-}
-
-function getErrorMessage(
-  source: LegislativeSource,
-  group: OfficialSearchGroup,
-  error: unknown
-) {
-  const sourceReference = getSourceReference(source);
-  const groupLabel = getGroupLabel(group);
-
-  if (isOfficialClientError(error)) {
-    return getOfficialClientErrorMessage(sourceReference, groupLabel, error);
-  }
-
-  if (isOfficialMapperError(error)) {
-    return getOfficialMapperErrorMessage(groupLabel, sourceReference);
-  }
-
-  return `Falha temporária ao processar dados oficiais de ${groupLabel}.`;
-}
-
-function toRecoverableError(
-  source: LegislativeSource,
-  group: OfficialSearchGroup,
-  error: unknown
-): OfficialSearchRecoverableError {
-  const status = getOfficialErrorStatus(error);
-
-  return {
-    source,
-    group,
-    kind: getErrorKind(error),
-    message: getErrorMessage(source, group, error),
-    ...(status !== undefined ? { status } : {})
-  };
-}
-
-function mapPayloads<TPayload, TItem>(
-  source: LegislativeSource,
-  group: OfficialSearchGroup,
-  payloads: TPayload[],
-  mapper: (payload: TPayload) => TItem
-): MappedGroupResult<TItem> {
-  const items: TItem[] = [];
-  const errors: OfficialSearchRecoverableError[] = [];
-
-  for (const payload of payloads) {
-    try {
-      items.push(mapper(payload));
-    } catch (error) {
-      errors.push(toRecoverableError(source, group, error));
-    }
-  }
-
-  return {
-    items,
-    errors
-  };
-}
-
-async function searchGroup<T>(
-  source: LegislativeSource,
-  group: OfficialSearchGroup,
-  load: () => Promise<MappedGroupResult<T>>,
-  signal?: AbortSignal
-): Promise<GroupSearchResult<T>> {
-  try {
-    const result = await load();
-
-    return {
-      ...result,
-      succeeded: true
-    };
-  } catch (error) {
-    if (signal?.aborted || isAbortError(error)) {
-      throw error;
-    }
-
-    return {
-      items: [],
-      errors: [toRecoverableError(source, group, error)],
-      succeeded: false
-    };
-  }
-}
-
-function buildSourceSearchResult(
-  source: LegislativeSource,
-  parliamentarianResult: GroupSearchResult<Parliamentarian>,
-  proposalResult: GroupSearchResult<LegislativeProposal>
-): SourceSearchResult {
-  return {
-    source,
-    parliamentarians: parliamentarianResult.items,
-    proposals: proposalResult.items,
-    errors: [...parliamentarianResult.errors, ...proposalResult.errors],
-    succeededGroups: Number(parliamentarianResult.succeeded) + Number(proposalResult.succeeded)
-  };
-}
-
-function buildSourceReport(result: SourceSearchResult): OfficialSearchSourceReport {
-  const status: OfficialSearchSourceStatus =
-    result.errors.length === 0 ? 'fulfilled' : result.succeededGroups > 0 ? 'partial' : 'failed';
-
-  return {
-    source: result.source,
-    status,
-    parliamentarianCount: result.parliamentarians.length,
-    proposalCount: result.proposals.length,
-    errors: result.errors
-  };
-}
-
 function resolveOfficialSearchClients(options: OfficialSearchServiceOptions) {
   if (options.camaraClient && options.senadoClient) {
     return {
@@ -435,140 +96,6 @@ function resolveOfficialSearchClients(options: OfficialSearchServiceOptions) {
     camaraClient: options.camaraClient ?? configuredClients.camaraClient,
     senadoClient: options.senadoClient ?? configuredClients.senadoClient
   };
-}
-
-async function searchCamaraSource(
-  query: string,
-  client: OfficialCamaraSearchClient,
-  limits: OfficialSearchLimits,
-  directQuery: DirectProposalQuery | null,
-  signal?: AbortSignal
-): Promise<SourceSearchResult> {
-  const parliamentarianSearch = directQuery
-    ? Promise.resolve<GroupSearchResult<Parliamentarian>>({
-        items: [],
-        errors: [],
-        succeeded: false
-      })
-    : searchGroup(
-        'camara',
-        'parliamentarians',
-        async () =>
-          mapPayloads<CamaraDeputadoPayload, Parliamentarian>(
-            'camara',
-            'parliamentarians',
-            await client.getDeputados({
-              nome: query,
-              itens: limits.parliamentariansPerSource,
-              ordem: 'ASC',
-              ordenarPor: 'nome',
-              signal
-            }),
-            mapCamaraDeputadoToParliamentarian
-          ),
-        signal
-      );
-  const proposalSearch = shouldSearchCamaraProposals(directQuery)
-    ? searchGroup(
-        'camara',
-        'proposals',
-        async () => {
-          const mapped = mapPayloads<CamaraProposicaoPayload, LegislativeProposal>(
-            'camara',
-            'proposals',
-            await client.getProposicoes({
-              keywords: directQuery ? undefined : query,
-              siglaTipo: directQuery?.type,
-              numero: directQuery?.number,
-              ano: directQuery?.year,
-              itens: limits.proposalsPerSource,
-              signal
-            }),
-            mapCamaraProposicaoToLegislativeProposal
-          );
-
-          return {
-            items: filterDirectProposalMatches(mapped.items, directQuery),
-            errors: mapped.errors
-          };
-        },
-        signal
-      )
-    : Promise.resolve<GroupSearchResult<LegislativeProposal>>({
-        items: [],
-        errors: [],
-        succeeded: false
-      });
-  const [parliamentarianResult, proposalResult] = await Promise.all([
-    parliamentarianSearch,
-    proposalSearch
-  ]);
-
-  return buildSourceSearchResult('camara', parliamentarianResult, proposalResult);
-}
-
-async function searchSenadoSource(
-  query: string,
-  client: OfficialSenadoSearchClient,
-  limits: OfficialSearchLimits,
-  directQuery: DirectProposalQuery | null,
-  signal?: AbortSignal
-): Promise<SourceSearchResult> {
-  const parliamentarianSearch = directQuery
-    ? Promise.resolve<GroupSearchResult<Parliamentarian>>({
-        items: [],
-        errors: [],
-        succeeded: false
-      })
-    : searchGroup(
-        'senado',
-        'parliamentarians',
-        async () => {
-          const mapped = mapPayloads<SenadoSenadorPayload, Parliamentarian>(
-            'senado',
-            'parliamentarians',
-            await client.getSenadoresAtuais({ signal }),
-            mapSenadoSenadorToParliamentarian
-          );
-
-          return {
-            items: mapped.items
-              .filter((parliamentarian) =>
-                matchesQuery(query, getParliamentarianFields(parliamentarian))
-              )
-              .slice(0, limits.parliamentariansPerSource),
-            errors: mapped.errors
-          };
-        },
-        signal
-      );
-  const [parliamentarianResult, proposalResult] = await Promise.all([
-    parliamentarianSearch,
-    searchGroup(
-      'senado',
-      'proposals',
-      async () => {
-        const mapped = mapPayloads<SenadoProcessoPayload, LegislativeProposal>(
-          'senado',
-          'proposals',
-          await client.searchProcessos({
-            ...getSenadoProcessSearchOptions(query, directQuery),
-            signal
-          }),
-          mapSenadoProcessoToLegislativeProposal
-        );
-        const proposals = filterDirectProposalMatches(mapped.items, directQuery);
-
-        return {
-          items: proposals.slice(0, limits.proposalsPerSource),
-          errors: mapped.errors
-        };
-      },
-      signal
-    )
-  ]);
-
-  return buildSourceSearchResult('senado', parliamentarianResult, proposalResult);
 }
 
 export async function searchOfficialRecords(
@@ -588,10 +115,11 @@ export async function searchOfficialRecords(
     return emptyOfficialSearchResult;
   }
 
-  const limits = {
+  const limits: OfficialSearchLimits = {
     ...defaultLimits,
     ...options.limits
   };
+
   const directProposalParseResult = parseLegislativeIdentifier(normalizedQuery);
 
   if (!directProposalParseResult.ok && directProposalParseResult.attempted) {
@@ -608,10 +136,24 @@ export async function searchOfficialRecords(
   const directProposalQuery = directProposalParseResult.ok
     ? directProposalParseResult.identifier
     : null;
+
   const { camaraClient, senadoClient } = resolveOfficialSearchClients(options);
+
   const sourceResults = await Promise.all([
-    searchCamaraSource(normalizedQuery, camaraClient, limits, directProposalQuery, options.signal),
-    searchSenadoSource(normalizedQuery, senadoClient, limits, directProposalQuery, options.signal)
+    searchCamaraSource(
+      normalizedQuery,
+      camaraClient,
+      limits,
+      directProposalQuery,
+      options.signal
+    ),
+    searchSenadoSource(
+      normalizedQuery,
+      senadoClient,
+      limits,
+      directProposalQuery,
+      options.signal
+    )
   ]);
 
   const parliamentarians = sortByNeutralText(
@@ -621,6 +163,7 @@ export async function searchOfficialRecords(
     (parliamentarian) => parliamentarian.name,
     (parliamentarian) => parliamentarian.id
   );
+
   const proposals = sortByNeutralText(
     deduplicateById(sourceResults.flatMap((result) => result.proposals)),
     normalizedQuery,
@@ -628,9 +171,11 @@ export async function searchOfficialRecords(
     (proposal) => proposal.title,
     (proposal) => proposal.id
   );
+
   const directProposalMatches = directProposalQuery
     ? proposals.filter((proposal) => matchesDirectProposalQuery(proposal, directProposalQuery))
     : [];
+
   const directProposalResolution: DirectProposalResolution = directProposalQuery
     ? directProposalMatches.length === 1
       ? 'single'
@@ -638,6 +183,13 @@ export async function searchOfficialRecords(
         ? 'ambiguous'
         : 'not-found'
     : 'not-direct-query';
+
+  const directProposalError =
+    directProposalResolution === 'ambiguous'
+      ? 'Mais de uma proposição oficial corresponde aos termos identificados. Selecione um dos resultados abaixo.'
+      : directProposalResolution === 'not-found'
+        ? 'Nenhuma proposição oficial foi localizada com a identificação informada.'
+        : undefined;
 
   return {
     query: normalizedQuery,
@@ -647,6 +199,7 @@ export async function searchOfficialRecords(
     directProposalQuery: directProposalQuery ?? undefined,
     directProposal:
       directProposalResolution === 'single' ? directProposalMatches[0] : undefined,
-    directProposalResolution
+    directProposalResolution,
+    ...(directProposalError ? { directProposalError } : {})
   };
 }

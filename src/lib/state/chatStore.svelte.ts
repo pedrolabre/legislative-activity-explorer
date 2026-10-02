@@ -1,10 +1,6 @@
 import { SvelteSet } from 'svelte/reactivity';
 import type { LegislativeProposal, Parliamentarian, RollCallVote, UIState } from '$lib/domain';
 import {
-  getOfficialParliamentarianDetail as loadOfficialParliamentarianDetail,
-  getOfficialProposalsByParliamentarian as loadOfficialProposalsByParliamentarian
-} from '$lib/services/officialDetailService';
-import {
   officialParliamentarianSessionVotesCoverageMessage,
   officialParliamentarianSessionVotesEmptyMessage,
   officialParliamentarianStaticCoverageDescription,
@@ -16,9 +12,7 @@ import {
   officialSenadoProposalVotesUnavailableMessage,
   officialSenadoStaticCoverageDescription
 } from '$lib/ui/officialMessages';
-import { joinRecoverableNotices } from '$lib/services/officialNotices';
-import { searchPublicRecords } from '$lib/services/publicSearchService';
-import { emptySearchResults, type SearchResults } from '$lib/services/searchResults';
+import { emptySearchResults } from '$lib/services/searchResults';
 import type {
   ChatContext,
   ChatContextPatch,
@@ -33,19 +27,18 @@ import {
   applySearchResults,
   createInitialChatContext,
   defaultSearchDelayMs,
-  findParliamentarianInContext,
-  findProposalInContext,
-  findVoteInContext,
-  genericSearchErrorMessage,
-  getOfficialDetailNotice,
   hasOfficialParliamentarianIdPattern,
   hasOfficialProposalIdPattern,
-  initialChatContext,
-  isOfficialParliamentarian,
-  isOfficialProposal,
-  loadProposalOfficialDetail,
-  mergeDefinedFields
+  initialChatContext
 } from './chatStoreHelpers';
+import {
+  executeOpenParliamentarianBills,
+  executeOpenParliamentarianVotes,
+  executeSearchOperation,
+  executeSelectParliamentarian,
+  executeSelectProposal,
+  executeSelectVote
+} from './chatStoreOperations';
 
 export type {
   ChatContext,
@@ -73,18 +66,6 @@ export {
   officialSenadoProposalVotesUnavailableMessage,
   officialSenadoStaticCoverageDescription
 };
-
-function isAbortError(error: unknown): boolean {
-  if (!error) {
-    return false;
-  }
-
-  if (typeof error === 'object' && 'name' in error && (error as { name?: string }).name === 'AbortError') {
-    return true;
-  }
-
-  return false;
-}
 
 export class ChatStateMachine {
   #context = $state<ChatContext>(createInitialChatContext());
@@ -243,7 +224,6 @@ export class ChatStateMachine {
     const currentSearchId = ++this.#searchSequence;
     const searchController = new AbortController();
     this.#searchAbortController = searchController;
-    const search = options.search ?? searchPublicRecords;
     const delayMs = options.delayMs ?? defaultSearchDelayMs;
 
     this.#context = {
@@ -270,70 +250,47 @@ export class ChatStateMachine {
             return;
           }
 
-          try {
-            const results = await (
-              search as (
-                q: string,
-                opt?: { signal?: AbortSignal }
-              ) => SearchResults | Promise<SearchResults>
-            )(normalizedQuery, { signal: searchController.signal });
+          const opResult = await executeSearchOperation(
+            normalizedQuery,
+            options,
+            searchController.signal
+          );
 
-            if (currentSearchId !== this.#searchSequence || searchController.signal.aborted) {
-              resolve();
-              return;
-            }
+          if (currentSearchId !== this.#searchSequence || searchController.signal.aborted) {
+            resolve();
+            return;
+          }
 
-            if (results.directProposal && isOfficialProposal(results.directProposal)) {
-              const directProposalDetail = await loadProposalOfficialDetail(
-                results.directProposal,
-                options,
-                true
-              );
-
-              if (currentSearchId !== this.#searchSequence || searchController.signal.aborted) {
-                resolve();
-                return;
-              }
-
-              this.#context = applyDirectProposalSearchResult(
-                this.#context,
-                normalizedQuery,
-                results,
-                directProposalDetail.proposal,
-                directProposalDetail.voteHistory,
-                directProposalDetail.errorMessage
-              );
-              this.#notifySubscribers();
-            } else {
-              this.#context = applySearchResults(this.#context, normalizedQuery, results);
-              this.#notifySubscribers();
-            }
-          } catch (cause) {
-            if (
-              currentSearchId !== this.#searchSequence ||
-              searchController.signal.aborted ||
-              isAbortError(cause)
-            ) {
-              resolve();
-              return;
-            }
-
+          if (opResult.kind === 'direct-proposal') {
+            this.#context = applyDirectProposalSearchResult(
+              this.#context,
+              normalizedQuery,
+              opResult.results,
+              opResult.proposal,
+              opResult.voteHistory,
+              opResult.detailNotice
+            );
+            this.#notifySubscribers();
+          } else if (opResult.kind === 'standard') {
+            this.#context = applySearchResults(this.#context, normalizedQuery, opResult.results);
+            this.#notifySubscribers();
+          } else if (opResult.kind === 'error') {
             this.#context = {
               ...this.#context,
               currentState: 'ERROR',
-              errorMessage: genericSearchErrorMessage
+              errorMessage: opResult.message
             };
             this.#notifySubscribers();
-          } finally {
-            if (this.#pendingSearch?.resolve === resolve) {
-              this.#pendingSearch = null;
-            }
-            if (this.#searchAbortController === searchController) {
-              this.#searchAbortController = null;
-            }
-
-            resolve();
           }
+
+          if (this.#pendingSearch?.resolve === resolve) {
+            this.#pendingSearch = null;
+          }
+          if (this.#searchAbortController === searchController) {
+            this.#searchAbortController = null;
+          }
+
+          resolve();
         })();
       };
 
@@ -354,31 +311,12 @@ export class ChatStateMachine {
     options: SelectParliamentarianByIdOptions = {}
   ): Promise<boolean> {
     this.#cancelPendingSearch();
-    const contextParliamentarian = findParliamentarianInContext(this.#context, id);
-
-    if (!contextParliamentarian || !isOfficialParliamentarian(contextParliamentarian)) {
+    const result = await executeSelectParliamentarian(this.#context, id, options);
+    if (!result) {
       return false;
     }
 
-    const officialResult = await (options.getOfficialParliamentarianDetail ??
-      loadOfficialParliamentarianDetail)(contextParliamentarian);
-
-    const parliamentarian = officialResult.data
-      ? mergeDefinedFields(contextParliamentarian, officialResult.data)
-      : contextParliamentarian;
-    const errorMessage = getOfficialDetailNotice(officialResult.status, 'parlamentar');
-
-    this.navigateTo('PARLIAMENTARIAN_DETAIL', {
-      updates: {
-        selectedParliamentarian: parliamentarian,
-        parliamentarianProposals: [],
-        selectedProposal: null,
-        selectedVote: null,
-        voteHistory: [],
-        errorMessage
-      }
-    });
-
+    this.navigateTo('PARLIAMENTARIAN_DETAIL', result);
     return true;
   }
 
@@ -386,66 +324,23 @@ export class ChatStateMachine {
     options: OpenParliamentarianBillsOptions = {}
   ): Promise<boolean> {
     this.#cancelPendingSearch();
-    if (!this.#context.selectedParliamentarian) {
+    const result = await executeOpenParliamentarianBills(this.#context, options);
+    if (!result) {
       return false;
     }
 
-    if (!isOfficialParliamentarian(this.#context.selectedParliamentarian)) {
-      return false;
-    }
-
-    const officialResult = await (options.getOfficialProposalsByParliamentarian ??
-      loadOfficialProposalsByParliamentarian)(this.#context.selectedParliamentarian);
-
-    const parliamentarianProposals = officialResult.data;
-    const errorMessage = getOfficialDetailNotice(
-      officialResult.status,
-      'proposições associadas',
-      officialResult.errors
-    );
-
-    this.navigateTo('PARLIAMENTARIAN_BILLS', {
-      updates: {
-        parliamentarianProposals,
-        selectedProposal: null,
-        selectedVote: null,
-        errorMessage
-      }
-    });
-
+    this.navigateTo('PARLIAMENTARIAN_BILLS', result);
     return true;
   }
 
   openParliamentarianVotes(): boolean {
     this.#cancelPendingSearch();
-    if (!this.#context.selectedParliamentarian) {
+    const result = executeOpenParliamentarianVotes(this.#context);
+    if (!result) {
       return false;
     }
 
-    if (!isOfficialParliamentarian(this.#context.selectedParliamentarian)) {
-      return false;
-    }
-
-    const voteHistory = this.#context.voteHistory.filter(
-      (vote) => vote.source === this.#context.selectedParliamentarian?.source
-    );
-    const errorMessage =
-      voteHistory.length > 0
-        ? joinRecoverableNotices(
-            officialParliamentarianVoteHistoryUnavailableMessage,
-            officialParliamentarianSessionVotesCoverageMessage
-          )
-        : officialParliamentarianVoteHistoryUnavailableMessage;
-
-    this.navigateTo('PARLIAMENTARIAN_VOTES', {
-      updates: {
-        voteHistory,
-        selectedProposal: null,
-        selectedVote: null,
-        errorMessage
-      }
-    });
-
+    this.navigateTo('PARLIAMENTARIAN_VOTES', result);
     return true;
   }
 
@@ -454,69 +349,22 @@ export class ChatStateMachine {
     options: SelectProposalByIdOptions = {}
   ): Promise<boolean> {
     this.#cancelPendingSearch();
-    const contextProposal = findProposalInContext(this.#context, id);
-
-    if (!contextProposal || !isOfficialProposal(contextProposal)) {
+    const result = await executeSelectProposal(this.#context, id, options);
+    if (!result) {
       return false;
     }
 
-    const proposalDetail = await loadProposalOfficialDetail(contextProposal, options, true);
-    const proposal = proposalDetail.proposal;
-    const errorMessage = proposalDetail.errorMessage;
-    const voteHistory = proposalDetail.voteHistory;
-
-    this.navigateTo('BILL_DETAIL', {
-      updates: {
-        selectedProposal: proposal,
-        selectedVote: null,
-        voteHistory,
-        errorMessage
-      }
-    });
-
+    this.navigateTo('BILL_DETAIL', result);
     return true;
   }
 
   selectVoteById(id: string): boolean {
-    const selectedParliamentarian = this.#context.selectedParliamentarian;
-    const selectedProposal = this.#context.selectedProposal;
-    const contextVote = findVoteInContext(this.#context, id);
-
-    if (!selectedParliamentarian) {
-      if (
-        !selectedProposal ||
-        !isOfficialProposal(selectedProposal) ||
-        !contextVote ||
-        contextVote.source !== selectedProposal.source
-      ) {
-        return false;
-      }
-
-      this.navigateTo('BILL_VOTES', {
-        updates: {
-          selectedVote: contextVote,
-          errorMessage: ''
-        }
-      });
-
-      return true;
-    }
-
-    if (!isOfficialParliamentarian(selectedParliamentarian)) {
+    const result = executeSelectVote(this.#context, id);
+    if (!result) {
       return false;
     }
 
-    if (!contextVote || contextVote.source !== selectedParliamentarian.source) {
-      return false;
-    }
-
-    this.navigateTo('BILL_VOTES', {
-      updates: {
-        selectedVote: contextVote,
-        errorMessage: ''
-      }
-    });
-
+    this.navigateTo('BILL_VOTES', result);
     return true;
   }
 }
