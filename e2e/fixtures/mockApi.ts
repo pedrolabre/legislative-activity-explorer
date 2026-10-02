@@ -121,10 +121,32 @@ export const mockSenadorPacheco = {
   }
 };
 
+export type ValueOrGetter<T> = T | (() => T | undefined);
+
+export interface MockApiOptions {
+  camaraStatus?: ValueOrGetter<number>;
+  senadoStatus?: ValueOrGetter<number>;
+  camaraNetworkFail?: ValueOrGetter<boolean>;
+  senadoNetworkFail?: ValueOrGetter<boolean>;
+  emptyResults?: ValueOrGetter<boolean>;
+}
+
+function resolveOption<T>(option: ValueOrGetter<T> | undefined, fallback: T): T {
+  if (option === undefined) return fallback;
+  if (typeof option === 'function') {
+    const res = (option as () => T | undefined)();
+    return res !== undefined ? res : fallback;
+  }
+  return option;
+}
+
 /**
  * Configura interceptação de rotas HTTP com mocks herméticos.
  */
-export async function setupHermeticApiMocks(page: Page): Promise<void> {
+export async function setupHermeticApiMocks(
+  page: Page,
+  options: MockApiOptions = {}
+): Promise<void> {
   // 1. Interceptar fotos externas da Câmara para resposta estática instantânea
   await page.route(/https:\/\/www\.camara\.leg\.br\/.*(jpg|png|webp)/, async (route: Route) => {
     await route.fulfill({
@@ -136,6 +158,32 @@ export async function setupHermeticApiMocks(page: Page): Promise<void> {
 
   // 2. Interceptar API da Câmara dos Deputados
   await page.route(/https:\/\/dadosabertos\.camara\.leg\.br\/api\/v2\/.*/, async (route: Route) => {
+    const camaraNetworkFail = resolveOption(options.camaraNetworkFail, false);
+    if (camaraNetworkFail) {
+      await route.abort('failed');
+      return;
+    }
+
+    const camaraStatus = resolveOption(options.camaraStatus, 200);
+    if (camaraStatus >= 400) {
+      await route.fulfill({
+        status: camaraStatus,
+        contentType: 'application/json',
+        body: JSON.stringify({ erro: `Falha simulada na API da Câmara (${camaraStatus})` })
+      });
+      return;
+    }
+
+    const emptyResults = resolveOption(options.emptyResults, false);
+    if (emptyResults) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ dados: [], links: [] })
+      });
+      return;
+    }
+
     const url = new URL(route.request().url());
     const path = url.pathname;
 
@@ -298,6 +346,32 @@ export async function setupHermeticApiMocks(page: Page): Promise<void> {
 
   // 3. Interceptar API do Senado Federal
   await page.route(/https:\/\/legis\.senado\.leg\.br\/dadosabertos\/.*/, async (route: Route) => {
+    const senadoNetworkFail = resolveOption(options.senadoNetworkFail, false);
+    if (senadoNetworkFail) {
+      await route.abort('failed');
+      return;
+    }
+
+    const senadoStatus = resolveOption(options.senadoStatus, 200);
+    if (senadoStatus >= 400) {
+      await route.fulfill({
+        status: senadoStatus,
+        contentType: 'application/json',
+        body: JSON.stringify({ erro: `Falha simulada na API do Senado (${senadoStatus})` })
+      });
+      return;
+    }
+
+    const emptyResults = resolveOption(options.emptyResults, false);
+    if (emptyResults) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({})
+      });
+      return;
+    }
+
     const url = new URL(route.request().url());
     const path = url.pathname;
 
@@ -337,4 +411,39 @@ export async function setupHermeticApiMocks(page: Page): Promise<void> {
       body: JSON.stringify({})
     });
   });
+}
+
+/**
+ * Helper para simular indisponibilidade parcial (Senado com erro HTTP 500).
+ */
+export async function setupSenado500Error(page: Page): Promise<void> {
+  await setupHermeticApiMocks(page, { senadoStatus: 500 });
+}
+
+/**
+ * Helper para simular indisponibilidade da Câmara (erro HTTP 500).
+ */
+export async function setupCamara500Error(page: Page): Promise<void> {
+  await setupHermeticApiMocks(page, { camaraStatus: 500 });
+}
+
+/**
+ * Helper para simular indisponibilidade total (ambas as Casas com erro HTTP 500).
+ */
+export async function setupTotal500Error(page: Page): Promise<void> {
+  await setupHermeticApiMocks(page, { camaraStatus: 500, senadoStatus: 500 });
+}
+
+/**
+ * Helper para simular erro total de rede (abort de conexão).
+ */
+export async function setupTotalNetworkError(page: Page): Promise<void> {
+  await setupHermeticApiMocks(page, { camaraNetworkFail: true, senadoNetworkFail: true });
+}
+
+/**
+ * Helper para simular buscas sem nenhum resultado nas fontes públicas.
+ */
+export async function setupEmptySearchMocks(page: Page): Promise<void> {
+  await setupHermeticApiMocks(page, { emptyResults: true });
 }
